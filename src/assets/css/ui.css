@@ -1,0 +1,421 @@
+/* UI Components CSS for Bomberman DOM */
+
+/* Landing Page */
+.landing-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--background-color) 0%, var(--surface-color) 100%);
+  text-align: center;
+  padding: var(--spacing-lg);
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.game-title {
+  font-size: clamp(2rem, 8vw, 4rem);
+  font-weight: bold;
+  color: var(--primary-color);
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+  margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+  animation: title-glow 3s ease-in-out infinite;
+}
+
+@keyframes title-glow {
+  0%, 100% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5); }
+  50% { text-shadow: 3px 3px 6px rgba(255, 107, 53, 0.8), 0 0 20px rgba(255, 107, 53, 0.4); }
+}
+
+.nickname-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-width: min(400px, 90vw);
+  width: 100%;
+  padding: var(--spacing-lg);
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  margin: var(--spacing-md) 0;
+}
+
+.nickname-input {
+  font-size: 18px;
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.join-button {
+  font-size: 18px;
+  padding: var(--spacing-md) var(--spacing-xl);
+}
+
+/* Waiting Room */
+.waiting-room {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--background-color);
+}
+
+.waiting-header {
+  padding: var(--spacing-lg);
+  background: var(--surface-color);
+  border-bottom: 2px solid var(--primary-color);
+  text-align: center;
+}
+
+.waiting-title {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.player-counter {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.waiting-content {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.players-list {
+  flex: 1;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.players-title {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--accent-color);
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--background-color);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--player-1-color);
+}
+
+.player-item.player-2 { border-left-color: var(--player-2-color); }
+.player-item.player-3 { border-left-color: var(--player-3-color); }
+.player-item.player-4 { border-left-color: var(--player-4-color); }
+
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--player-1-color);
+  border: 2px solid white;
+}
+
+.player-avatar.player-2 { background: var(--player-2-color); }
+.player-avatar.player-3 { background: var(--player-3-color); }
+.player-avatar.player-4 { background: var(--player-4-color); }
+
+.player-details {
+  flex: 1;
+}
+
+.player-nickname {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.player-status {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Chat System */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: var(--spacing-md);
+  background: var(--background-color);
+  border-bottom: 1px solid var(--primary-color);
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+.chat-messages {
+  flex: 1;
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.chat-message {
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: var(--background-color);
+}
+
+.message-author {
+  font-weight: bold;
+  color: var(--primary-color);
+  font-size: 0.9rem;
+}
+
+.message-text {
+  margin-top: var(--spacing-xs);
+}
+
+.message-time {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.chat-input-container {
+  display: flex;
+  padding: var(--spacing-md);
+  gap: var(--spacing-sm);
+  border-top: 1px solid var(--primary-color);
+}
+
+.chat-input {
+  flex: 1;
+}
+
+.chat-send-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Countdown Timer */
+.countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.countdown-content {
+  text-align: center;
+  color: white;
+}
+
+.countdown-number {
+  font-size: 8rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+  animation: countdown-pulse 1s ease-in-out;
+}
+
+.countdown-text {
+  font-size: 2rem;
+  margin-top: var(--spacing-md);
+  color: var(--text-secondary);
+}
+
+@keyframes countdown-pulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Game Over Screen */
+.game-over-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.game-over-content {
+  text-align: center;
+  background: var(--surface-color);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 500px;
+  width: 90%;
+}
+
+.game-over-title {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: var(--spacing-lg);
+}
+
+.winner-announcement {
+  color: var(--success-color);
+}
+
+.loser-announcement {
+  color: var(--error-color);
+}
+
+.game-over-stats {
+  margin: var(--spacing-lg) 0;
+  padding: var(--spacing-md);
+  background: var(--background-color);
+  border-radius: var(--radius-md);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.game-over-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+}
+
+/* Error Messages */
+.error-message {
+  background: var(--error-color);
+  color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+  animation: error-shake 0.5s ease-in-out;
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Success Messages */
+.success-message {
+  background: var(--success-color);
+  color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+  animation: success-fade-in 0.5s ease-in-out;
+}
+
+@keyframes success-fade-in {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading States */
+.loading-dots {
+  display: inline-block;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+/* Responsive UI */
+@media (max-width: 1024px) {
+  .landing-page {
+    padding: var(--spacing-md);
+  }
+
+  .nickname-form {
+    max-width: min(350px, 85vw);
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-page {
+    justify-content: flex-start;
+    padding: var(--spacing-sm);
+  }
+
+  .game-title {
+    font-size: clamp(1.8rem, 6vw, 2.5rem);
+    margin: var(--spacing-md) 0;
+  }
+
+  .nickname-form {
+    max-width: min(320px, 90vw);
+    padding: var(--spacing-md);
+  }
+
+  .waiting-content {
+    flex-direction: column;
+  }
+
+  .countdown-number {
+    font-size: 6rem;
+  }
+
+  .game-over-title {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-page {
+    padding: var(--spacing-xs);
+  }
+
+  .game-title {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    margin: var(--spacing-sm) 0;
+  }
+
+  .nickname-form {
+    max-width: 95vw;
+    padding: var(--spacing-sm);
+  }
+
+  .nickname-input {
+    font-size: 16px;
+    padding: var(--spacing-sm);
+  }
+
+  .join-button {
+    font-size: 16px;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .countdown-number {
+    font-size: 4rem;
+  }
+}

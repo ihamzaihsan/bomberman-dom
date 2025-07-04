@@ -335,6 +335,10 @@ export class Framework {
           element.setAttribute('for', value);
         } else if (name === 'className') {
           element.className = value;
+        } else if (name.startsWith('on') && typeof value === 'function') {
+          // Handle event handlers like onclick, onsubmit, etc.
+          const eventType = name.substring(2).toLowerCase();
+          element.addEventListener(eventType, value);
         } else {
           element.setAttribute(name, value);
         }
