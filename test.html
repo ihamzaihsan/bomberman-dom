@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Framework Tests</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .test-passed { color: green; }
+        .test-failed { color: red; }
+        .test-result { margin: 5px 0; }
+        #test-container { border: 2px solid #ccc; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Mini Framework Tests</h1>
+    <div id="test-results"></div>
+    <div id="test-container"></div>
+
+    <script type="module">
+        import { Framework } from './src/framework/framework.js';
+
+        const results = document.getElementById('test-results');
+        const testContainer = document.getElementById('test-container');
+        
+        function addResult(testName, passed, message = '') {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'test-passed' : 'test-failed'}`;
+            div.innerHTML = `${passed ? '✓' : '✗'} ${testName} ${message}`;
+            results.appendChild(div);
+        }
+
+        function runTests() {
+            console.log('Running framework tests...');
+
+            // Test 1: Framework Creation
+            try {
+                const app = new Framework();
+                addResult('Framework Creation', true);
+            } catch (e) {
+                addResult('Framework Creation', false, e.message);
+            }
+
+            // Test 2: Element Creation
+            try {
+                const app = new Framework();
+                const element = app.div({ class: 'test' }, 'Hello World');
+                const isValid = element.tag === 'div' && 
+                               element.props.class === 'test' && 
+                               element.children[0] === 'Hello World';
+                addResult('Element Creation', isValid);
+            } catch (e) {
+                addResult('Element Creation', false, e.message);
+            }
+
+            // Test 3: State Management
+            try {
+                const app = new Framework();
+                app.setState({ test: 'value' });
+                const state = app.getState();
+                addResult('State Management', state.test === 'value');
+            } catch (e) {
+                addResult('State Management', false, e.message);
+            }
+
+            // Test 4: Enhanced State Methods
+            try {
+                const app = new Framework();
+                app.set('count', 5);
+                app.push('items', 'item1');
+                app.push('items', 'item2');
+                
+                const count = app.get('count');
+                const items = app.get('items');
+                
+                const isValid = count === 5 && 
+                               Array.isArray(items) && 
+                               items.length === 2 && 
+                               items[0] === 'item1';
+                addResult('Enhanced State Methods', isValid);
+            } catch (e) {
+                addResult('Enhanced State Methods', false, e.message);
+            }
+
+            // Test 5: DOM Creation
+            try {
+                const app = new Framework();
+                const vnode = app.div({ class: 'test' }, 'Test Content');
+                const domElement = app.createDOMElement(vnode);
+                
+                const isValid = domElement.tagName === 'DIV' && 
+                               domElement.className === 'test' && 
+                               domElement.textContent === 'Test Content';
+                addResult('DOM Creation', isValid);
+            } catch (e) {
+                addResult('DOM Creation', false, e.message);
+            }
+
+            // Test 6: Shorthand Element Methods
+            try {
+                const app = new Framework();
+                const button = app.button({ class: 'btn' }, 'Click me');
+                const input = app.input({ type: 'text', placeholder: 'Enter text' });
+                const list = app.ul({}, 
+                    app.li({}, 'Item 1'),
+                    app.li({}, 'Item 2')
+                );
+                
+                const isValid = button.tag === 'button' && 
+                               input.tag === 'input' && 
+                               list.tag === 'ul' && 
+                               list.children.length === 2;
+                addResult('Shorthand Element Methods', isValid);
+            } catch (e) {
+                addResult('Shorthand Element Methods', false, e.message);
+            }
+
+            // Test 7: Helper Methods
+            try {
+                const app = new Framework();
+                const condition = true;
+                const whenResult = app.when(condition, app.div({}, 'Shown'));
+                const whenFalseResult = app.when(false, app.div({}, 'Hidden'));
+                
+                const array = [1, 2, 3];
+                const mapResult = app.map(array, item => app.li({}, `Item ${item}`));
+                
+                const isValid = whenResult !== null && 
+                               whenFalseResult === null && 
+                               Array.isArray(mapResult) && 
+                               mapResult.length === 3;
+                addResult('Helper Methods (when, map)', isValid);
+            } catch (e) {
+                addResult('Helper Methods (when, map)', false, e.message);
+            }
+
+            // Test 8: Routing
+            try {
+                const app = new Framework();
+                const TestComponent = () => app.div({}, 'Test Route');
+                
+                app.route('/', TestComponent);
+                app.routes({
+                    '/about': TestComponent,
+                    '/contact': TestComponent
+                });
+                
+                const hasRoutes = Object.keys(app.routes).length === 3;
+                addResult('Routing', hasRoutes);
+            } catch (e) {
+                addResult('Routing', false, e.message);
+            }
+
+            // Test 9: Event System Setup
+            try {
+                const app = new Framework();
+                let eventHandled = false;
+                
+                // Test event handler registration
+                app.on('click', '.test-btn', () => {
+                    eventHandled = true;
+                });
+                
+                const hasEventHandlers = app.eventHandlers.has('click');
+                addResult('Event System Setup', hasEventHandlers);
+            } catch (e) {
+                addResult('Event System Setup', false, e.message);
+            }
+
+            // Test 10: Framework.create Factory
+            try {
+                const app = Framework.create({
+                    initialState: { test: 'factory' },
+                    autoStart: false
+                });
+                
+                const state = app.getState();
+                addResult('Framework.create Factory', state.test === 'factory');
+            } catch (e) {
+                addResult('Framework.create Factory', false, e.message);
+            }
+
+            // Test 11: Render Test
+            try {
+                const app = new Framework();
+                const component = () => app.div({ class: 'render-test' }, 'Rendered!');
+                
+                testContainer.innerHTML = '';
+                const element = app.render(component(), testContainer);
+                
+                const isValid = element && 
+                               element.className === 'render-test' && 
+                               element.textContent === 'Rendered!';
+                addResult('Rendering', isValid);
+            } catch (e) {
+                addResult('Rendering', false, e.message);
+            }
+
+            console.log('Tests completed!');
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

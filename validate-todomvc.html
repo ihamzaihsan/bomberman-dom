@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TodoMVC Validation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .validation-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .check-passed { color: green; }
+        .check-failed { color: red; }
+        .check-result { margin: 5px 0; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>TodoMVC Validation</h1>
+    <p>This page validates that the TodoMVC implementation meets the standard requirements.</p>
+    
+    <div class="validation-section">
+        <h2>TodoMVC Requirements Checklist</h2>
+        <div id="validation-results">
+            <div class="check-result">📝 <strong>Core Functionality:</strong></div>
+            <div class="check-result">• Add new todos by typing in the input and pressing Enter</div>
+            <div class="check-result">• Mark todos as complete by clicking the checkbox</div>
+            <div class="check-result">• Edit todos by double-clicking the label</div>
+            <div class="check-result">• Remove todos by clicking the × button</div>
+            <div class="check-result">• Filter todos by All/Active/Completed</div>
+            <div class="check-result">• Clear all completed todos</div>
+            <div class="check-result">• Toggle all todos complete/incomplete</div>
+            <div class="check-result">• Show count of active todos</div>
+            
+            <div class="check-result">🎨 <strong>UI/UX Requirements:</strong></div>
+            <div class="check-result">• Hide main section and footer when no todos</div>
+            <div class="check-result">• Show/hide clear completed button based on completed todos</div>
+            <div class="check-result">• Highlight current filter</div>
+            <div class="check-result">• Focus new todo input on page load</div>
+            <div class="check-result">• Trim whitespace from new todos</div>
+            <div class="check-result">• Remove todos with empty text after editing</div>
+            
+            <div class="check-result">🔗 <strong>Routing Requirements:</strong></div>
+            <div class="check-result">• URL updates when filter changes</div>
+            <div class="check-result">• Filter persists on page reload</div>
+            <div class="check-result">• Browser back/forward works with filters</div>
+            
+            <div class="check-result">⚡ <strong>Framework Features:</strong></div>
+            <div class="check-result">• Uses custom framework (no external libraries)</div>
+            <div class="check-result">• Implements state management</div>
+            <div class="check-result">• Uses event delegation</div>
+            <div class="check-result">• Follows component architecture</div>
+            <div class="check-result">• Includes error handling</div>
+        </div>
+    </div>
+
+    <div class="validation-section">
+        <h2>Live TodoMVC Application</h2>
+        <p>Test the functionality below:</p>
+        <iframe src="/" title="TodoMVC Application"></iframe>
+    </div>
+
+    <div class="validation-section">
+        <h2>Manual Testing Guide</h2>
+        <ol>
+            <li><strong>Add Todos:</strong> Type "Learn JavaScript" and press Enter</li>
+            <li><strong>Mark Complete:</strong> Click the checkbox next to the todo</li>
+            <li><strong>Edit Todo:</strong> Double-click the todo text and modify it</li>
+            <li><strong>Delete Todo:</strong> Hover over todo and click the × button</li>
+            <li><strong>Filter Todos:</strong> Click All/Active/Completed filters</li>
+            <li><strong>Toggle All:</strong> Click the toggle all checkbox</li>
+            <li><strong>Clear Completed:</strong> Add some todos, mark them complete, then click "Clear completed"</li>
+            <li><strong>URL Testing:</strong> 
+                <ul>
+                    <li>Click Active filter, check URL shows #/active</li>
+                    <li>Refresh page, should stay on Active filter</li>
+                    <li>Use browser back button, should change filter</li>
+                </ul>
+            </li>
+            <li><strong>Edge Cases:</strong>
+                <ul>
+                    <li>Try adding empty todos (should be ignored)</li>
+                    <li>Try editing a todo to empty text (should delete)</li>
+                    <li>Add todos with only whitespace (should be trimmed)</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <div class="validation-section">
+        <h2>Framework Architecture Validation</h2>
+        <div id="architecture-check">
+            <div class="check-result">🏗️ <strong>Architecture Checks:</strong></div>
+            <div class="check-result" id="framework-check">• Framework instance available</div>
+            <div class="check-result" id="state-check">• State management working</div>
+            <div class="check-result" id="routing-check">• Routing system active</div>
+            <div class="check-result" id="events-check">• Event delegation working</div>
+        </div>
+    </div>
+
+    <script>
+        // Check if framework is working in the iframe
+        setTimeout(() => {
+            try {
+                const iframe = document.querySelector('iframe');
+                const iframeWindow = iframe.contentWindow;
+                
+                // Check framework instance
+                if (iframeWindow.todoApp) {
+                    document.getElementById('framework-check').className = 'check-result check-passed';
+                    document.getElementById('framework-check').innerHTML = '✓ Framework instance available';
+                    
+                    // Check state
+                    const state = iframeWindow.todoApp.getState();
+                    if (state && typeof state === 'object') {
+                        document.getElementById('state-check').className = 'check-result check-passed';
+                        document.getElementById('state-check').innerHTML = '✓ State management working';
+                    }
+                    
+                    // Check routing
+                    if (iframeWindow.todoApp.routes && Object.keys(iframeWindow.todoApp.routes).length > 0) {
+                        document.getElementById('routing-check').className = 'check-result check-passed';
+                        document.getElementById('routing-check').innerHTML = '✓ Routing system active';
+                    }
+                    
+                    // Check events
+                    if (iframeWindow.todoApp.eventHandlers && iframeWindow.todoApp.eventHandlers.size > 0) {
+                        document.getElementById('events-check').className = 'check-result check-passed';
+                        document.getElementById('events-check').innerHTML = '✓ Event delegation working';
+                    }
+                } else {
+                    document.getElementById('framework-check').className = 'check-result check-failed';
+                    document.getElementById('framework-check').innerHTML = '✗ Framework instance not found';
+                }
+            } catch (e) {
+                console.log('Cross-origin restriction - cannot access iframe content');
+                document.getElementById('framework-check').innerHTML = '⚠️ Cannot access iframe (cross-origin)';
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

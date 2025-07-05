@@ -1,19 +1,17 @@
 {
-    "name": "bomberman-dom",
+    "name": "todo-custom-framework",
     "version": "1.0.0",
-    "description": "Single-player Bomberman Game using DOM manipulation and custom framework",
+    "description": "Custom Framework TodoMVC Implementation",
     "type": "module",
-    "main": "index.html",
+    "main": "server.js",
     "scripts": {
-      "start": "npx http-server . -p 3000 -c-1 -o",
-      "dev": "npx http-server . -p 3000 -c-1 -o",
-      "serve": "npx http-server . -p 3000 -c-1",
+      "start": "node server.js",
+      "dev": "npx http-server . -p 3000 -c-1",
       "test": "echo \"Error: no test specified\" && exit 1"
     },
-    "keywords": ["bomberman", "single-player", "dom", "game", "framework"],
+    "keywords": ["todo", "framework", "javascript"],
     "author": "",
     "license": "ISC",
-    "dependencies": {},
     "devDependencies": {
       "http-server": "^14.1.1"
     }

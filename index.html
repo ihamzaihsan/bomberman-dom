@@ -1,39 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bomberman DOM - Multiplayer Game</title>
-    <meta name="description" content="Multiplayer Bomberman game using DOM manipulation">
-
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="src/assets/css/reset.css">
-    <link rel="stylesheet" href="src/assets/css/main.css">
-    <link rel="stylesheet" href="src/assets/css/game.css">
-    <link rel="stylesheet" href="src/assets/css/ui.css">
-    <link rel="stylesheet" href="src/assets/css/animations.css">
-
-    <!-- Preload critical assets -->
-    <link rel="preload" href="src/assets/css/main.css" as="style">
-    <link rel="preload" href="src/game/app.js" as="script" crossorigin="anonymous">
+    <title>TodoMVC - Custom Framework</title>
+    <link rel="stylesheet" href="src/styles/todo.css">
 </head>
 <body>
-    <!-- Main Application Container -->
-    <div id="app" class="app-container">
-        <!-- Loading screen will be replaced by framework -->
-        <div class="loading-screen">
-            <div class="loading-spinner"></div>
-            <p>Loading Bomberman...</p>
-        </div>
-    </div>
-
-    <!-- Performance monitoring -->
-    <div id="performance-monitor" class="performance-monitor hidden">
-        <div class="fps-counter">FPS: <span id="fps-value">60</span></div>
-        <div class="ping-counter">Ping: <span id="ping-value">--</span>ms</div>
-    </div>
-
-    <!-- Main Application Script -->
-    <script type="module" src="src/game/app.js"></script>
+    <script type="module" src="src/framework/framework.js"></script>
+    <script type="module" src="src/app/todoApp.js"></script>
 </body>
 </html>

@@ -1,0 +1,491 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Space Mono', monospace;
+  background: #000;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Deep space background with nebulae */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(138, 43, 226, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(255, 20, 147, 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse at 40% 80%, rgba(0, 191, 255, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(255, 165, 0, 0.2) 0%, transparent 40%),
+    linear-gradient(45deg, #000428 0%, #004e92 50%, #000 100%);
+  z-index: -5;
+  animation: nebulaShift 25s ease-in-out infinite alternate;
+}
+
+/* Starfield */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 160px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 300px 120px, #fff, transparent),
+    radial-gradient(2px 2px at 200px 180px, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 350px 200px, #fff, transparent);
+  background-repeat: repeat;
+  background-size: 400px 300px;
+  z-index: -4;
+  animation: starTwinkle 8s linear infinite;
+}
+
+/* Floating cosmic objects */
+.galaxy {
+  position: fixed;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(ellipse, 
+    rgba(255, 255, 255, 0.8) 0%, 
+    rgba(138, 43, 226, 0.6) 30%, 
+    rgba(255, 20, 147, 0.4) 60%, 
+    transparent 100%);
+  border-radius: 50%;
+  top: 15%;
+  left: 10%;
+  animation: galaxyRotate 30s linear infinite;
+  box-shadow: 
+    0 0 40px rgba(138, 43, 226, 0.5),
+    inset 0 0 20px rgba(255, 255, 255, 0.2);
+  z-index: -3;
+}
+
+.pulsar {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, #fff 0%, rgba(0, 191, 255, 0.8) 50%, transparent 100%);
+  border-radius: 50%;
+  top: 70%;
+  right: 20%;
+  animation: pulsarBeam 2s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(0, 191, 255, 0.8);
+  z-index: -3;
+}
+
+
+.todoapp {
+  background: rgba(15, 25, 50, 0.9);
+  margin: 50px auto;
+  position: relative;
+  max-width: 550px;
+  box-shadow: 
+    0 0 50px rgba(83, 52, 131, 0.5),
+    inset 0 0 50px rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 2px solid rgba(83, 52, 131, 0.3);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.todoapp::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #533483, #0f3460, #16213e, #533483);
+  border-radius: 15px;
+  z-index: -1;
+  animation: borderGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes borderGlow {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+
+.header {
+  padding: 30px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(83, 52, 131, 0.2), rgba(15, 52, 96, 0.2));
+  border-bottom: 1px solid rgba(83, 52, 131, 0.3);
+}
+
+.header h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: transparent;
+  background: linear-gradient(45deg, #00d4ff, #7c4dff, #ff6ec7, #00d4ff);
+  background-size: 300% 300%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: gradientShift 4s ease-in-out infinite;
+  margin: 0 0 20px 0;
+  text-shadow: 0 0 30px rgba(124, 77, 255, 0.5);
+  letter-spacing: 3px;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+
+.new-todo {
+  width: 100%;
+  padding: 15px 20px;
+  font-size: 1.2rem;
+  font-family: 'Exo 2', sans-serif;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(124, 77, 255, 0.3);
+  border-radius: 25px;
+  color: #fff;
+  outline: none;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.new-todo::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.new-todo:focus {
+  border-color: #7c4dff;
+  box-shadow: 
+    inset 0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(124, 77, 255, 0.6);
+  transform: scale(1.02);
+}
+
+
+.main {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+
+.toggle-all {
+  display: none;
+}
+
+.toggle-all + label {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.toggle-all + label:hover {
+  color: #7c4dff;
+  background: rgba(124, 77, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.toggle-all:checked + label {
+  color: #00d4ff;
+}
+
+
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-item {
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.1), rgba(0, 212, 255, 0.05));
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 77, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  animation: slideInFromSpace 0.6s ease-out;
+}
+
+@keyframes slideInFromSpace {
+  0% {
+    opacity: 0;
+    transform: translateX(-100px) rotate(-10deg) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+.todo-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.todo-item:hover::before {
+  left: 100%;
+}
+
+.todo-item:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 10px 25px rgba(124, 77, 255, 0.3),
+    0 0 20px rgba(0, 212, 255, 0.2);
+  border-color: #7c4dff;
+}
+
+.todo-item.completed {
+  background: linear-gradient(135deg, rgba(0, 255, 127, 0.1), rgba(0, 212, 255, 0.05));
+  border-color: rgba(0, 255, 127, 0.3);
+  animation: completionPulse 0.6s ease-out;
+}
+
+@keyframes completionPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 127, 0.6); }
+  100% { transform: scale(1); }
+}
+
+.view {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  position: relative;
+}
+
+
+.toggle {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #7c4dff;
+  border-radius: 50%;
+  margin-right: 15px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: radial-gradient(circle, rgba(124, 77, 255, 0.1), transparent);
+}
+
+.toggle:checked {
+  background: radial-gradient(circle, #00ff7f, #7c4dff);
+  border-color: #00ff7f;
+  animation: checkboxPulse 0.4s ease-out;
+}
+
+@keyframes checkboxPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.toggle:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #000;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+
+label {
+  flex: 1;
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.completed label {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+  text-decoration-color: #00ff7f;
+  text-decoration-thickness: 2px;
+}
+
+
+.destroy {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 1.5rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+  padding: 5px;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.destroy::before {
+  content: '×';
+}
+
+.todo-item:hover .destroy {
+  opacity: 1;
+}
+
+.destroy:hover {
+  background: rgba(255, 107, 107, 0.2);
+  transform: scale(1.2) rotate(90deg);
+  box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+}
+
+
+.footer {
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(83, 52, 131, 0.1));
+  border-top: 1px solid rgba(83, 52, 131, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.todo-count {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 300;
+}
+
+
+.filters {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 5px;
+}
+
+.filters li {
+  margin: 0;
+}
+
+.filters a {
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  padding: 8px 15px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.filters a:hover {
+  color: #7c4dff;
+  background: rgba(124, 77, 255, 0.1);
+  border-color: rgba(124, 77, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.filters a.selected {
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.2);
+  border-color: #00d4ff;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+}
+
+
+.clear-completed {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  font-family: 'Exo 2', sans-serif;
+}
+
+.clear-completed:hover {
+  background: linear-gradient(135deg, #ff5252, #d32f2f);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+}
+
+
+@media (max-width: 600px) {
+  .todoapp {
+    margin: 20px;
+    max-width: none;
+  }
+  
+  .header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .footer {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .filters {
+    order: -1;
+  }
+}
+
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(30px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+}
+
+.loading-orbit {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin: 20px auto;
+}
+
+.loading-orbit::before,
+.loading-orbit::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #7c4dff;
+  animation: orbit 2s linear infinite;
+}
+
+.loading-orbit::after {
+  background: #000
+}
