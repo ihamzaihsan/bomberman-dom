@@ -1,11 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TodoMVC - Custom Framework</title>
-    <link rel="stylesheet" href="src/styles/todo.css">
+    <title>Bomberman Game</title>
+    <link rel="stylesheet" href="src/styles/bomberman.css">
 </head>
 <body>
+    <div id="app">
+        <div class="nickname-screen">
+            <h1>Bomberman</h1>
+            <div class="nickname-form-container">
+                <form id="nickname-form">
+                    <label for="nickname-input">Enter your nickname:</label>
+                    <input 
+                        id="nickname-input" 
+                        type="text" 
+                        placeholder="Your nickname"
+                        required 
+                        maxlength="20"
+                        minlength="2"
+                    >
+                    <button type="submit">Join Game</button>
+                </form>
+                <div id="error-message" class="error" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="src/framework/framework.js"></script>
-    <script type="module" src="src/app/todoApp.js"></script>
+    <script type="module" src="src/app/bombermanApp.js"></script>
 </body>
 </html>

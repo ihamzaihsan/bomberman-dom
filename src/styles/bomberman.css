@@ -1,0 +1,250 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.nickname-screen {
+  text-align: center;
+  background-color: #34495e;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.nickname-screen h1 {
+  font-size: 3em;
+  margin-bottom: 30px;
+  color: #e74c3c;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.nickname-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#nickname-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#nickname-form label {
+  font-size: 1.2em;
+}
+
+#nickname-form input {
+  padding: 12px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 5px;
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+#nickname-form button {
+  padding: 12px 24px;
+  font-size: 1.1em;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#nickname-form button:hover {
+  background-color: #c0392b;
+}
+
+#nickname-form button:disabled {
+  background-color: #7f8c8d;
+  cursor: not-allowed;
+}
+
+.error {
+  background-color: #e74c3c;
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  display: none;
+}
+
+.waiting-screen {
+  text-align: center;
+  background-color: #34495e;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.waiting-screen h1 {
+  color: #3498db;
+  margin-bottom: 30px;
+  font-size: 2.5em;
+}
+
+.player-info {
+  margin-bottom: 30px;
+}
+
+.player-info p {
+  font-size: 1.3em;
+  margin-bottom: 20px;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.player-item {
+  background-color: #2c3e50;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 1.1em;
+}
+
+.countdown {
+  background-color: #e74c3c;
+  padding: 25px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.countdown h2 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+}
+
+.countdown p {
+  font-size: 1.2em;
+}
+
+.game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  max-width: none;
+  width: auto;
+}
+
+.game-ui {
+  display: flex;
+  gap: 30px;
+  background-color: #2c3e50;
+  padding: 15px 30px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.player-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.player-stats span {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.controls-info {
+  font-size: 0.9em;
+  color: #bdc3c7;
+}
+
+.game-map {
+  display: grid;
+  grid-template-columns: repeat(15, 30px);
+  grid-template-rows: repeat(13, 30px);
+  gap: 1px;
+  background-color: #1a1a1a;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.cell {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  position: relative;
+}
+
+.cell.empty {
+  background-color: #27ae60;
+}
+
+.cell.wall {
+  background-color: #7f8c8d;
+}
+
+.cell.block {
+  background-color: #d35400;
+}
+
+.bomb {
+  position: absolute;
+  font-size: 16px;
+  z-index: 5;
+}
+
+.player {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 10px;
+  z-index: 10;
+  border: 2px solid white;
+}
+
+.player.player-0 { background-color: #e74c3c; }
+.player.player-1 { background-color: #3498db; }
+.player.player-2 { background-color: #f39c12; }
+.player.player-3 { background-color: #9b59b6; }
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .nickname-screen {
+    padding: 30px 20px;
+    margin: 20px;
+  }
+    
+  .nickname-screen h1 {
+    font-size: 2.5em;
+  }
+    
+  #nickname-form input {
+    font-size: 1.1em;
+    padding: 12px 15px;
+  }
+    
+  #nickname-form button {
+    font-size: 1.1em;
+    padding: 12px 25px;
+  }
+}
