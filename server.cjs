@@ -1,8 +1,9 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const WebSocketManager = require('./src/backend/websocketServer.cjs');
 
-// Simple GameServer class for now
+// GameServer class - handles game logic
 class GameServer {
   constructor() {
     this.gameState = {
@@ -13,12 +14,65 @@ class GameServer {
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
-      gameTimeLeft: 60, 
+      gameTimeLeft: 60,
       gameTimeTimer: null,
       gameEnded: false,
-      winner: null
+      winner: null,
+      waitingTimer: null,
+      waitingTimeLeft: 20
     };
+
+    // WebSocket manager will be injected
+    this.wsManager = null;
+
+    // Real-time game loop for processing bombs, explosions, etc.
+    this.gameLoopInterval = null;
+    this.gameLoopRunning = false;
+
     console.log('GameServer initialized with 12x12 map');
+  }
+
+  // Set WebSocket manager reference
+  setWebSocketManager(wsManager) {
+    this.wsManager = wsManager;
+  }
+
+  // Broadcast methods for WebSocket communication
+  broadcastGameState() {
+    if (this.wsManager) {
+      this.wsManager.broadcastGameState();
+    }
+  }
+
+  broadcastEvent(eventType, eventData) {
+    if (this.wsManager) {
+      this.wsManager.broadcastEvent(eventType, eventData);
+    }
+  }
+
+  // Add removePlayer method for WebSocket disconnections
+  removePlayer(playerId) {
+    if (this.gameState.players[playerId]) {
+      delete this.gameState.players[playerId];
+
+      // Check if we need to cancel timers due to insufficient players
+      const remainingPlayers = Object.keys(this.gameState.players).length;
+
+      if (remainingPlayers < 2 && this.gameState.waitingTimer) {
+        // Cancel waiting timer if less than 2 players
+        clearInterval(this.gameState.waitingTimer);
+        this.gameState.waitingTimer = null;
+        this.gameState.waitingTimeLeft = 20;
+        console.log('Waiting timer cancelled - insufficient players');
+      }
+
+      if (remainingPlayers < 1 && this.gameState.gameStarted) {
+        this.endGame('All players disconnected');
+      }
+
+      return true;
+    }
+    return false;
   }
 
   generateMap() {
@@ -63,18 +117,52 @@ class GameServer {
     return this.gameState;
   }
 
+  // Get a clean version of game state for JSON serialization (removes circular references)
+  getCleanGameState() {
+    const cleanState = {
+      map: this.gameState.map,
+      players: this.gameState.players,
+      bombs: this.gameState.bombs,
+      powerUps: this.gameState.powerUps,
+      gameStarted: this.gameState.gameStarted,
+      countdown: this.gameState.countdown,
+      gameTimeLeft: this.gameState.gameTimeLeft,
+      gameEnded: this.gameState.gameEnded,
+      winner: this.gameState.winner,
+      waitingTimeLeft: this.gameState.waitingTimeLeft
+      // Exclude waitingTimer, gameTimer, gameTimeTimer (these contain circular references)
+    };
+    return cleanState;
+  }
+
   addPlayer(playerId, nickname) {
     console.log(`Adding player: ${playerId}, nickname: ${nickname}`);
-    
+    console.log('Current game state:', {
+      playerCount: Object.keys(this.gameState.players).length,
+      gameStarted: this.gameState.gameStarted,
+      countdown: this.gameState.countdown,
+      waitingTimer: !!this.gameState.waitingTimer,
+      waitingTimeLeft: this.gameState.waitingTimeLeft
+    });
+
     const playerCount = Object.keys(this.gameState.players).length;
     console.log(`Current player count: ${playerCount}`);
-    
+
     if (playerCount >= 4) {
+      console.log('Rejecting player: Game is full');
       return { success: false, error: 'Game is full (4 players maximum)' };
     }
 
     if (this.gameState.gameStarted) {
+      console.log('Rejecting player: Game has already started');
       return { success: false, error: 'Game has already started' };
+    }
+
+    // Allow joining and reset countdown if a new player joins during countdown
+    // Only block during the final 3 seconds to prevent last-second joins
+    if (this.gameState.countdown > 0 && this.gameState.countdown <= 3) {
+      console.log('Rejecting player: Game is starting (final countdown active)');
+      return { success: false, error: 'Game is starting - please wait for next round' };
     }
 
     // Starting positions for 12x12 map
@@ -102,25 +190,96 @@ class GameServer {
     this.gameState.players[playerId] = player;
     console.log(`Player added successfully:`, player);
 
-    // Start countdown immediately when first player joins (for single player mode)
-    if (playerCount + 1 >= 1 && !this.gameTimer) {
-      console.log('Starting game timer for single player...');
-      this.startGameTimer();
+    const newPlayerCount = playerCount + 1;
+
+    // Reset countdown if a new player joins during countdown (except final 3 seconds)
+    if (this.gameState.countdown > 3) {
+      console.log('New player joined during countdown - resetting to waiting timer');
+      this.resetToWaitingTimer();
+    }
+
+    // Implement proper waiting room timer logic
+    if (newPlayerCount === 2 && !this.gameState.waitingTimer && !this.gameState.gameStarted && this.gameState.countdown === 0) {
+      // Start 20-second waiting timer when 2nd player joins
+      console.log('Starting 20-second waiting timer...');
+      this.startWaitingTimer();
+    } else if (newPlayerCount === 4 && !this.gameState.gameStarted) {
+      // Skip to countdown immediately when 4th player joins
+      console.log('4 players reached - starting countdown immediately...');
+      this.skipToCountdown();
     }
 
     return { success: true, player };
   }
 
+  // Start 20-second waiting timer
+  startWaitingTimer() {
+    this.gameState.waitingTimeLeft = 20;
+    this.gameState.waitingTimer = setInterval(() => {
+      this.gameState.waitingTimeLeft--;
+      console.log(`Waiting time left: ${this.gameState.waitingTimeLeft} seconds`);
+
+      // Broadcast waiting timer update
+      this.broadcastEvent('waiting_timer_update', {
+        waitingTimeLeft: this.gameState.waitingTimeLeft
+      });
+
+      if (this.gameState.waitingTimeLeft <= 0) {
+        console.log('20-second wait completed - starting countdown...');
+        this.skipToCountdown();
+      }
+    }, 1000);
+  }
+
+  // Reset countdown back to waiting timer when new player joins
+  resetToWaitingTimer() {
+    // Clear countdown timer if it exists
+    if (this.gameTimer) {
+      clearInterval(this.gameTimer);
+      this.gameTimer = null;
+    }
+
+    // Reset countdown
+    this.gameState.countdown = 0;
+
+    // Start waiting timer again
+    this.startWaitingTimer();
+  }
+
+  // Skip to 10-second countdown (called when 4 players join or 20s wait expires)
+  skipToCountdown() {
+    // Clear waiting timer if it exists
+    if (this.gameState.waitingTimer) {
+      clearInterval(this.gameState.waitingTimer);
+      this.gameState.waitingTimer = null;
+    }
+
+    // Start the 10-second countdown
+    this.startGameTimer();
+  }
+
   startGameTimer() {
-    this.gameState.countdown = 3; // Shorter countdown for single player
+    this.gameState.countdown = 10; // 10-second countdown as per requirements
     this.gameTimer = setInterval(() => {
       this.gameState.countdown--;
       console.log(`Game starting in: ${this.gameState.countdown}`);
+
+      // Broadcast countdown update
+      this.broadcastEvent('countdown_update', { countdown: this.gameState.countdown });
+
       if (this.gameState.countdown <= 0) {
         this.gameState.gameStarted = true;
         clearInterval(this.gameTimer);
         console.log('Game started!');
-        
+
+        // ✅ CRITICAL: Start real-time game loop for bomb processing
+        this.startRealTimeGameLoop();
+
+        // Broadcast game start event
+        if (this.wsManager) {
+          this.wsManager.broadcastEvent('game_started', { gameState: this.getCleanGameState() });
+        }
+
         // Start the game time countdown
         this.startGameTimeTimer();
       }
@@ -132,18 +291,77 @@ class GameServer {
     this.gameTimeTimer = setInterval(() => {
       this.gameState.gameTimeLeft--;
       console.log(`Game time left: ${this.gameState.gameTimeLeft} seconds`);
-      
+
+      // Broadcast timer update every 10 seconds or when time is low
+      if (this.gameState.gameTimeLeft % 10 === 0 || this.gameState.gameTimeLeft <= 10) {
+        this.broadcastEvent('timer_update', { timeLeft: this.gameState.gameTimeLeft });
+      }
+
       if (this.gameState.gameTimeLeft <= 0) {
         this.endGame('Time\'s up!');
       }
     }, 1000);
   }
 
+  // ✅ CRITICAL: Start real-time game loop for processing bombs, explosions, etc.
+  startRealTimeGameLoop() {
+    if (this.gameLoopRunning) return;
+
+    console.log('Starting real-time game loop...');
+    this.gameLoopRunning = true;
+
+    // Process game logic every 100ms (10 FPS) for smooth real-time updates
+    this.gameLoopInterval = setInterval(() => {
+      this.processGameLogic();
+    }, 100);
+  }
+
+  // ✅ CRITICAL: Stop real-time game loop
+  stopRealTimeGameLoop() {
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+      this.gameLoopRunning = false;
+      console.log('Real-time game loop stopped');
+    }
+  }
+
+  // ✅ CRITICAL: Process real-time game logic (bombs, explosions, power-ups)
+  processGameLogic() {
+    if (!this.gameState.gameStarted) return;
+
+    let gameStateChanged = false;
+
+    // Process bomb timers and explosions
+    for (let i = this.gameState.bombs.length - 1; i >= 0; i--) {
+      const bomb = this.gameState.bombs[i];
+      bomb.timer -= 0.1; // Decrease by 100ms
+
+      if (bomb.timer <= 0) {
+        console.log(`Bomb at (${bomb.x}, ${bomb.y}) exploding!`);
+        this.explodeBomb(bomb);
+        this.gameState.bombs.splice(i, 1);
+        gameStateChanged = true;
+      }
+    }
+
+    // Process power-up spawning (if needed)
+    // TODO: Add power-up spawning logic here
+
+    // Broadcast game state if anything changed
+    if (gameStateChanged && this.wsManager) {
+      this.wsManager.broadcastGameState();
+    }
+  }
+
   endGame(reason) {
     console.log(`Game ended: ${reason}`);
     this.gameState.gameEnded = true;
     this.gameState.gameStarted = false;
-    
+
+    // ✅ CRITICAL: Stop real-time game loop
+    this.stopRealTimeGameLoop();
+
     if (this.gameTimeTimer) {
       clearInterval(this.gameTimeTimer);
       this.gameTimeTimer = null;
@@ -151,7 +369,7 @@ class GameServer {
 
     // Determine winner based on remaining lives or last player standing
     const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
-    
+
     if (alivePlayers.length === 1) {
       this.gameState.winner = alivePlayers[0];
       console.log(`Winner: ${this.gameState.winner.nickname}`);
@@ -159,7 +377,7 @@ class GameServer {
       // If time runs out, winner is player with most lives
       const maxLives = Math.max(...alivePlayers.map(p => p.lives));
       const playersWithMaxLives = alivePlayers.filter(p => p.lives === maxLives);
-      
+
       if (playersWithMaxLives.length === 1) {
         this.gameState.winner = playersWithMaxLives[0];
         console.log(`Winner by lives: ${this.gameState.winner.nickname}`);
@@ -172,6 +390,13 @@ class GameServer {
       console.log('No winner - all players eliminated');
     }
 
+    // Broadcast game end event
+    this.broadcastEvent('game_ended', {
+      reason: reason,
+      winner: this.gameState.winner,
+      gameState: this.gameState
+    });
+
     // Reset game after 10 seconds
     setTimeout(() => {
       this.resetGame();
@@ -180,6 +405,18 @@ class GameServer {
 
   resetGame() {
     console.log('Resetting game...');
+
+    // Clear all timers
+    if (this.gameState.waitingTimer) {
+      clearInterval(this.gameState.waitingTimer);
+    }
+    if (this.gameState.gameTimer) {
+      clearInterval(this.gameState.gameTimer);
+    }
+    if (this.gameState.gameTimeTimer) {
+      clearInterval(this.gameState.gameTimeTimer);
+    }
+
     this.gameState = {
       map: this.generateMap(),
       players: {},
@@ -191,8 +428,13 @@ class GameServer {
       gameTimeLeft: 60,
       gameTimeTimer: null,
       gameEnded: false,
-      winner: null
+      winner: null,
+      waitingTimer: null,
+      waitingTimeLeft: 20
     };
+
+    // Broadcast game reset event
+    this.broadcastEvent('game_reset', { gameState: this.gameState });
   }
 
   movePlayer(playerId, direction) {
@@ -250,31 +492,26 @@ class GameServer {
       playerId,
       x: player.x,
       y: player.y,
-      timer: 3000,
+      timer: 3.0, // 3 seconds in decimal format for easier processing
       range: player.powerUps.flames
     };
 
     this.gameState.bombs.push(bomb);
     console.log('Bomb placed:', bomb);
 
-    setTimeout(() => {
-      this.explodeBomb(bomb.id);
-    }, bomb.timer);
+    // ✅ REMOVED: setTimeout approach - now handled by real-time game loop
+    // The game loop will automatically process bomb timers and trigger explosions
 
     return true;
   }
 
-  explodeBomb(bombId) {
-    console.log('Exploding bomb:', bombId);
-    const bombIndex = this.gameState.bombs.findIndex(bomb => bomb.id === bombId);
-    if (bombIndex === -1) return;
-
-    const bomb = this.gameState.bombs[bombIndex];
-    this.gameState.bombs.splice(bombIndex, 1);
+  // ✅ UPDATED: Handle bomb explosion (called from game loop)
+  explodeBomb(bomb) {
+    console.log('Exploding bomb:', bomb.id, 'at position', bomb.x, bomb.y);
 
     // Create explosion pattern
     const explosions = [{ x: bomb.x, y: bomb.y }];
-    
+
     // Add explosion in 4 directions
     const directions = [
       { dx: 0, dy: -1 }, // up
@@ -298,11 +535,25 @@ class GameServer {
           if (player.alive && player.x === x && player.y === y) {
             player.lives--;
             console.log(`Player ${player.nickname} hit by explosion! Lives: ${player.lives}`);
-            
+
+            // Broadcast player damage event
+            this.broadcastEvent('player_damaged', {
+              playerId: player.id,
+              nickname: player.nickname,
+              livesRemaining: player.lives,
+              position: { x: player.x, y: player.y }
+            });
+
             if (player.lives <= 0) {
               player.alive = false;
               console.log(`Player ${player.nickname} eliminated!`);
-              
+
+              // Broadcast player elimination event
+              this.broadcastEvent('player_eliminated', {
+                playerId: player.id,
+                nickname: player.nickname
+              });
+
               // Check if game should end
               const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
               if (alivePlayers.length <= 1) {
@@ -320,12 +571,26 @@ class GameServer {
       }
     });
 
+    // Broadcast explosion event
+    if (this.wsManager) {
+      this.wsManager.broadcastEvent('bomb_exploded', {
+        bombId: bomb.id,
+        position: { x: bomb.x, y: bomb.y },
+        explosions: explosions,
+        range: bomb.range
+      });
+    }
+
     console.log('Bomb exploded at:', bomb.x, bomb.y, 'with explosions at:', explosions);
   }
 }
 
 const PORT = 9090;
 const gameServer = new GameServer();
+const wsManager = new WebSocketManager(gameServer);
+
+// Set up bidirectional reference
+gameServer.setWebSocketManager(wsManager);
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -399,7 +664,7 @@ function handleApiRequest(req, res) {
         const { nickname } = JSON.parse(body);
         console.log('Parsed nickname:', nickname);
         
-        const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
         console.log('Generated player ID:', playerId);
         
         const result = gameServer.addPlayer(playerId, nickname);
@@ -471,4 +736,8 @@ function handleApiRequest(req, res) {
 
 server.listen(PORT, () => {
   console.log(`Bomberman server running at http://localhost:${PORT}`);
+
+  // Initialize WebSocket server
+  wsManager.initWebSocketServer(server);
+  console.log(`WebSocket server initialized on port ${PORT}`);
 });
