@@ -12,15 +12,19 @@ class GameServer {
       powerUps: [],
       gameStarted: false,
       gameTimer: null,
-      countdown: 0
+      countdown: 0,
+      gameTimeLeft: 60, 
+      gameTimeTimer: null,
+      gameEnded: false,
+      winner: null
     };
-    console.log('GameServer initialized');
+    console.log('GameServer initialized with 12x12 map');
   }
 
   generateMap() {
-    console.log('Generating map...');
-    const width = 15;
-    const height = 13;
+    console.log('Generating 12x12 map...');
+    const width = 12;
+    const height = 12;
     const map = [];
 
     for (let y = 0; y < height; y++) {
@@ -30,7 +34,7 @@ class GameServer {
           map[y][x] = 'wall';
         } else if (this.isStartingPosition(x, y, width, height)) {
           map[y][x] = 'empty';
-        } else if (Math.random() < 0.7) {
+        } else if (Math.random() < 0.6) { // Reduced block density slightly
           map[y][x] = 'block';
         } else {
           map[y][x] = 'empty';
@@ -38,15 +42,20 @@ class GameServer {
       }
     }
 
-    console.log('Map generated successfully');
+    console.log('12x12 Map generated successfully');
     return map;
   }
 
   isStartingPosition(x, y, width, height) {
-    if ((x <= 1 && y <= 1)) return true;
-    if ((x >= width - 2 && y <= 1)) return true;
-    if ((x <= 1 && y >= height - 2)) return true;
-    if ((x >= width - 2 && y >= height - 2)) return true;
+    // Ensure starting corners are clear (2x2 areas)
+    // Top-left corner
+    if (x <= 1 && y <= 1) return true;
+    // Top-right corner
+    if (x >= width - 2 && y <= 1) return true;
+    // Bottom-left corner
+    if (x <= 1 && y >= height - 2) return true;
+    // Bottom-right corner
+    if (x >= width - 2 && y >= height - 2) return true;
     return false;
   }
 
@@ -68,11 +77,12 @@ class GameServer {
       return { success: false, error: 'Game has already started' };
     }
 
+    // Starting positions for 12x12 map
     const startingPositions = [
-      { x: 1, y: 1 },
-      { x: 13, y: 1 },
-      { x: 1, y: 11 },
-      { x: 13, y: 11 }
+      { x: 1, y: 1 },     // Top-left
+      { x: 10, y: 1 },    // Top-right
+      { x: 1, y: 10 },    // Bottom-left
+      { x: 10, y: 10 }    // Bottom-right
     ];
 
     const player = {
@@ -83,7 +93,7 @@ class GameServer {
       lives: 3,
       powerUps: {
         bombs: 1,
-        flames: 1,
+        flames: 2, // Increased flame range for bigger map
         speed: 1
       },
       alive: true
@@ -110,13 +120,92 @@ class GameServer {
         this.gameState.gameStarted = true;
         clearInterval(this.gameTimer);
         console.log('Game started!');
+        
+        // Start the game time countdown
+        this.startGameTimeTimer();
       }
     }, 1000);
   }
 
+  startGameTimeTimer() {
+    console.log('Starting 1-minute game timer...');
+    this.gameTimeTimer = setInterval(() => {
+      this.gameState.gameTimeLeft--;
+      console.log(`Game time left: ${this.gameState.gameTimeLeft} seconds`);
+      
+      if (this.gameState.gameTimeLeft <= 0) {
+        this.endGame('Time\'s up!');
+      }
+    }, 1000);
+  }
+
+  endGame(reason) {
+    console.log(`Game ended: ${reason}`);
+    this.gameState.gameEnded = true;
+    this.gameState.gameStarted = false;
+    
+    if (this.gameTimeTimer) {
+      clearInterval(this.gameTimeTimer);
+      this.gameTimeTimer = null;
+    }
+
+    // Determine winner based on remaining lives or last player standing
+    const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+    
+    if (alivePlayers.length === 1) {
+      this.gameState.winner = alivePlayers[0];
+      console.log(`Winner: ${this.gameState.winner.nickname}`);
+    } else if (alivePlayers.length > 1) {
+      // If time runs out, winner is player with most lives
+      const maxLives = Math.max(...alivePlayers.map(p => p.lives));
+      const playersWithMaxLives = alivePlayers.filter(p => p.lives === maxLives);
+      
+      if (playersWithMaxLives.length === 1) {
+        this.gameState.winner = playersWithMaxLives[0];
+        console.log(`Winner by lives: ${this.gameState.winner.nickname}`);
+      } else {
+        this.gameState.winner = { nickname: 'Draw', id: 'draw' };
+        console.log('Game ended in a draw');
+      }
+    } else {
+      this.gameState.winner = { nickname: 'No Winner', id: 'none' };
+      console.log('No winner - all players eliminated');
+    }
+
+    // Reset game after 10 seconds
+    setTimeout(() => {
+      this.resetGame();
+    }, 10000);
+  }
+
+  resetGame() {
+    console.log('Resetting game...');
+    this.gameState = {
+      map: this.generateMap(),
+      players: {},
+      bombs: [],
+      powerUps: [],
+      gameStarted: false,
+      gameTimer: null,
+      countdown: 0,
+      gameTimeLeft: 60,
+      gameTimeTimer: null,
+      gameEnded: false,
+      winner: null
+    };
+  }
+
   movePlayer(playerId, direction) {
     const player = this.gameState.players[playerId];
-    if (!player || !player.alive || !this.gameState.gameStarted) return false;
+    if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) {
+      console.log('Move rejected:', { 
+        playerExists: !!player, 
+        alive: player?.alive, 
+        gameStarted: this.gameState.gameStarted,
+        gameEnded: this.gameState.gameEnded
+      });
+      return false;
+    }
 
     let newX = player.x;
     let newY = player.y;
@@ -126,30 +215,31 @@ class GameServer {
         newY = Math.max(0, player.y - 1);
         break;
       case 'down':
-        newY = Math.min(12, player.y + 1);
+        newY = Math.min(11, player.y + 1); // Changed from 12 to 11
         break;
       case 'left':
         newX = Math.max(0, player.x - 1);
         break;
       case 'right':
-        newX = Math.min(14, player.x + 1);
+        newX = Math.min(11, player.x + 1); // Changed from 14 to 11
         break;
     }
 
     // Check if new position is valid (not wall or block)
-    if (this.gameState.map[newY][newX] === 'empty') {
+    if (this.gameState.map[newY] && this.gameState.map[newY][newX] === 'empty') {
       player.x = newX;
       player.y = newY;
       console.log(`Player ${playerId} moved to (${newX}, ${newY})`);
       return true;
     }
 
+    console.log(`Move blocked: (${newX}, ${newY}) is ${this.gameState.map[newY]?.[newX]}`);
     return false;
   }
 
   placeBomb(playerId) {
     const player = this.gameState.players[playerId];
-    if (!player || !player.alive || !this.gameState.gameStarted) return false;
+    if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) return false;
 
     // Check if player can place more bombs
     const playerBombs = this.gameState.bombs.filter(bomb => bomb.playerId === playerId);
@@ -198,10 +288,29 @@ class GameServer {
         const x = bomb.x + (dir.dx * i);
         const y = bomb.y + (dir.dy * i);
 
-        if (x < 0 || x >= 15 || y < 0 || y >= 13) break;
+        if (x < 0 || x >= 12 || y < 0 || y >= 12) break; // Updated bounds
         if (this.gameState.map[y][x] === 'wall') break;
 
         explosions.push({ x, y });
+
+        // Check for player hits
+        Object.values(this.gameState.players).forEach(player => {
+          if (player.alive && player.x === x && player.y === y) {
+            player.lives--;
+            console.log(`Player ${player.nickname} hit by explosion! Lives: ${player.lives}`);
+            
+            if (player.lives <= 0) {
+              player.alive = false;
+              console.log(`Player ${player.nickname} eliminated!`);
+              
+              // Check if game should end
+              const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+              if (alivePlayers.length <= 1) {
+                this.endGame('Last player standing!');
+              }
+            }
+          }
+        });
 
         if (this.gameState.map[y][x] === 'block') {
           this.gameState.map[y][x] = 'empty';
@@ -325,11 +434,13 @@ function handleApiRequest(req, res) {
     req.on('end', () => {
       try {
         const { playerId, direction } = JSON.parse(body);
+        console.log(`Move request: ${playerId} -> ${direction}`);
         const result = gameServer.movePlayer(playerId, direction);
         
         res.writeHead(200);
         res.end(JSON.stringify({ success: result, gameState: gameServer.getGameState() }));
       } catch (error) {
+        console.error('Move error:', error);
         res.writeHead(400);
         res.end(JSON.stringify({ success: false, error: error.message }));
       }

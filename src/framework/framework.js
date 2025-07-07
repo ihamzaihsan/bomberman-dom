@@ -8,76 +8,206 @@ export class Framework {
     this.errorComponent = null;
     this.updateQueue = [];
     this.isUpdating = false;
+    
+    // Performance optimization properties
+    this.gameLoop = null;
+    this.lastFrameTime = 0;
+    this.frameCount = 0;
+    this.fps = 0;
+    this.fpsUpdateTime = 0;
+    this.performanceMetrics = {
+      frameTime: 0,
+      renderTime: 0,
+      updateTime: 0,
+      totalFrames: 0,
+      droppedFrames: 0,
+      averageFrameTime: 0,
+      minFrameTime: Infinity,
+      maxFrameTime: 0
+    };
+    this.targetFPS = 60;
+    this.frameTimeThreshold = 1000 / this.targetFPS; // 16.67ms for 60fps
+    
+    // Virtual DOM and rendering optimization
+    this.previousVDOM = null;
+    this.renderQueue = [];
+    this.isRendering = false;
+    this.dirtyComponents = new Set();
+    this.renderCache = new Map();
+    
+    // Performance monitoring
+    this.performanceObserver = null;
+    this.performanceCallbacks = [];
+    this.initPerformanceMonitoring();
   }
 
-  // Enhanced element creation with more intuitive API
-  createElement(tag, props = {}, ...children) {
+  // Performance monitoring initialization
+  initPerformanceMonitoring() {
+    if (typeof PerformanceObserver !== 'undefined') {
+      this.performanceObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        entries.forEach(entry => {
+          if (entry.entryType === 'measure') {
+            this.performanceMetrics[entry.name] = entry.duration;
+          }
+        });
+      });
+      
+      try {
+        this.performanceObserver.observe({ entryTypes: ['measure'] });
+      } catch (e) {
+        console.warn('Performance Observer not fully supported');
+      }
+    }
+
+    // Monitor long tasks
+    if (typeof PerformanceObserver !== 'undefined') {
+      try {
+        const longTaskObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach(entry => {
+            if (entry.duration > 50) { // Tasks longer than 50ms
+              console.warn(`Long task detected: ${entry.duration.toFixed(2)}ms`);
+              this.performanceMetrics.droppedFrames++;
+            }
+          });
+        });
+        longTaskObserver.observe({ entryTypes: ['longtask'] });
+      } catch (e) {
+        console.warn('Long task observer not supported');
+      }
+    }
+  }
+
+  // Enhanced game loop with requestAnimationFrame
+  startGameLoop(callback) {
+    if (this.gameLoop) {
+      this.stopGameLoop();
+    }
+
+    const loop = (currentTime) => {
+      const startTime = performance.now();
+      
+      // Calculate delta time
+      const deltaTime = currentTime - this.lastFrameTime;
+      this.lastFrameTime = currentTime;
+
+      // Update FPS counter
+      this.updateFPS(currentTime);
+
+      // Check for frame drops
+      if (deltaTime > this.frameTimeThreshold * 1.5) {
+        this.performanceMetrics.droppedFrames++;
+        console.warn(`Frame drop detected: ${deltaTime.toFixed(2)}ms`);
+      }
+
+      // Performance measurement start
+      performance.mark('frame-start');
+      
+      try {
+        // Execute game logic callback
+        if (callback && typeof callback === 'function') {
+          performance.mark('update-start');
+          callback(deltaTime, currentTime);
+          performance.mark('update-end');
+          performance.measure('updateTime', 'update-start', 'update-end');
+        }
+
+        // Process render queue
+        this.processRenderQueue();
+
+        // Update performance metrics
+        const endTime = performance.now();
+        const frameTime = endTime - startTime;
+        this.performanceMetrics.frameTime = frameTime;
+        this.performanceMetrics.totalFrames++;
+        
+        // Track min/max frame times
+        this.performanceMetrics.minFrameTime = Math.min(this.performanceMetrics.minFrameTime, frameTime);
+        this.performanceMetrics.maxFrameTime = Math.max(this.performanceMetrics.maxFrameTime, frameTime);
+        
+        // Calculate average frame time
+        this.performanceMetrics.averageFrameTime = 
+          (this.performanceMetrics.averageFrameTime * (this.performanceMetrics.totalFrames - 1) + frameTime) / 
+          this.performanceMetrics.totalFrames;
+
+        performance.mark('frame-end');
+        performance.measure('frameTime', 'frame-start', 'frame-end');
+
+        // Notify performance callbacks
+        this.notifyPerformanceCallbacks();
+
+      } catch (error) {
+        console.error('Game loop error:', error);
+        this.handleError(error);
+      }
+
+      this.gameLoop = requestAnimationFrame(loop);
+    };
+
+    this.gameLoop = requestAnimationFrame(loop);
+    return this;
+  }
+
+  stopGameLoop() {
+    if (this.gameLoop) {
+      cancelAnimationFrame(this.gameLoop);
+      this.gameLoop = null;
+    }
+    return this;
+  }
+
+  // FPS calculation
+  updateFPS(currentTime) {
+    this.frameCount++;
+    
+    if (currentTime - this.fpsUpdateTime >= 1000) {
+      this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.fpsUpdateTime));
+      this.frameCount = 0;
+      this.fpsUpdateTime = currentTime;
+      
+      // Emit FPS update event
+      this.emit('fps-update', this.fps);
+    }
+  }
+
+  // Get current FPS
+  getFPS() {
+    return this.fps;
+  }
+
+  // Get performance metrics
+  getPerformanceMetrics() {
     return {
-      tag,
-      props,
-      children: children.flat()
+      ...this.performanceMetrics,
+      fps: this.fps,
+      frameDropPercentage: this.performanceMetrics.totalFrames > 0 
+        ? (this.performanceMetrics.droppedFrames / this.performanceMetrics.totalFrames) * 100 
+        : 0
     };
   }
 
-  // Shorthand methods for common elements
-  div(props = {}, ...children) {
-    return this.createElement('div', props, ...children);
+  // Add performance callback
+  onPerformanceUpdate(callback) {
+    this.performanceCallbacks.push(callback);
+    return () => {
+      const index = this.performanceCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.performanceCallbacks.splice(index, 1);
+      }
+    };
   }
 
-  span(props = {}, ...children) {
-    return this.createElement('span', props, ...children);
-  }
-
-  p(props = {}, ...children) {
-    return this.createElement('p', props, ...children);
-  }
-
-  h1(props = {}, ...children) {
-    return this.createElement('h1', props, ...children);
-  }
-
-  h2(props = {}, ...children) {
-    return this.createElement('h2', props, ...children);
-  }
-
-  h3(props = {}, ...children) {
-    return this.createElement('h3', props, ...children);
-  }
-
-  button(props = {}, ...children) {
-    return this.createElement('button', props, ...children);
-  }
-
-  input(props = {}) {
-    return this.createElement('input', props);
-  }
-
-  label(props = {}, ...children) {
-    return this.createElement('label', props, ...children);
-  }
-
-  ul(props = {}, ...children) {
-    return this.createElement('ul', props, ...children);
-  }
-
-  li(props = {}, ...children) {
-    return this.createElement('li', props, ...children);
-  }
-
-  a(props = {}, ...children) {
-    return this.createElement('a', props, ...children);
-  }
-
-  section(props = {}, ...children) {
-    return this.createElement('section', props, ...children);
-  }
-
-  header(props = {}, ...children) {
-    return this.createElement('header', props, ...children);
-  }
-
-  footer(props = {}, ...children) {
-    return this.createElement('footer', props, ...children);
+  // Notify performance callbacks
+  notifyPerformanceCallbacks() {
+    const metrics = this.getPerformanceMetrics();
+    this.performanceCallbacks.forEach(callback => {
+      try {
+        callback(metrics);
+      } catch (error) {
+        console.error('Performance callback error:', error);
+      }
+    });
   }
 
   // Conditional rendering helper
@@ -85,36 +215,85 @@ export class Framework {
     return condition ? element : null;
   }
 
-  // List rendering helper
-  map(array, callback) {
-    return array.map(callback).filter(item => item !== null && item !== undefined);
+  // List rendering helper with caching
+  map(array, callback, keyExtractor = null) {
+    if (!Array.isArray(array)) return [];
+    
+    return array.map((item, index) => {
+      const key = keyExtractor ? keyExtractor(item, index) : index;
+      
+      // Use cache if available
+      if (this.renderCache.has(key)) {
+        const cached = this.renderCache.get(key);
+        if (JSON.stringify(cached.item) === JSON.stringify(item)) {
+          return cached.result;
+        }
+      }
+      
+      const result = callback(item, index);
+      
+      // Cache the result
+      this.renderCache.set(key, { item: JSON.parse(JSON.stringify(item)), result });
+      
+      return result;
+    }).filter(item => item !== null && item !== undefined);
   }
 
-  // Enhanced state management with batching
+  // Clear render cache
+  clearRenderCache() {
+    this.renderCache.clear();
+  }
+
+  // Optimized state management with batching
   setState(newState, callback) {
+    const oldState = { ...this.state };
     this.state = { ...this.state, ...newState };
+
+    // Mark components as dirty for selective re-rendering
+    this.markDirty();
 
     if (callback) {
       this.updateQueue.push(callback);
     }
 
     this.batchUpdate();
+    return this;
   }
 
-  // Batch updates for better performance
+  // Mark components as dirty for selective rendering
+  markDirty(componentId = 'root') {
+    this.dirtyComponents.add(componentId);
+  }
+
+  // Enhanced batch update with performance optimization
   batchUpdate() {
     if (this.isUpdating) return;
 
     this.isUpdating = true;
+    
+    // Use requestAnimationFrame for smooth updates
     requestAnimationFrame(() => {
-      this.notify();
+      performance.mark('batch-update-start');
+      
+      try {
+        // Only notify if there are actual changes
+        if (this.dirtyComponents.size > 0) {
+          this.notify();
+          this.dirtyComponents.clear();
+        }
 
-      // Execute any queued callbacks
-      while (this.updateQueue.length > 0) {
-        const callback = this.updateQueue.shift();
-        callback();
+        // Execute queued callbacks
+        while (this.updateQueue.length > 0) {
+          const callback = this.updateQueue.shift();
+          callback();
+        }
+      } catch (error) {
+        console.error('Batch update error:', error);
       }
 
+      performance.mark('batch-update-end');
+      performance.measure('batchUpdateTime', 'batch-update-start', 'batch-update-end');
+      
       this.isUpdating = false;
     });
   }
@@ -325,363 +504,6 @@ export class Framework {
     } else {
       handler();
     }
-  }
-
-  // Error handling
-  handleError(error) {
-    console.error('Framework Error:', error);
-    if (this.errorComponent) {
-      this.setState({ error: error.message });
-      this.renderError();
-    }
-  }
-
-  renderError() {
-    if (this.errorComponent) {
-      const errorVNode = typeof this.errorComponent === 'function' 
-        ? this.errorComponent(this.state.error) 
-        : this.errorComponent;
-      
-      document.body.innerHTML = '';
-      const errorElement = this.createDOMElement(errorVNode);
-      document.body.appendChild(errorElement);
-    }
-  }
-
-  // Enhanced render method with better performance
-  render(virtualNode = null, container = document.body) {
-    try {
-      // Get the component to render
-      if (!virtualNode) {
-        const component = this.routes[this.currentRoute];
-        if (!component) {
-          // Route not found - show error
-          if (this.errorComponent) {
-            const errorVNode = typeof this.errorComponent === 'function'
-              ? this.errorComponent('Page not found')
-              : this.errorComponent;
-            virtualNode = errorVNode;
-          } else {
-            return;
-          }
-        } else {
-          virtualNode = typeof component === 'function' ? component() : component;
-        }
-      }
-
-      if (!virtualNode) return;
-
-      if (container === document.body) {
-        container.innerHTML = '';
-      }
-
-      const element = this.createDOMElement(virtualNode);
-      container.appendChild(element);
-      return element;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // Render to specific container
-  renderTo(container, virtualNode) {
-    return this.render(virtualNode, container);
-  }
-
-  // Re-render current route
-  rerender() {
-    return this.render();
-  }
-
-  // Utility methods
-
-  // Find element by selector
-  find(selector) {
-    return document.querySelector(selector);
-  }
-
-  // Find all elements by selector
-  findAll(selector) {
-    return Array.from(document.querySelectorAll(selector));
-  }
-
-  // Add CSS class to element
-  addClass(selector, className) {
-    const elements = this.findAll(selector);
-    elements.forEach(el => el.classList.add(className));
     return this;
-  }
-
-  // Remove CSS class from element
-  removeClass(selector, className) {
-    const elements = this.findAll(selector);
-    elements.forEach(el => el.classList.remove(className));
-    return this;
-  }
-
-  // Toggle CSS class on element
-  toggleClass(selector, className) {
-    const elements = this.findAll(selector);
-    elements.forEach(el => el.classList.toggle(className));
-    return this;
-  }
-
-  // Set CSS style on element
-  css(selector, property, value) {
-    const elements = this.findAll(selector);
-    elements.forEach(el => {
-      if (typeof property === 'object') {
-        Object.assign(el.style, property);
-      } else {
-        el.style[property] = value;
-      }
-    });
-    return this;
-  }
-
-  // Show element
-  show(selector) {
-    return this.css(selector, 'display', 'block');
-  }
-
-  // Hide element
-  hide(selector) {
-    return this.css(selector, 'display', 'none');
-  }
-
-  // Focus element
-  focusElement(selector) {
-    const element = this.find(selector);
-    if (element) element.focus();
-    return this;
-  }
-
-  // Scroll to element
-  scrollTo(selector) {
-    const element = this.find(selector);
-    if (element) element.scrollIntoView({ behavior: 'smooth' });
-    return this;
-  }
-  
-  createDOMElement(virtualNode) {
-    if (typeof virtualNode === 'string' || typeof virtualNode === 'number') {
-      return document.createTextNode(String(virtualNode));
-    }
-
-    if (!virtualNode || !virtualNode.tag) {
-      return document.createTextNode('');
-    }
-
-    const element = document.createElement(virtualNode.tag);
-
-    // Set properties and attributes
-    if (virtualNode.props) {
-      Object.entries(virtualNode.props).forEach(([name, value]) => {
-        if (name === 'checked' || name === 'autofocus') {
-          element[name] = value;
-        } else if (name === 'style') {
-          element.style.cssText = value;
-        } else if (name === 'for') {
-          element.setAttribute('for', value);
-        } else if (name === 'className') {
-          element.className = value;
-        } else {
-          element.setAttribute(name, value);
-        }
-      });
-    }
-
-    // Add children
-    if (Array.isArray(virtualNode.children)) {
-      virtualNode.children.forEach(child => {
-        if (child === null || child === undefined) return;
-        const childElement = this.createDOMElement(child);
-        element.appendChild(childElement);
-      });
-    }
-
-    return element;
-  }
-
-  // Virtual DOM diffing for performance optimization
-  diff(oldVNode, newVNode, container, index = 0) {
-    // If no old node, add new node
-    if (!oldVNode) {
-      const newElement = this.createDOMElement(newVNode);
-      container.appendChild(newElement);
-      return;
-    }
-
-    // If no new node, remove old node
-    if (!newVNode) {
-      container.removeChild(container.childNodes[index]);
-      return;
-    }
-
-    // If nodes are different types, replace
-    if (this.hasChanged(oldVNode, newVNode)) {
-      const newElement = this.createDOMElement(newVNode);
-      container.replaceChild(newElement, container.childNodes[index]);
-      return;
-    }
-
-    // If nodes are the same type, update properties and children
-    if (newVNode.tag) {
-      const element = container.childNodes[index];
-      this.updateElement(element, oldVNode.props || {}, newVNode.props || {});
-
-      // Diff children
-      const oldChildren = oldVNode.children || [];
-      const newChildren = newVNode.children || [];
-      const maxLength = Math.max(oldChildren.length, newChildren.length);
-
-      for (let i = 0; i < maxLength; i++) {
-        this.diff(oldChildren[i], newChildren[i], element, i);
-      }
-    }
-  }
-
-  // Check if virtual nodes have changed
-  hasChanged(oldVNode, newVNode) {
-    return typeof oldVNode !== typeof newVNode ||
-           (typeof oldVNode === 'string' && oldVNode !== newVNode) ||
-           (typeof oldVNode === 'number' && oldVNode !== newVNode) ||
-           oldVNode.tag !== newVNode.tag;
-  }
-
-  // Update element properties
-  updateElement(element, oldProps, newProps) {
-    // Remove old properties
-    Object.keys(oldProps).forEach(name => {
-      if (!(name in newProps)) {
-        if (name === 'checked' || name === 'autofocus') {
-          element[name] = false;
-        } else if (name === 'style') {
-          element.style.cssText = '';
-        } else if (name === 'className') {
-          element.className = '';
-        } else {
-          element.removeAttribute(name);
-        }
-      }
-    });
-
-    // Set new properties
-    Object.entries(newProps).forEach(([name, value]) => {
-      if (oldProps[name] !== value) {
-        if (name === 'checked' || name === 'autofocus') {
-          element[name] = value;
-        } else if (name === 'style') {
-          element.style.cssText = value;
-        } else if (name === 'for') {
-          element.setAttribute('for', value);
-        } else if (name === 'className') {
-          element.className = value;
-        } else {
-          element.setAttribute(name, value);
-        }
-      }
-    });
-  }
-
-  // Optimized render with Virtual DOM diffing
-  renderWithDiff(virtualNode = null, container = document.body) {
-    try {
-      // Get the component to render
-      if (!virtualNode) {
-        const component = this.routes[this.currentRoute];
-        if (!component) {
-          if (this.errorComponent) {
-            const errorVNode = typeof this.errorComponent === 'function'
-              ? this.errorComponent('Page not found')
-              : this.errorComponent;
-            virtualNode = errorVNode;
-          } else {
-            return;
-          }
-        } else {
-          virtualNode = typeof component === 'function' ? component() : component;
-        }
-      }
-
-      if (!virtualNode) return;
-
-      // Store previous virtual DOM for diffing
-      if (!this.previousVDOM) {
-        // First render
-        if (container === document.body) {
-          container.innerHTML = '';
-        }
-        const element = this.createDOMElement(virtualNode);
-        container.appendChild(element);
-        this.previousVDOM = virtualNode;
-      } else {
-        // Diff and update
-        this.diff(this.previousVDOM, virtualNode, container);
-        this.previousVDOM = virtualNode;
-      }
-
-      return container.firstChild;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // Initialize the framework
-  init(options = {}) {
-    const {
-      initialState = {},
-      routes = {},
-      errorPage = null,
-      autoStart = true
-    } = options;
-
-    // Set initial state
-    if (Object.keys(initialState).length > 0) {
-      this.setState(initialState);
-    }
-
-    // Set routes
-    if (Object.keys(routes).length > 0) {
-      this.routes(routes);
-    }
-
-    // Set error page
-    if (errorPage) {
-      this.setErrorPage(errorPage);
-    }
-
-    // Auto-start the application
-    if (autoStart) {
-      this.start();
-    }
-
-    return this;
-  }
-
-  // Start the application
-  start() {
-    this.onReady(() => {
-      // Set initial route based on hash
-      const hash = window.location.hash;
-      this.currentRoute = hash ? hash.substring(1) : '/';
-
-      // Initial render
-      this.render();
-
-      // Handle hash changes
-      this.onHashChange(() => {
-        const hash = window.location.hash;
-        this.currentRoute = hash ? hash.substring(1) : '/';
-        this.render();
-      });
-    });
-
-    return this;
-  }
-
-  // Create a new framework instance (factory method)
-  static create(options = {}) {
-    return new Framework().init(options);
   }
 }
