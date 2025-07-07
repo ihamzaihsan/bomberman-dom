@@ -9,6 +9,9 @@ export class Framework {
     this.updateQueue = [];
     this.isUpdating = false;
     
+    // Add event emitter functionality
+    this.eventEmitter = new Map();
+    
     // Performance optimization properties
     this.gameLoop = null;
     this.lastFrameTime = 0;
@@ -41,22 +44,54 @@ export class Framework {
     this.initPerformanceMonitoring();
   }
 
+  // Event emitter methods
+  emit(eventName, ...args) {
+    const listeners = this.eventEmitter.get(eventName) || [];
+    listeners.forEach(listener => {
+      try {
+        listener(...args);
+      } catch (error) {
+        console.error(`Error in event listener for ${eventName}:`, error);
+      }
+    });
+    return this;
+  }
+
+  addEventListener(eventName, listener) {
+    if (!this.eventEmitter.has(eventName)) {
+      this.eventEmitter.set(eventName, []);
+    }
+    this.eventEmitter.get(eventName).push(listener);
+    return this;
+  }
+
+  removeEventListener(eventName, listener) {
+    if (this.eventEmitter.has(eventName)) {
+      const listeners = this.eventEmitter.get(eventName);
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
+    return this;
+  }
+
   // Performance monitoring initialization
   initPerformanceMonitoring() {
     if (typeof PerformanceObserver !== 'undefined') {
-      this.performanceObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach(entry => {
-          if (entry.entryType === 'measure') {
-            this.performanceMetrics[entry.name] = entry.duration;
-          }
-        });
-      });
-      
       try {
+        this.performanceObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach(entry => {
+            if (entry.entryType === 'measure') {
+              this.performanceMetrics[entry.name] = entry.duration;
+            }
+          });
+        });
+        
         this.performanceObserver.observe({ entryTypes: ['measure'] });
       } catch (e) {
-        console.warn('Performance Observer not fully supported');
+        console.warn('Performance Observer not fully supported:', e.message);
       }
     }
 
@@ -74,7 +109,7 @@ export class Framework {
         });
         longTaskObserver.observe({ entryTypes: ['longtask'] });
       } catch (e) {
-        console.warn('Long task observer not supported');
+        console.warn('Long task observer not supported:', e.message);
       }
     }
   }
@@ -102,15 +137,21 @@ export class Framework {
       }
 
       // Performance measurement start
-      performance.mark('frame-start');
+      if (typeof performance !== 'undefined' && performance.mark) {
+        performance.mark('frame-start');
+      }
       
       try {
         // Execute game logic callback
         if (callback && typeof callback === 'function') {
-          performance.mark('update-start');
+          if (typeof performance !== 'undefined' && performance.mark) {
+            performance.mark('update-start');
+          }
           callback(deltaTime, currentTime);
-          performance.mark('update-end');
-          performance.measure('updateTime', 'update-start', 'update-end');
+          if (typeof performance !== 'undefined' && performance.mark) {
+            performance.mark('update-end');
+            performance.measure('updateTime', 'update-start', 'update-end');
+          }
         }
 
         // Process render queue
@@ -131,8 +172,10 @@ export class Framework {
           (this.performanceMetrics.averageFrameTime * (this.performanceMetrics.totalFrames - 1) + frameTime) / 
           this.performanceMetrics.totalFrames;
 
-        performance.mark('frame-end');
-        performance.measure('frameTime', 'frame-start', 'frame-end');
+        if (typeof performance !== 'undefined' && performance.mark) {
+          performance.mark('frame-end');
+          performance.measure('frameTime', 'frame-start', 'frame-end');
+        }
 
         // Notify performance callbacks
         this.notifyPerformanceCallbacks();
@@ -168,6 +211,47 @@ export class Framework {
       
       // Emit FPS update event
       this.emit('fps-update', this.fps);
+    }
+  }
+
+  // Add missing processRenderQueue method
+  processRenderQueue() {
+    if (this.renderQueue.length === 0) return;
+    
+    if (typeof performance !== 'undefined' && performance.mark) {
+      performance.mark('render-start');
+    }
+    
+    // Process all queued render operations
+    while (this.renderQueue.length > 0) {
+      const renderOp = this.renderQueue.shift();
+      try {
+        renderOp();
+      } catch (error) {
+        console.error('Render operation error:', error);
+      }
+    }
+    
+    if (typeof performance !== 'undefined' && performance.mark) {
+      performance.mark('render-end');
+      performance.measure('renderTime', 'render-start', 'render-end');
+    }
+  }
+
+  // Add missing handleError method
+  handleError(error) {
+    console.error('Framework error:', error);
+    
+    // Emit error event
+    this.emit('error', error);
+    
+    // Show error component if available
+    if (this.errorComponent) {
+      try {
+        this.errorComponent(error);
+      } catch (componentError) {
+        console.error('Error component failed:', componentError);
+      }
     }
   }
 
@@ -273,7 +357,9 @@ export class Framework {
     
     // Use requestAnimationFrame for smooth updates
     requestAnimationFrame(() => {
-      performance.mark('batch-update-start');
+      if (typeof performance !== 'undefined' && performance.mark) {
+        performance.mark('batch-update-start');
+      }
       
       try {
         // Only notify if there are actual changes
@@ -291,8 +377,10 @@ export class Framework {
         console.error('Batch update error:', error);
       }
 
-      performance.mark('batch-update-end');
-      performance.measure('batchUpdateTime', 'batch-update-start', 'batch-update-end');
+      if (typeof performance !== 'undefined' && performance.mark) {
+        performance.mark('batch-update-end');
+        performance.measure('batchUpdateTime', 'batch-update-start', 'batch-update-end');
+      }
       
       this.isUpdating = false;
     });

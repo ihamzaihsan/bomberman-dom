@@ -8,11 +8,27 @@ class BombermanApp {
     this.nickname = '';
     this.gameLoop = null;
     this.performanceMonitor = null;
-    this.isMoving = false; // Prevent multiple simultaneous moves
+    this.isMoving = false;
     this.lastMoveTime = 0;
-    this.moveThrottle = 100; // Minimum time between moves (ms)
+    this.moveThrottle = 100;
     this.lastRenderTime = 0;
-    this.renderThrottle = 16; // ~60fps rendering
+    this.renderThrottle = 100; // CRITICAL: Reduced from 16ms to 100ms (10 FPS polling)
+    this.lastGameStateUpdate = 0;
+    this.gameStateThrottle = 200; // CRITICAL: Only fetch game state every 200ms
+    
+    // CRITICAL: Cache DOM elements to avoid repeated queries
+    this.cachedElements = {
+      app: null,
+      gameMap: null,
+      timerValue: null,
+      playerLives: null,
+      playerBombs: null
+    };
+    
+    // CRITICAL: Cache rendered map to avoid unnecessary re-renders
+    this.lastRenderedMap = null;
+    this.lastRenderedPlayers = null;
+    this.lastRenderedBombs = null;
     
     this.init();
   }
@@ -20,23 +36,25 @@ class BombermanApp {
   init() {
     this.setupEventHandlers();
     this.initPerformanceMonitoring();
+    this.cacheElements();
     
-    // Focus on the nickname input
     const nicknameInput = document.getElementById('nickname-input');
     if (nicknameInput) {
       nicknameInput.focus();
     }
   }
 
+  // CRITICAL: Cache DOM elements to reduce queries
+  cacheElements() {
+    this.cachedElements.app = document.getElementById('app');
+  }
+
   initPerformanceMonitoring() {
-    // Create performance display element
     this.createPerformanceDisplay();
 
-    // Subscribe to performance updates from framework
     this.framework.onPerformanceUpdate((metrics) => {
       this.updatePerformanceDisplay(metrics);
       
-      // Log warnings for performance issues
       if (metrics.fps < 55) {
         console.warn(`Low FPS detected: ${metrics.fps}`);
       }
@@ -46,7 +64,6 @@ class BombermanApp {
       }
     });
 
-    // Monitor paint and layout thrashing
     this.monitorDOMPerformance();
   }
 
@@ -71,7 +88,6 @@ class BombermanApp {
     `;
     document.body.appendChild(perfDisplay);
 
-    // Show/hide with F12 key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F12') {
         e.preventDefault();
@@ -110,7 +126,6 @@ class BombermanApp {
   }
 
   monitorDOMPerformance() {
-    // Monitor for layout thrashing
     let lastScrollTop = 0;
     let layoutCount = 0;
     
@@ -135,7 +150,6 @@ class BombermanApp {
   }
 
   setupEventHandlers() {
-    // Nickname form submission
     const form = document.getElementById('nickname-form');
     if (form) {
       form.addEventListener('submit', (e) => {
@@ -164,7 +178,6 @@ class BombermanApp {
       errorElement.textContent = message;
       errorElement.style.display = 'block';
       
-      // Hide error after 5 seconds
       setTimeout(() => {
         errorElement.style.display = 'none';
       }, 5000);
@@ -173,7 +186,6 @@ class BombermanApp {
 
   async joinGame(nickname) {
     try {
-      // Show loading state
       const submitButton = document.querySelector('#nickname-form button[type="submit"]');
       const originalText = submitButton.textContent;
       submitButton.textContent = 'Joining...';
@@ -197,7 +209,6 @@ class BombermanApp {
         
         console.log('Game joined successfully:', data);
         
-        // Switch to waiting screen
         this.showWaitingScreen();
         this.startOptimizedGameLoop();
       } else {
@@ -217,7 +228,7 @@ class BombermanApp {
   }
 
   startOptimizedGameLoop() {
-    // Start the framework's optimized game loop
+    // CRITICAL: Start framework game loop with optimized callback
     this.framework.startGameLoop((deltaTime, currentTime) => {
       this.gameUpdate(deltaTime, currentTime);
     });
@@ -225,17 +236,19 @@ class BombermanApp {
 
   async gameUpdate(deltaTime, currentTime) {
     try {
-      // Throttle game state fetching to reduce server load
-      if (currentTime - this.lastRenderTime >= this.renderThrottle) {
+      // CRITICAL: Throttle game state fetching to reduce server load and improve performance
+      if (currentTime - this.lastGameStateUpdate >= this.gameStateThrottle) {
         await this.fetchGameState();
-        this.lastRenderTime = currentTime;
+        this.lastGameStateUpdate = currentTime;
       }
 
-      // Update UI elements that need frequent updates
-      this.updateTimer();
-      
-      // Process any pending animations or effects
-      this.updateAnimations(deltaTime);
+      // CRITICAL: Only update UI elements that need frequent updates
+      if (currentTime - this.lastRenderTime >= this.renderThrottle) {
+        this.updateTimer();
+        this.updatePlayerStats();
+        this.updateGameMapOptimized(); // CRITICAL: Use optimized map update
+        this.lastRenderTime = currentTime;
+      }
       
     } catch (error) {
       console.error('Game update error:', error);
@@ -247,12 +260,11 @@ class BombermanApp {
       const response = await fetch('/api/gamestate');
       const gameState = await response.json();
       
-      // Only update if state actually changed (reduce unnecessary renders)
+      // CRITICAL: Only update if state actually changed (reduce unnecessary renders)
       if (JSON.stringify(gameState) !== JSON.stringify(this.gameState)) {
         const previousState = this.gameState;
         this.gameState = gameState;
         
-        // Handle state changes efficiently
         this.handleGameStateChange(previousState, gameState);
       }
     } catch (error) {
@@ -261,38 +273,22 @@ class BombermanApp {
   }
 
   handleGameStateChange(previousState, newState) {
-    // Check if game ended
     if (newState.gameEnded && (!previousState || !previousState.gameEnded)) {
       this.showGameEndScreen();
       return;
     }
     
-    // Check if game started
     if (newState.gameStarted && (!previousState || !previousState.gameStarted)) {
       this.showGameScreen();
       return;
     }
     
-    // Update specific parts of the UI based on what changed
     if (newState.gameStarted) {
+      // Game is running - minimal updates only
       this.updateGameScreen(previousState, newState);
     } else {
       this.updateWaitingScreen();
     }
-  }
-
-  updateAnimations(deltaTime) {
-    // Update bomb pulse animations
-    const bombs = document.querySelectorAll('.bomb');
-    bombs.forEach(bomb => {
-      // Bomb animations are handled by CSS, but we could add JS animations here
-    });
-
-    // Update player movement animations
-    const players = document.querySelectorAll('.player');
-    players.forEach(player => {
-      // Smooth player position updates could go here
-    });
   }
 
   showWaitingScreen() {
@@ -301,10 +297,10 @@ class BombermanApp {
       return;
     }
 
-    const app = document.getElementById('app');
+    const app = this.cachedElements.app || document.getElementById('app');
     const playerCount = Object.keys(this.gameState.players).length;
     
-    // Use framework's optimized rendering
+    // CRITICAL: Use template literals efficiently and batch DOM update
     const waitingScreenHTML = `
       <div class="waiting-screen">
         <h1>Waiting for Game to Start</h1>
@@ -323,7 +319,7 @@ class BombermanApp {
       </div>
     `;
 
-    // Batch DOM update to prevent layout thrashing
+    // CRITICAL: Batch DOM update to prevent layout thrashing
     requestAnimationFrame(() => {
       app.innerHTML = waitingScreenHTML;
     });
@@ -332,7 +328,7 @@ class BombermanApp {
   updateWaitingScreen() {
     if (!this.gameState) return;
 
-    // Use efficient DOM updates instead of innerHTML
+    // CRITICAL: Use efficient DOM updates instead of innerHTML
     const playerCountElement = document.getElementById('player-count');
     const playersListElement = document.getElementById('players-list');
     const countdownContainer = document.getElementById('countdown-container');
@@ -341,13 +337,11 @@ class BombermanApp {
     if (playerCountElement && playersListElement) {
       const playerCount = Object.keys(this.gameState.players).length;
       
-      // Only update if changed
       const newCountText = `Players: ${playerCount}/4`;
       if (playerCountElement.textContent !== newCountText) {
         playerCountElement.textContent = newCountText;
       }
       
-      // Update players list efficiently
       const newPlayersHTML = Object.values(this.gameState.players).map(player => 
         `<div class="player-item">${player.nickname}</div>`
       ).join('');
@@ -356,7 +350,6 @@ class BombermanApp {
         playersListElement.innerHTML = newPlayersHTML;
       }
 
-      // Show countdown if it's started
       if (this.gameState.countdown > 0 && countdownContainer && countdownText) {
         countdownContainer.style.display = 'block';
         const newCountdownText = `Game starting in: ${this.gameState.countdown}`;
@@ -373,7 +366,7 @@ class BombermanApp {
       return;
     }
 
-    const app = document.getElementById('app');
+    const app = this.cachedElements.app || document.getElementById('app');
     const player = this.gameState.players[this.playerId];
     
     if (!player) {
