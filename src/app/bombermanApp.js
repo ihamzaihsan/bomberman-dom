@@ -304,6 +304,14 @@ class BombermanApp {
         this.handleBombExplosion(eventData);
         break;
 
+      case 'powerup_spawned':
+        this.handlePowerUpSpawned(eventData);
+        break;
+
+      case 'powerup_collected':
+        this.handlePowerUpCollected(eventData);
+        break;
+
       case 'game_started':
         this.handleGameStarted(eventData);
         break;
@@ -318,10 +326,6 @@ class BombermanApp {
 
       case 'player_eliminated':
         this.handlePlayerEliminated(eventData);
-        break;
-
-      case 'bomb_exploded':
-        this.handleBombExplosion(eventData);
         break;
 
       case 'game_ended':
@@ -972,10 +976,23 @@ class BombermanApp {
 
     const livesElement = document.getElementById('player-lives');
     const bombsElement = document.getElementById('player-bombs');
+
+    // ✅ POWER-UP SYSTEM: Enhanced stats display
+    const flamesElement = document.getElementById('player-flames');
+    const speedElement = document.getElementById('player-speed');
+
     if (livesElement && bombsElement) {
       // ✅ FIX: Show 0 lives for eliminated players
       livesElement.textContent = player.alive ? player.lives : 0;
       bombsElement.textContent = player.powerUps?.bombs || 1;
+
+      // ✅ POWER-UP SYSTEM: Show power-up levels
+      if (flamesElement) {
+        flamesElement.textContent = player.powerUps?.flames || 1;
+      }
+      if (speedElement) {
+        speedElement.textContent = player.powerUps?.speed || 1;
+      }
     }
   }
 
@@ -988,14 +1005,21 @@ class BombermanApp {
     const map = this.gameState.map;
     const players = this.gameState.players;
     const bombs = this.gameState.bombs || [];
-    
-    return map.map((row, y) => 
+    const powerUps = this.gameState.powerUps || []; // ✅ POWER-UP SYSTEM: Include power-ups
+
+    return map.map((row, y) =>
       row.map((cell, x) => {
         const playersAtPosition = Object.values(players).filter(p => p.x === x && p.y === y && p.alive);
         const bombsAtPosition = bombs.filter(b => b.x === x && b.y === y);
-        
+        const powerUpsAtPosition = powerUps.filter(p => p.x === x && p.y === y); // ✅ POWER-UP SYSTEM
+
         return `
           <div class="cell ${cell}" data-x="${x}" data-y="${y}">
+            ${powerUpsAtPosition.map(powerUp =>
+              `<div class="powerup powerup-${powerUp.type}" data-powerup-id="${powerUp.id}">
+                ${this.getPowerUpEmoji(powerUp.type)}
+              </div>`
+            ).join('')}
             ${bombsAtPosition.map(bomb =>
               `<div class="bomb">💣</div>`
             ).join('')}
@@ -1008,6 +1032,16 @@ class BombermanApp {
         `;
       }).join('')
     ).join('');
+  }
+
+  // ✅ POWER-UP SYSTEM: Get emoji for power-up type
+  getPowerUpEmoji(powerUpType) {
+    const powerUpEmojis = {
+      bombs: '💣',   // Bombs power-up
+      flames: '🔥',  // Flames power-up
+      speed: '⚡'    // Speed power-up
+    };
+    return powerUpEmojis[powerUpType] || '💎'; // Default to gem if unknown type
   }
 
   updateGameMap() {
@@ -1207,15 +1241,152 @@ class BombermanApp {
     // The game state will be updated via game_state_update message
   }
 
-  // ✅ CRITICAL: Show explosion visual effects
-  showExplosionEffect(position, explosions) {
-    console.log(`Showing explosion at (${position.x}, ${position.y}) with ${explosions.length} cells`);
+  // ✅ ENHANCED: Show explosion visual effects with animation
+  showExplosionEffect(position, explosions, range = 1) {
+    console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} cells`);
 
-    // TODO: Add visual explosion effects here
-    // For now, just log the explosion
-    explosions.forEach(cell => {
-      console.log(`Explosion cell: (${cell.x}, ${cell.y})`);
+    const gameMap = document.getElementById('game-map');
+    if (!gameMap) {
+      console.error('❌ Game map element not found for explosion animation');
+      return;
+    }
+
+    console.log('✅ Game map found:', gameMap);
+    console.log('📍 Explosion cells:', explosions);
+
+    // Create explosion animations for each affected cell
+    explosions.forEach((cell, index) => {
+      const type = index === 0 ? 'center' : 'blast';
+      console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y})`);
+      this.createExplosionAnimation(cell.x, cell.y, type);
     });
+
+    // Clean up explosion animations after 1.5 seconds
+    setTimeout(() => {
+      console.log('🧹 Cleaning up explosion animations');
+      this.cleanupExplosionAnimations();
+    }, 1500);
+  }
+
+  // ✅ NEW: Create individual explosion animation for a cell
+  createExplosionAnimation(x, y, type = 'blast') {
+    console.log(`🎯 Creating ${type} explosion animation at (${x}, ${y})`);
+
+    const gameMap = document.getElementById('game-map');
+    if (!gameMap) {
+      console.error('❌ Game map not found in createExplosionAnimation');
+      return;
+    }
+
+    // Find the cell element
+    const cellSelector = `[data-x="${x}"][data-y="${y}"]`;
+    console.log(`🔍 Looking for cell with selector: ${cellSelector}`);
+
+    const cellElement = gameMap.querySelector(cellSelector);
+    if (!cellElement) {
+      console.error(`❌ Cell element not found for explosion at (${x}, ${y})`);
+      console.log('Available cells:', gameMap.querySelectorAll('[data-x][data-y]').length);
+
+      // Debug: Log all available cells
+      const allCells = gameMap.querySelectorAll('[data-x][data-y]');
+      console.log('First 5 cells:', Array.from(allCells).slice(0, 5).map(cell => ({
+        x: cell.getAttribute('data-x'),
+        y: cell.getAttribute('data-y')
+      })));
+      return;
+    }
+
+    console.log(`✅ Found cell element for (${x}, ${y}):`, cellElement);
+
+    // Create explosion element with simplified approach
+    const explosionElement = document.createElement('div');
+    explosionElement.setAttribute('data-explosion', 'true');
+
+    // Add explosion content and classes based on type
+    if (type === 'center') {
+      explosionElement.innerHTML = '💥';
+      explosionElement.className = 'explosion-effect explosion-center';
+    } else {
+      explosionElement.innerHTML = '🔥';
+      explosionElement.className = 'explosion-effect explosion-blast';
+    }
+
+    // ✅ SIMPLIFIED: Direct inline styles for reliability
+    explosionElement.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 1000;
+      font-size: ${type === 'center' ? '2.5em' : '2em'};
+      opacity: 1;
+      transform: scale(1);
+    `;
+
+    // Add to cell with relative positioning
+    cellElement.style.position = 'relative';
+    cellElement.appendChild(explosionElement);
+
+    // ✅ IMMEDIATE: Trigger animation immediately for visibility
+    console.log(`🎬 Explosion element added to DOM at (${x}, ${y})`);
+    console.log(`📏 Element dimensions:`, {
+      width: explosionElement.offsetWidth,
+      height: explosionElement.offsetHeight,
+      visible: explosionElement.offsetParent !== null,
+      innerHTML: explosionElement.innerHTML
+    });
+    console.log(`🎨 Element computed styles:`, {
+      opacity: getComputedStyle(explosionElement).opacity,
+      transform: getComputedStyle(explosionElement).transform,
+      fontSize: getComputedStyle(explosionElement).fontSize,
+      display: getComputedStyle(explosionElement).display
+    });
+
+    console.log(`✨ Created ${type} explosion animation at (${x}, ${y})`);
+    console.log(`🔧 Element classes:`, explosionElement.className);
+    console.log(`📍 Element parent:`, cellElement);
+  }
+
+  // ✅ NEW: Clean up all explosion animations
+  cleanupExplosionAnimations() {
+    const explosionElements = document.querySelectorAll('[data-explosion="true"]');
+    explosionElements.forEach(element => {
+      element.classList.add('explosion-fade-out');
+      setTimeout(() => {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+      }, 300);
+    });
+    console.log(`Cleaned up ${explosionElements.length} explosion animations`);
+  }
+
+  // ✅ POWER-UP SYSTEM: Handle power-up spawn events
+  handlePowerUpSpawned(eventData) {
+    console.log('🎁 Power-up spawned:', eventData.powerUp);
+    // Power-up will be rendered when game state updates
+    this.showNotification(`💎 ${eventData.powerUp.type.toUpperCase()} power-up appeared!`);
+  }
+
+  // ✅ POWER-UP SYSTEM: Handle power-up collection events
+  handlePowerUpCollected(eventData) {
+    console.log('🎁 Power-up collected:', eventData);
+
+    const isCurrentPlayer = eventData.playerId === this.playerId;
+    const playerName = isCurrentPlayer ? 'You' : eventData.playerNickname;
+
+    // Show collection notification
+    this.showNotification(`🎉 ${playerName} collected ${eventData.powerUpType.toUpperCase()} power-up!`);
+
+    // Update player stats if it's the current player
+    if (isCurrentPlayer) {
+      this.updatePlayerStats();
+    }
   }
 
   handleGameStarted(eventData) {
@@ -1284,10 +1455,20 @@ class BombermanApp {
     // Could add elimination animation or notification here
   }
 
+  // ✅ ENHANCED: Handle bomb explosion with visual animation
   handleBombExplosion(eventData) {
-    console.log('Bomb exploded:', eventData);
-    // Could add explosion animation here
-    // For now, the game state update will handle the visual changes
+    console.log('🔥 BOMB EXPLOSION EVENT RECEIVED:', eventData);
+    console.log('Position:', eventData.position);
+    console.log('Explosions:', eventData.explosions);
+    console.log('Range:', eventData.range);
+
+    // Show explosion animation/effects
+    this.showExplosionEffect(eventData.position, eventData.explosions, eventData.range);
+
+    // Play explosion sound (if implemented)
+    // this.playExplosionSound();
+
+    // The game state will be updated via game_state_update message
   }
 
   handleGameEnded(eventData) {

@@ -181,7 +181,7 @@ class GameServer {
       lives: 3,
       powerUps: {
         bombs: 1,
-        flames: 2, // Increased flame range for bigger map
+        flames: 1, // ✅ PHASE 1: Default bomb range = 1 block
         speed: 1
       },
       alive: true
@@ -331,12 +331,18 @@ class GameServer {
     let gameStateChanged = false;
 
     // Process bomb timers and explosions
+    if (this.gameState.bombs.length > 0) {
+      console.log(`🔄 Processing ${this.gameState.bombs.length} bombs`);
+    }
+
     for (let i = this.gameState.bombs.length - 1; i >= 0; i--) {
       const bomb = this.gameState.bombs[i];
       bomb.timer -= 0.1; // Decrease by 100ms
 
+      console.log(`💣 Bomb ${bomb.id} at (${bomb.x}, ${bomb.y}) timer: ${bomb.timer.toFixed(1)}s`);
+
       if (bomb.timer <= 0) {
-        console.log(`Bomb at (${bomb.x}, ${bomb.y}) exploding!`);
+        console.log(`💥 BOMB EXPLODING at (${bomb.x}, ${bomb.y})!`);
         this.explodeBomb(bomb);
         this.gameState.bombs.splice(i, 1);
         gameStateChanged = true;
@@ -465,11 +471,33 @@ class GameServer {
         break;
     }
 
-    // Check if new position is valid (not wall or block)
+    // ✅ BOMB COLLISION: Check if new position is valid (not wall, block, or bomb)
     if (this.gameState.map[newY] && this.gameState.map[newY][newX] === 'empty') {
+      // Check for bomb collision - bombs act as solid obstacles
+      const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
+
+      if (bombAtPosition) {
+        console.log(`Move blocked: Bomb at position (${newX}, ${newY})`);
+        return false;
+      }
+
+      // Check for other players at the same position
+      const playerAtPosition = Object.values(this.gameState.players).find(
+        p => p.id !== playerId && p.alive && p.x === newX && p.y === newY
+      );
+
+      if (playerAtPosition) {
+        console.log(`Move blocked: Player ${playerAtPosition.nickname} at position (${newX}, ${newY})`);
+        return false;
+      }
+
       player.x = newX;
       player.y = newY;
       console.log(`Player ${playerId} moved to (${newX}, ${newY})`);
+
+      // ✅ PHASE 4: Check for power-up collection
+      this.checkPowerUpCollection(playerId, newX, newY);
+
       return true;
     }
 
@@ -574,6 +602,10 @@ class GameServer {
         if (this.gameState.map[y][x] === 'block') {
           this.gameState.map[y][x] = 'empty';
           console.log(`Block destroyed at (${x}, ${y})`);
+
+          // ✅ PHASE 2: Power-up spawning system
+          this.trySpawnPowerUp(x, y);
+
           break;
         }
       }
@@ -581,15 +613,123 @@ class GameServer {
 
     // Broadcast explosion event
     if (this.wsManager) {
-      this.wsManager.broadcastEvent('bomb_exploded', {
+      const explosionEvent = {
         bombId: bomb.id,
         position: { x: bomb.x, y: bomb.y },
         explosions: explosions,
         range: bomb.range
-      });
+      };
+
+      console.log('📡 BROADCASTING bomb_exploded event:', explosionEvent);
+      this.wsManager.broadcastEvent('bomb_exploded', explosionEvent);
+      console.log('✅ bomb_exploded event sent to all clients');
+    } else {
+      console.error('❌ wsManager not available for broadcasting explosion event');
     }
 
-    console.log('Bomb exploded at:', bomb.x, bomb.y, 'with explosions at:', explosions);
+    console.log('💥 Bomb exploded at:', bomb.x, bomb.y, 'with explosions at:', explosions);
+  }
+
+  // ✅ PHASE 2: Power-up spawning system
+  trySpawnPowerUp(x, y) {
+    const spawnChance = 0.35; // 35% chance to spawn power-up
+
+    if (Math.random() < spawnChance) {
+      const powerUpTypes = ['bombs', 'flames', 'speed'];
+      const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+
+      const powerUp = {
+        id: 'powerup_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11),
+        type: randomType,
+        x: x,
+        y: y
+      };
+
+      this.gameState.powerUps.push(powerUp);
+      console.log(`🎁 Power-up spawned: ${randomType} at (${x}, ${y})`);
+
+      // Broadcast power-up spawn event
+      if (this.wsManager) {
+        this.wsManager.broadcastEvent('powerup_spawned', {
+          powerUp: powerUp
+        });
+      }
+    }
+  }
+
+  // ✅ PHASE 4: Power-up collection system
+  checkPowerUpCollection(playerId, x, y) {
+    const powerUpIndex = this.gameState.powerUps.findIndex(powerUp => powerUp.x === x && powerUp.y === y);
+
+    if (powerUpIndex !== -1) {
+      const powerUp = this.gameState.powerUps[powerUpIndex];
+      const player = this.gameState.players[playerId];
+
+      console.log(`🎁 Player ${player.nickname} collected ${powerUp.type} power-up at (${x}, ${y})`);
+
+      // Apply power-up effect
+      this.applyPowerUpEffect(player, powerUp.type);
+
+      // Remove power-up from game state
+      this.gameState.powerUps.splice(powerUpIndex, 1);
+
+      // Broadcast power-up collection event
+      if (this.wsManager) {
+        this.wsManager.broadcastEvent('powerup_collected', {
+          playerId: playerId,
+          playerNickname: player.nickname,
+          powerUpType: powerUp.type,
+          powerUpId: powerUp.id,
+          position: { x, y },
+          newStats: {
+            bombs: player.powerUps.bombs,
+            flames: player.powerUps.flames,
+            speed: player.powerUps.speed
+          }
+        });
+      }
+    }
+  }
+
+  // ✅ PHASE 3: Apply power-up effects
+  applyPowerUpEffect(player, powerUpType) {
+    const maxLimits = {
+      bombs: 5,   // Maximum 5 concurrent bombs
+      flames: 4,  // Maximum 4 block explosion range
+      speed: 3    // Maximum speed level
+    };
+
+    switch (powerUpType) {
+      case 'bombs':
+        if (player.powerUps.bombs < maxLimits.bombs) {
+          player.powerUps.bombs++;
+          console.log(`💣 ${player.nickname} bombs increased to ${player.powerUps.bombs}`);
+        } else {
+          console.log(`💣 ${player.nickname} already at max bombs (${maxLimits.bombs})`);
+        }
+        break;
+
+      case 'flames':
+        if (player.powerUps.flames < maxLimits.flames) {
+          player.powerUps.flames++;
+          console.log(`🔥 ${player.nickname} flames increased to ${player.powerUps.flames}`);
+        } else {
+          console.log(`🔥 ${player.nickname} already at max flames (${maxLimits.flames})`);
+        }
+        break;
+
+      case 'speed':
+        if (player.powerUps.speed < maxLimits.speed) {
+          player.powerUps.speed++;
+          console.log(`⚡ ${player.nickname} speed increased to ${player.powerUps.speed}`);
+        } else {
+          console.log(`⚡ ${player.nickname} already at max speed (${maxLimits.speed})`);
+        }
+        break;
+
+      default:
+        console.warn(`Unknown power-up type: ${powerUpType}`);
+    }
   }
 }
 

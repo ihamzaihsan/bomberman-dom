@@ -942,3 +942,225 @@ body {
     padding: 3px 6px;
   }
 }
+
+/* ✅ POWER-UP SYSTEM: Power-up styling and animations */
+.powerup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8em;
+  z-index: 5;
+  animation: powerupPulse 2s ease-in-out infinite;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.powerup:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  filter: brightness(1.3);
+}
+
+/* ✅ POWER-UP TYPES: Specific styling for each power-up type */
+.powerup-bombs {
+  color: #e74c3c;
+  text-shadow:
+    0 0 10px rgba(231, 76, 60, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.powerup-flames {
+  color: #f39c12;
+  text-shadow:
+    0 0 10px rgba(243, 156, 18, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.powerup-speed {
+  color: #3498db;
+  text-shadow:
+    0 0 10px rgba(52, 152, 219, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* ✅ POWER-UP ANIMATIONS */
+@keyframes powerupPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes powerupCollected {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.powerup.collected {
+  animation: powerupCollected 0.5s ease-out forwards;
+}
+
+/* ✅ POWER-UP SPAWN ANIMATION */
+@keyframes powerupSpawn {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.powerup.spawning {
+  animation: powerupSpawn 0.6s ease-out;
+}
+
+/* ✅ RESPONSIVE: Smaller power-ups on mobile */
+@media (max-width: 768px) {
+  .powerup {
+    font-size: 1.5em;
+  }
+}
+
+@media (max-width: 480px) {
+  .powerup {
+    font-size: 1.2em;
+  }
+}
+
+/* ✅ FIXED: Bomb Explosion Animation System */
+.explosion-effect {
+  font-size: 2em;
+  opacity: 1;
+  transform: scale(1);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  animation: explosionPulse 1.5s ease-out;
+  /* Remove conflicting transition */
+}
+
+.explosion-effect.explosion-active {
+  /* Animation is handled by keyframes, not transitions */
+}
+
+.explosion-center {
+  font-size: 2.5em !important;
+  animation: explosionCenter 1.5s ease-out !important;
+}
+
+.explosion-blast {
+  font-size: 2em !important;
+  animation: explosionBlast 1.5s ease-out !important;
+}
+
+.explosion-fade-out {
+  opacity: 0 !important;
+  transform: scale(0.8) !important;
+  transition: all 0.3s ease-in !important;
+}
+
+/* ✅ FIXED: EXPLOSION ANIMATIONS */
+@keyframes explosionCenter {
+  0% {
+    opacity: 1;
+    transform: scale(0.5) rotate(0deg);
+    filter: brightness(2) hue-rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.8) rotate(45deg);
+    filter: brightness(3) hue-rotate(30deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5) rotate(90deg);
+    filter: brightness(2.5) hue-rotate(60deg);
+  }
+  80% {
+    opacity: 0.8;
+    transform: scale(1.2) rotate(135deg);
+    filter: brightness(2) hue-rotate(90deg);
+  }
+  100% {
+    opacity: 0.2;
+    transform: scale(1) rotate(180deg);
+    filter: brightness(1.5) hue-rotate(120deg);
+  }
+}
+
+@keyframes explosionBlast {
+  0% {
+    opacity: 1;
+    transform: scale(0.7);
+    filter: brightness(1.5) hue-rotate(0deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.4);
+    filter: brightness(2.5) hue-rotate(45deg);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(1.2);
+    filter: brightness(2) hue-rotate(90deg);
+  }
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+    filter: brightness(1.2) hue-rotate(135deg);
+  }
+}
+
+@keyframes explosionPulse {
+  0%, 100% {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+  50% {
+    text-shadow:
+      0 0 10px rgba(255, 100, 0, 0.8),
+      0 0 20px rgba(255, 150, 0, 0.6),
+      0 0 30px rgba(255, 200, 0, 0.4),
+      2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ✅ PERFORMANCE OPTIMIZATION: Use hardware acceleration */
+.explosion-effect {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* ✅ RESPONSIVE: Smaller explosions on mobile */
+@media (max-width: 768px) {
+  .explosion-effect {
+    font-size: 1.5em;
+  }
+
+  .explosion-center {
+    font-size: 2em;
+  }
+
+  .explosion-blast {
+    font-size: 1.5em;
+  }
+}
