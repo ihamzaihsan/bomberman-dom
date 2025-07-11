@@ -973,7 +973,8 @@ class BombermanApp {
     const livesElement = document.getElementById('player-lives');
     const bombsElement = document.getElementById('player-bombs');
     if (livesElement && bombsElement) {
-      livesElement.textContent = player.lives;
+      // ✅ FIX: Show 0 lives for eliminated players
+      livesElement.textContent = player.alive ? player.lives : 0;
       bombsElement.textContent = player.powerUps?.bombs || 1;
     }
   }
@@ -1245,6 +1246,11 @@ class BombermanApp {
   }
 
   updateGameTimer(timeLeft) {
+    // ✅ FIX: Update game state with server-provided time
+    if (this.gameState) {
+      this.gameState.gameTimeLeft = timeLeft;
+    }
+
     const timerElement = document.getElementById('timer-value');
     if (timerElement) {
       timerElement.textContent = this.formatTime(timeLeft);
@@ -1286,9 +1292,19 @@ class BombermanApp {
 
   handleGameEnded(eventData) {
     console.log('Game ended:', eventData.reason);
+
+    // ✅ FIX: Update game state with server data to ensure accurate life counts
+    if (eventData.gameState) {
+      this.gameState = eventData.gameState;
+    }
+
     this.gameState.gameEnded = true;
     this.gameState.winner = eventData.winner;
-    this.showGameEndScreen();
+
+    // ✅ FIX: Small delay to ensure all state updates are processed
+    setTimeout(() => {
+      this.showGameEndScreen();
+    }, 50);
   }
 
   handleGameReset(eventData) {
@@ -1446,26 +1462,55 @@ class BombermanApp {
       }
     }
     
+    // ✅ ENHANCED: Professional game end screen with improved design
     app.innerHTML = `
       <div class="game-end-screen">
-        <h1>${message}</h1>
-        <h2>${submessage}</h2>
-        <div class="game-stats">
-          <h3>Final Results:</h3>
+        <h1>🎮 ${message} 🎮</h1>
+
+        ${winner && winner.id !== 'draw' && winner.id !== 'none' ? `
+          <div class="winner-announcement">
+            <h2>🏆 Victory! 🏆</h2>
+            <div class="winner-name">${winner.nickname}</div>
+            <p>Congratulations on your explosive victory!</p>
+          </div>
+        ` : `
+          <div class="winner-announcement" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+            <h2>⏰ ${message} ⏰</h2>
+            <div class="winner-name">${submessage}</div>
+            <p>Better luck next time!</p>
+          </div>
+        `}
+
+        <div class="final-results">
+          <h3>📊 Final Results</h3>
           <div class="players-final-stats">
-            ${Object.values(this.gameState.players).map(player => `
-              <div class="player-final-stat ${player.id === this.playerId ? 'current-player' : ''}">
-                <span class="player-name">${player.nickname}</span>
-                <span class="player-lives">Lives: ${player.lives}</span>
-                <span class="player-status">${player.alive ? 'Alive' : 'Eliminated'}</span>
-              </div>
-            `).join('')}
+            ${Object.values(this.gameState.players).map(player => {
+              const isWinner = winner && player.id === winner.id;
+              const isCurrentPlayer = player.id === this.playerId;
+              let cssClass = 'player-final-stat';
+              if (isCurrentPlayer) cssClass += ' current-player';
+              if (isWinner) cssClass += ' winner';
+
+              return `
+                <div class="${cssClass}">
+                  <span class="player-name">
+                    ${isWinner ? '👑 ' : ''}${player.nickname}${isCurrentPlayer ? ' (You)' : ''}
+                  </span>
+                  <span class="player-lives">❤️ Lives: ${player.alive ? player.lives : 0}</span>
+                  <span class="player-status ${player.alive ? 'alive' : 'eliminated'}">
+                    ${player.alive ? '✅ Alive' : '💀 Eliminated'}
+                  </span>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
+
         <div class="game-end-actions">
-          <button id="play-again-btn" class="play-again-btn">Play Again</button>
+          <button id="play-again-btn" class="primary-button">🎮 Play Again</button>
+          <button class="secondary-button" onclick="window.bombermanApp.returnToLobby()">🏠 Return to Lobby</button>
           <div class="countdown-to-lobby">
-            <p>Returning to lobby in <span id="lobby-countdown">10</span> seconds...</p>
+            <p>Auto-returning to lobby in <span id="lobby-countdown">10</span> seconds...</p>
           </div>
         </div>
       </div>

@@ -292,10 +292,8 @@ class GameServer {
       this.gameState.gameTimeLeft--;
       console.log(`Game time left: ${this.gameState.gameTimeLeft} seconds`);
 
-      // Broadcast timer update every 10 seconds or when time is low
-      if (this.gameState.gameTimeLeft % 10 === 0 || this.gameState.gameTimeLeft <= 10) {
-        this.broadcastEvent('timer_update', { timeLeft: this.gameState.gameTimeLeft });
-      }
+      // ✅ FIX: Broadcast timer update EVERY SECOND for real-time display
+      this.broadcastEvent('timer_update', { timeLeft: this.gameState.gameTimeLeft });
 
       if (this.gameState.gameTimeLeft <= 0) {
         this.endGame('Time\'s up!');
@@ -545,20 +543,30 @@ class GameServer {
             });
 
             if (player.lives <= 0) {
+              // ✅ FIX: Ensure lives are set to exactly 0 for eliminated players
+              player.lives = 0;
               player.alive = false;
-              console.log(`Player ${player.nickname} eliminated!`);
+              console.log(`Player ${player.nickname} eliminated! Lives: ${player.lives}`);
 
               // Broadcast player elimination event
               this.broadcastEvent('player_eliminated', {
                 playerId: player.id,
-                nickname: player.nickname
+                nickname: player.nickname,
+                finalLives: player.lives
               });
 
-              // Check if game should end
-              const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
-              if (alivePlayers.length <= 1) {
-                this.endGame('Last player standing!');
+              // ✅ FIX: Broadcast updated game state BEFORE ending game
+              if (this.wsManager) {
+                this.wsManager.broadcastGameState();
               }
+
+              // Check if game should end (with small delay to ensure state sync)
+              setTimeout(() => {
+                const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+                if (alivePlayers.length <= 1) {
+                  this.endGame('Last player standing!');
+                }
+              }, 100); // Small delay to ensure state synchronization
             }
           }
         });
