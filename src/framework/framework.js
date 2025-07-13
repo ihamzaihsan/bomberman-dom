@@ -31,17 +31,152 @@ export class Framework {
     this.targetFPS = 60;
     this.frameTimeThreshold = 1000 / this.targetFPS; // 16.67ms for 60fps
     
-    // Virtual DOM and rendering optimization
+    // ✅ ENHANCED: Virtual DOM and selective rendering optimization
     this.previousVDOM = null;
     this.renderQueue = [];
     this.isRendering = false;
     this.dirtyComponents = new Set();
     this.renderCache = new Map();
     
+    // ✅ NEW: Selective rendering system
+    this.elementCache = new Map();
+    this.dirtyElements = new Set();
+    this.renderingStrategy = 'selective'; // 'full' or 'selective'
+    this.lastRenderState = new Map();
+    
     // Performance monitoring
     this.performanceObserver = null;
     this.performanceCallbacks = [];
     this.initPerformanceMonitoring();
+  }
+
+  // ✅ NEW: Selective rendering methods
+  
+  /**
+   * Mark specific elements as dirty for selective re-rendering
+   */
+  markElementDirty(elementId, data = null) {
+    this.dirtyElements.add(elementId);
+    if (data) {
+      this.lastRenderState.set(elementId, data);
+    }
+    return this;
+  }
+
+  /**
+   * Check if element needs re-rendering by comparing current vs last state
+   */
+  shouldUpdateElement(elementId, currentData) {
+    if (!this.lastRenderState.has(elementId)) {
+      return true; // First render
+    }
+    
+    const lastData = this.lastRenderState.get(elementId);
+    return JSON.stringify(currentData) !== JSON.stringify(lastData);
+  }
+
+  /**
+   * Cache DOM element for faster access
+   */
+  cacheElement(elementId, element) {
+    this.elementCache.set(elementId, element);
+    return element;
+  }
+
+  /**
+   * Get cached DOM element or query and cache it
+   */
+  getCachedElement(elementId) {
+    if (this.elementCache.has(elementId)) {
+      const element = this.elementCache.get(elementId);
+      // Verify element is still in DOM
+      if (element && element.parentNode) {
+        return element;
+      } else {
+        // Element was removed, clear from cache
+        this.elementCache.delete(elementId);
+      }
+    }
+    
+    // Query and cache the element
+    const element = document.getElementById(elementId);
+    if (element) {
+      this.cacheElement(elementId, element);
+    }
+    return element;
+  }
+
+  /**
+   * Optimized batch update for selective rendering
+   */
+  updateElement(elementId, updateFunction, forceUpdate = false) {
+    const element = this.getCachedElement(elementId);
+    if (!element) {
+      console.warn(`Element ${elementId} not found for update`);
+      return false;
+    }
+
+    if (forceUpdate || this.dirtyElements.has(elementId)) {
+      try {
+        updateFunction(element);
+        this.dirtyElements.delete(elementId);
+        return true;
+      } catch (error) {
+        console.error(`Error updating element ${elementId}:`, error);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Batch process all dirty elements
+   */
+  processDirtyElements() {
+    if (this.dirtyElements.size === 0) return;
+
+    const startTime = performance.now();
+    
+    // Process dirty elements in batches to avoid blocking
+    const batchSize = 10;
+    const dirtyArray = Array.from(this.dirtyElements);
+    
+    for (let i = 0; i < dirtyArray.length; i += batchSize) {
+      const batch = dirtyArray.slice(i, i + batchSize);
+      
+      // Process batch
+      batch.forEach(elementId => {
+        const element = this.getCachedElement(elementId);
+        if (element) {
+          // Element exists and is dirty, will be processed by specific update functions
+          // This is just cleanup
+        } else {
+          // Element no longer exists, remove from dirty set
+          this.dirtyElements.delete(elementId);
+        }
+      });
+      
+      // Yield control if processing takes too long
+      if (performance.now() - startTime > 8) { // 8ms budget
+        // Schedule remaining work for next frame
+        if (i + batchSize < dirtyArray.length) {
+          requestAnimationFrame(() => {
+            this.processDirtyElements();
+          });
+        }
+        break;
+      }
+    }
+  }
+
+  /**
+   * Clear all caches (useful for major state changes)
+   */
+  clearAllCaches() {
+    this.elementCache.clear();
+    this.renderCache.clear();
+    this.dirtyElements.clear();
+    this.lastRenderState.clear();
   }
 
   // Event emitter methods
@@ -154,8 +289,8 @@ export class Framework {
           }
         }
 
-        // Process render queue
-        this.processRenderQueue();
+        // ✅ ENHANCED: Process selective rendering
+        this.processSelectiveRendering();
 
         // Update performance metrics
         const endTime = performance.now();
@@ -192,6 +327,26 @@ export class Framework {
     return this;
   }
 
+  /**
+   * ✅ NEW: Process selective rendering optimizations
+   */
+  processSelectiveRendering() {
+    if (typeof performance !== 'undefined' && performance.mark) {
+      performance.mark('selective-render-start');
+    }
+
+    // Process dirty elements
+    this.processDirtyElements();
+
+    // Process render queue
+    this.processRenderQueue();
+
+    if (typeof performance !== 'undefined' && performance.mark) {
+      performance.mark('selective-render-end');
+      performance.measure('selectiveRenderTime', 'selective-render-start', 'selective-render-end');
+    }
+  }
+
   stopGameLoop() {
     if (this.gameLoop) {
       cancelAnimationFrame(this.gameLoop);
@@ -214,7 +369,7 @@ export class Framework {
     }
   }
 
-  // Add missing processRenderQueue method
+  // Enhanced processRenderQueue method
   processRenderQueue() {
     if (this.renderQueue.length === 0) return;
     
@@ -222,14 +377,22 @@ export class Framework {
       performance.mark('render-start');
     }
     
-    // Process all queued render operations
-    while (this.renderQueue.length > 0) {
+    const startTime = performance.now();
+    const maxRenderTime = 8; // 8ms budget for rendering
+    
+    // Process render operations with time budget
+    while (this.renderQueue.length > 0 && (performance.now() - startTime) < maxRenderTime) {
       const renderOp = this.renderQueue.shift();
       try {
         renderOp();
       } catch (error) {
         console.error('Render operation error:', error);
       }
+    }
+    
+    // If we have remaining operations, schedule them for next frame
+    if (this.renderQueue.length > 0) {
+      requestAnimationFrame(() => this.processRenderQueue());
     }
     
     if (typeof performance !== 'undefined' && performance.mark) {
@@ -267,7 +430,9 @@ export class Framework {
       fps: this.fps,
       frameDropPercentage: this.performanceMetrics.totalFrames > 0 
         ? (this.performanceMetrics.droppedFrames / this.performanceMetrics.totalFrames) * 100 
-        : 0
+        : 0,
+      dirtyElementsCount: this.dirtyElements.size,
+      cachedElementsCount: this.elementCache.size
     };
   }
 

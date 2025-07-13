@@ -406,14 +406,22 @@ body {
 
 .bomb {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate3d(-50%, -50%, 0);
   font-size: 24px;
   z-index: 5;
   animation: bomb-pulse 0.5s infinite alternate;
+
+  /* ✅ PERFORMANCE: Hardware acceleration for smooth animations */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 @keyframes bomb-pulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.1); }
+  0% { transform: translate3d(-50%, -50%, 0) scale(1); }
+  100% { transform: translate3d(-50%, -50%, 0) scale(1.1); }
 }
 
 .player {
@@ -429,11 +437,17 @@ body {
   z-index: 10;
   border: 3px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+  /* ✅ PERFORMANCE: Hardware acceleration for smooth movement */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transform: translate3d(0, 0, 0);
   transition: transform 0.1s ease;
 }
 
 .player:hover {
-  transform: scale(1.05);
+  transform: translate3d(0, 0, 0) scale(1.05);
 }
 
 .player.player-0 { 
@@ -948,17 +962,22 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0);
   font-size: 1.8em;
   z-index: 5;
   animation: powerupPulse 2s ease-in-out infinite;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   cursor: pointer;
   transition: all 0.3s ease;
+
+  /* ✅ PERFORMANCE: Hardware acceleration for smooth animations */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 .powerup:hover {
-  transform: translate(-50%, -50%) scale(1.2);
+  transform: translate3d(-50%, -50%, 0) scale(1.2);
   filter: brightness(1.3);
 }
 
@@ -987,26 +1006,26 @@ body {
 /* ✅ POWER-UP ANIMATIONS */
 @keyframes powerupPulse {
   0%, 100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate3d(-50%, -50%, 0) scale(1);
     opacity: 0.9;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.1);
+    transform: translate3d(-50%, -50%, 0) scale(1.1);
     opacity: 1;
   }
 }
 
 @keyframes powerupCollected {
   0% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate3d(-50%, -50%, 0) scale(1);
     opacity: 1;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.5);
+    transform: translate3d(-50%, -50%, 0) scale(1.5);
     opacity: 0.8;
   }
   100% {
-    transform: translate(-50%, -50%) scale(0.5);
+    transform: translate3d(-50%, -50%, 0) scale(0.5);
     opacity: 0;
   }
 }
@@ -1018,15 +1037,15 @@ body {
 /* ✅ POWER-UP SPAWN ANIMATION */
 @keyframes powerupSpawn {
   0% {
-    transform: translate(-50%, -50%) scale(0);
+    transform: translate3d(-50%, -50%, 0) scale(0);
     opacity: 0;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.3);
+    transform: translate3d(-50%, -50%, 0) scale(1.3);
     opacity: 0.8;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate3d(-50%, -50%, 0) scale(1);
     opacity: 1;
   }
 }
@@ -1052,15 +1071,17 @@ body {
 .explosion-effect {
   font-size: 2em;
   opacity: 1;
-  transform: scale(1);
+  transform: translate3d(0, 0, 0) scale(1);
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   animation: explosionPulse 1.5s ease-out;
-  /* Remove conflicting transition */
+
+  /* ✅ PERFORMANCE: Hardware acceleration for smooth explosions */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
-.explosion-effect.explosion-active {
-  /* Animation is handled by keyframes, not transitions */
-}
+
 
 .explosion-center {
   font-size: 2.5em !important;
@@ -1074,7 +1095,7 @@ body {
 
 .explosion-fade-out {
   opacity: 0 !important;
-  transform: scale(0.8) !important;
+  transform: translate3d(0, 0, 0) scale(0.8) !important;
   transition: all 0.3s ease-in !important;
 }
 
@@ -1082,27 +1103,27 @@ body {
 @keyframes explosionCenter {
   0% {
     opacity: 1;
-    transform: scale(0.5) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(0.5) rotate(0deg);
     filter: brightness(2) hue-rotate(0deg);
   }
   20% {
     opacity: 1;
-    transform: scale(1.8) rotate(45deg);
+    transform: translate3d(0, 0, 0) scale(1.8) rotate(45deg);
     filter: brightness(3) hue-rotate(30deg);
   }
   50% {
     opacity: 1;
-    transform: scale(1.5) rotate(90deg);
+    transform: translate3d(0, 0, 0) scale(1.5) rotate(90deg);
     filter: brightness(2.5) hue-rotate(60deg);
   }
   80% {
     opacity: 0.8;
-    transform: scale(1.2) rotate(135deg);
+    transform: translate3d(0, 0, 0) scale(1.2) rotate(135deg);
     filter: brightness(2) hue-rotate(90deg);
   }
   100% {
     opacity: 0.2;
-    transform: scale(1) rotate(180deg);
+    transform: translate3d(0, 0, 0) scale(1) rotate(180deg);
     filter: brightness(1.5) hue-rotate(120deg);
   }
 }
@@ -1110,22 +1131,22 @@ body {
 @keyframes explosionBlast {
   0% {
     opacity: 1;
-    transform: scale(0.7);
+    transform: translate3d(0, 0, 0) scale(0.7);
     filter: brightness(1.5) hue-rotate(0deg);
   }
   30% {
     opacity: 1;
-    transform: scale(1.4);
+    transform: translate3d(0, 0, 0) scale(1.4);
     filter: brightness(2.5) hue-rotate(45deg);
   }
   60% {
     opacity: 0.9;
-    transform: scale(1.2);
+    transform: translate3d(0, 0, 0) scale(1.2);
     filter: brightness(2) hue-rotate(90deg);
   }
   100% {
     opacity: 0.2;
-    transform: scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     filter: brightness(1.2) hue-rotate(135deg);
   }
 }
@@ -1148,6 +1169,43 @@ body {
   will-change: transform, opacity;
   backface-visibility: hidden;
   transform-style: preserve-3d;
+}
+
+/* ✅ NEW: Performance-aware animation system with CSS custom properties */
+:root {
+  --explosion-duration: 1.5s;
+  --powerup-pulse: running;
+  --bomb-pulse: running;
+  --player-transition-duration: 0.1s;
+}
+
+/* ✅ NEW: Quality-based animation controls */
+.game-map.low-quality .powerup {
+  animation-play-state: var(--powerup-pulse);
+}
+
+.game-map.low-quality .bomb {
+  animation-play-state: var(--bomb-pulse);
+}
+
+.game-map.low-quality .explosion-effect {
+  animation-duration: var(--explosion-duration);
+}
+
+/* ✅ NEW: Reduced motion for low-quality mode */
+.game-map.low-quality * {
+  animation-duration: 0.3s !important;
+  transition-duration: 0.1s !important;
+}
+
+.game-map.medium-quality .explosion-effect {
+  animation-duration: var(--explosion-duration);
+}
+
+/* ✅ NEW: High-quality mode with full effects */
+.game-map.high-quality .explosion-effect {
+  animation-duration: var(--explosion-duration);
+  filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.8));
 }
 
 /* ✅ RESPONSIVE: Smaller explosions on mobile */

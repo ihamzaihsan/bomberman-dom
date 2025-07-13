@@ -28,6 +28,54 @@ class BombermanApp {
     // ✅ FIX: State management for DOM readiness
     this.waitingScreenReady = false;
 
+    // ✅ NEW: Enhanced rendering optimizations
+    this.gameMapCache = new Map(); // Cache for game map cells
+    this.lastGameMapState = null; // Track last rendered state
+    this.dirtyMapCells = new Set(); // Track which cells need updates
+    this.entityPool = {
+      bombs: [],
+      explosions: [],
+      powerUps: []
+    }; // Object pooling for game entities
+    this.lastRenderedEntities = {
+      players: new Map(),
+      bombs: new Map(),
+      powerUps: new Map()
+    }; // Track entity states for selective updates
+
+    // ✅ NEW: Performance-aware animation system
+    this.animationQuality = 'high'; // 'high', 'medium', 'low'
+    this.lastPerformanceCheck = 0;
+    this.performanceCheckInterval = 1000; // Check every second
+    this.fpsThresholds = {
+      high: 55,    // Above 55 FPS = high quality
+      medium: 40,  // 40-55 FPS = medium quality
+      low: 25      // Below 40 FPS = low quality
+    };
+    this.animationSettings = {
+      high: {
+        explosionDuration: 1.5,
+        powerUpPulse: true,
+        bombPulse: true,
+        playerTransitions: true,
+        particleEffects: true
+      },
+      medium: {
+        explosionDuration: 1.0,
+        powerUpPulse: true,
+        bombPulse: false,
+        playerTransitions: true,
+        particleEffects: false
+      },
+      low: {
+        explosionDuration: 0.5,
+        powerUpPulse: false,
+        bombPulse: false,
+        playerTransitions: false,
+        particleEffects: false
+      }
+    };
+
     // CRITICAL: Cache DOM elements to avoid repeated queries
     this.cachedElements = {
       app: null,
@@ -149,9 +197,25 @@ class BombermanApp {
     }
   }
 
-  // CRITICAL: Cache DOM elements to reduce queries
+  // ✅ ENHANCED: Cache DOM elements using framework's caching system
   cacheElements() {
-    this.cachedElements.app = document.getElementById('app');
+    // Use framework's element caching for better performance
+    this.framework.cacheElement('app', document.getElementById('app'));
+    this.framework.cacheElement('game-map', document.getElementById('game-map'));
+    this.framework.cacheElement('timer-value', document.getElementById('timer-value'));
+    this.framework.cacheElement('player-lives', document.getElementById('player-lives'));
+    this.framework.cacheElement('player-bombs', document.getElementById('player-bombs'));
+    this.framework.cacheElement('game-chat-messages', document.getElementById('game-chat-messages'));
+
+    // Cache performance display elements
+    this.framework.cacheElement('performance-display', document.getElementById('performance-display'));
+    this.framework.cacheElement('fps-counter', document.getElementById('fps-counter'));
+    this.framework.cacheElement('frame-time', document.getElementById('frame-time'));
+
+    // Legacy support
+    this.cachedElements = {
+      app: this.framework.getCachedElement('app')
+    };
   }
 
   // Handle incoming WebSocket messages
@@ -641,6 +705,9 @@ class BombermanApp {
 
   gameUpdate(deltaTime, currentTime) {
     try {
+      // ✅ NEW: Performance-aware animation quality adjustment
+      this.checkAndAdjustAnimationQuality(currentTime);
+
       // ✅ CRITICAL: Continuous real-time updates for UI elements
       // Update UI elements that need frequent updates
       if (currentTime - this.lastRenderTime >= this.renderThrottle) {
@@ -970,30 +1037,32 @@ class BombermanApp {
     this.updateGameMap();
   }
 
+  // ✅ OPTIMIZED: Use cached elements for player stats updates
   updatePlayerStats() {
     const player = this.gameState.players[this.playerId];
     if (!player) return;
 
-    const livesElement = document.getElementById('player-lives');
-    const bombsElement = document.getElementById('player-bombs');
-
-    // ✅ POWER-UP SYSTEM: Enhanced stats display
-    const flamesElement = document.getElementById('player-flames');
-    const speedElement = document.getElementById('player-speed');
-
-    if (livesElement && bombsElement) {
-      // ✅ FIX: Show 0 lives for eliminated players
+    // Use framework's selective updating for better performance
+    this.framework.updateElement('player-lives', (livesElement) => {
       livesElement.textContent = player.alive ? player.lives : 0;
-      bombsElement.textContent = player.powerUps?.bombs || 1;
+    });
 
-      // ✅ POWER-UP SYSTEM: Show power-up levels
+    this.framework.updateElement('player-bombs', (bombsElement) => {
+      bombsElement.textContent = player.powerUps?.bombs || 1;
+    });
+
+    // ✅ POWER-UP SYSTEM: Enhanced stats display with caching
+    this.framework.updateElement('player-flames', (flamesElement) => {
       if (flamesElement) {
         flamesElement.textContent = player.powerUps?.flames || 1;
       }
+    });
+
+    this.framework.updateElement('player-speed', (speedElement) => {
       if (speedElement) {
         speedElement.textContent = player.powerUps?.speed || 1;
       }
-    }
+    });
   }
 
   renderGameMap() {
@@ -1051,18 +1120,339 @@ class BombermanApp {
     }
   }
 
-  // CRITICAL: Optimized version for game loop
+  // ✅ ENHANCED: Selective rendering with framework integration
   updateGameMapOptimized() {
-    // Only update game map if we're in the game screen
-    const gameMapElement = document.getElementById('game-map');
-    if (gameMapElement && this.gameState && this.gameState.map) {
-      // Only update if the map has actually changed
-      const newMapHTML = this.renderGameMap();
-      if (this.lastRenderedMap !== newMapHTML) {
-        gameMapElement.innerHTML = newMapHTML;
-        this.lastRenderedMap = newMapHTML;
+    if (!this.gameState || !this.gameState.map) return;
+
+    const gameMapElement = this.framework.getCachedElement('game-map') ||
+                          this.framework.cacheElement('game-map', document.getElementById('game-map'));
+
+    if (!gameMapElement) return;
+
+    // Use framework's selective rendering for optimal performance
+    this.updateGameMapSelective();
+  }
+
+  // ✅ NEW: Selective map rendering using framework capabilities
+  updateGameMapSelective() {
+    const map = this.gameState.map;
+    const players = this.gameState.players;
+    const bombs = this.gameState.bombs || [];
+    const powerUps = this.gameState.powerUps || [];
+
+    // Check which cells need updates
+    this.identifyDirtyCells(map, players, bombs, powerUps);
+
+    // Process dirty cells using framework's batch update system
+    this.processDirtyCells(map, players, bombs, powerUps);
+  }
+
+  // ✅ NEW: Identify which map cells need re-rendering
+  identifyDirtyCells(map, players, bombs, powerUps) {
+    // Create current state snapshot
+    const currentState = this.createMapStateSnapshot(map, players, bombs, powerUps);
+
+    // Compare with last state to find changes
+    if (this.lastGameMapState) {
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          const cellKey = `${x}-${y}`;
+          const currentCellState = currentState.get(cellKey);
+          const lastCellState = this.lastGameMapState.get(cellKey);
+
+          if (!lastCellState || JSON.stringify(currentCellState) !== JSON.stringify(lastCellState)) {
+            this.dirtyMapCells.add(cellKey);
+            this.framework.markElementDirty(`cell-${cellKey}`, currentCellState);
+          }
+        }
+      }
+    } else {
+      // First render - mark all cells as dirty
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          const cellKey = `${x}-${y}`;
+          this.dirtyMapCells.add(cellKey);
+          this.framework.markElementDirty(`cell-${cellKey}`, currentState.get(cellKey));
+        }
       }
     }
+
+    this.lastGameMapState = currentState;
+  }
+
+  // ✅ NEW: Create state snapshot for comparison
+  createMapStateSnapshot(map, players, bombs, powerUps) {
+    const snapshot = new Map();
+
+    for (let y = 0; y < map.length; y++) {
+      for (let x = 0; x < map[y].length; x++) {
+        const cellKey = `${x}-${y}`;
+        const playersAtPosition = Object.values(players).filter(p => p.x === x && p.y === y && p.alive);
+        const bombsAtPosition = bombs.filter(b => b.x === x && b.y === y);
+        const powerUpsAtPosition = powerUps.filter(p => p.x === x && p.y === y);
+
+        snapshot.set(cellKey, {
+          cellType: map[y][x],
+          players: playersAtPosition.map(p => ({ id: p.id, nickname: p.nickname })),
+          bombs: bombsAtPosition.map(b => ({ id: b.id })),
+          powerUps: powerUpsAtPosition.map(p => ({ id: p.id, type: p.type }))
+        });
+      }
+    }
+
+    return snapshot;
+  }
+
+  // ✅ NEW: Process dirty cells with framework's selective rendering
+  processDirtyCells(map, players, bombs, powerUps) {
+    const gameMapElement = this.framework.getCachedElement('game-map');
+    if (!gameMapElement) return;
+
+    // Ensure game map has proper structure for selective updates
+    this.ensureGameMapStructure(gameMapElement, map);
+
+    // Update only dirty cells
+    this.dirtyMapCells.forEach(cellKey => {
+      const [x, y] = cellKey.split('-').map(Number);
+      const cellData = this.lastGameMapState.get(cellKey);
+
+      this.framework.updateElement(`cell-${cellKey}`, (cellElement) => {
+        this.renderCellContent(cellElement, x, y, cellData, map, players, bombs, powerUps);
+      });
+    });
+
+    // Clear dirty cells after processing
+    this.dirtyMapCells.clear();
+  }
+
+  // ✅ NEW: Ensure game map has proper cell structure for selective updates
+  ensureGameMapStructure(gameMapElement, map) {
+    // Check if we need to create the initial structure
+    if (gameMapElement.children.length === 0) {
+      const mapHTML = map.map((row, y) =>
+        row.map((cell, x) => {
+          const cellElement = document.createElement('div');
+          cellElement.className = `cell ${cell}`;
+          cellElement.setAttribute('data-x', x);
+          cellElement.setAttribute('data-y', y);
+          cellElement.id = `cell-${x}-${y}`;
+
+          // Cache the element in framework
+          this.framework.cacheElement(`cell-${x}-${y}`, cellElement);
+
+          return cellElement;
+        })
+      );
+
+      // Flatten and append all cells
+      mapHTML.flat().forEach(cellElement => {
+        gameMapElement.appendChild(cellElement);
+      });
+    }
+  }
+
+  // ✅ NEW: Render individual cell content with hardware acceleration
+  renderCellContent(cellElement, x, y, cellData, map, players, bombs, powerUps) {
+    // Clear existing content
+    cellElement.innerHTML = '';
+
+    // Update cell class
+    cellElement.className = `cell ${cellData.cellType}`;
+
+    // Add power-ups with hardware acceleration
+    cellData.powerUps.forEach(powerUpData => {
+      const powerUpElement = this.createPowerUpElement(powerUpData);
+      cellElement.appendChild(powerUpElement);
+    });
+
+    // Add bombs with hardware acceleration
+    cellData.bombs.forEach(bombData => {
+      const bombElement = this.createBombElement(bombData);
+      cellElement.appendChild(bombElement);
+    });
+
+    // Add players with hardware acceleration
+    cellData.players.forEach((playerData, index) => {
+      const playerElement = this.createPlayerElement(playerData, index);
+      cellElement.appendChild(playerElement);
+    });
+  }
+
+  // ✅ NEW: Object pooling for power-up elements
+  createPowerUpElement(powerUpData) {
+    let powerUpElement = this.getPooledElement('powerUps');
+
+    if (!powerUpElement) {
+      powerUpElement = document.createElement('div');
+      // ✅ PERFORMANCE: Add hardware acceleration
+      powerUpElement.style.willChange = 'transform, opacity';
+      powerUpElement.style.transform = 'translate3d(-50%, -50%, 0)';
+    }
+
+    powerUpElement.className = `powerup powerup-${powerUpData.type}`;
+    powerUpElement.setAttribute('data-powerup-id', powerUpData.id);
+    powerUpElement.textContent = this.getPowerUpEmoji(powerUpData.type);
+
+    return powerUpElement;
+  }
+
+  // ✅ NEW: Object pooling for bomb elements
+  createBombElement(bombData) {
+    let bombElement = this.getPooledElement('bombs');
+
+    if (!bombElement) {
+      bombElement = document.createElement('div');
+      // ✅ PERFORMANCE: Add hardware acceleration
+      bombElement.style.willChange = 'transform, opacity';
+      bombElement.style.transform = 'translate3d(-50%, -50%, 0)';
+    }
+
+    bombElement.className = 'bomb';
+    bombElement.setAttribute('data-bomb-id', bombData.id);
+    bombElement.textContent = '💣';
+
+    return bombElement;
+  }
+
+  // ✅ NEW: Object pooling for player elements
+  createPlayerElement(playerData, index) {
+    let playerElement = this.getPooledElement('players');
+
+    if (!playerElement) {
+      playerElement = document.createElement('div');
+      // ✅ PERFORMANCE: Add hardware acceleration for smooth movement
+      playerElement.style.willChange = 'transform, opacity';
+      playerElement.style.transform = 'translate3d(0, 0, 0)';
+    }
+
+    const playerKeys = Object.keys(this.gameState.players);
+    const playerIndex = playerKeys.indexOf(playerData.id);
+
+    playerElement.className = `player player-${playerIndex}`;
+    playerElement.textContent = playerData.nickname.charAt(0).toUpperCase();
+
+    return playerElement;
+  }
+
+  // ✅ NEW: Object pooling system
+  getPooledElement(type) {
+    if (this.entityPool[type] && this.entityPool[type].length > 0) {
+      return this.entityPool[type].pop();
+    }
+    return null;
+  }
+
+  // ✅ NEW: Return element to pool for reuse
+  returnToPool(element, type) {
+    if (!this.entityPool[type]) {
+      this.entityPool[type] = [];
+    }
+
+    // Reset element state
+    element.className = '';
+    element.removeAttribute('data-powerup-id');
+    element.removeAttribute('data-bomb-id');
+    element.removeAttribute('data-player-id');
+    element.textContent = '';
+
+    // Return to pool if not at capacity
+    if (this.entityPool[type].length < 50) { // Limit pool size
+      this.entityPool[type].push(element);
+    }
+  }
+
+  // ✅ NEW: Clean up removed elements and return to pool
+  cleanupRemovedElements() {
+    // This method should be called when elements are removed from the DOM
+    // to return them to the object pool for reuse
+    const gameMapElement = this.framework.getCachedElement('game-map');
+    if (!gameMapElement) return;
+
+    // Find elements that are no longer needed and return to pool
+    const unusedBombs = gameMapElement.querySelectorAll('.bomb:not([data-bomb-id])');
+    const unusedPowerUps = gameMapElement.querySelectorAll('.powerup:not([data-powerup-id])');
+
+    unusedBombs.forEach(element => {
+      element.remove();
+      this.returnToPool(element, 'bombs');
+    });
+
+    unusedPowerUps.forEach(element => {
+      element.remove();
+      this.returnToPool(element, 'powerUps');
+    });
+  }
+
+  // ✅ NEW: Performance-aware animation quality system
+  checkAndAdjustAnimationQuality(currentTime) {
+    // Only check performance periodically to avoid overhead
+    if (currentTime - this.lastPerformanceCheck < this.performanceCheckInterval) {
+      return;
+    }
+
+    this.lastPerformanceCheck = currentTime;
+
+    // Get current FPS from framework
+    const metrics = this.framework.performanceMetrics;
+    const currentFPS = metrics.fps || 60;
+
+    // Determine appropriate animation quality based on FPS
+    let newQuality = this.animationQuality;
+
+    if (currentFPS >= this.fpsThresholds.high) {
+      newQuality = 'high';
+    } else if (currentFPS >= this.fpsThresholds.medium) {
+      newQuality = 'medium';
+    } else {
+      newQuality = 'low';
+    }
+
+    // Apply quality changes if needed
+    if (newQuality !== this.animationQuality) {
+      console.log(`🎮 Animation quality changed: ${this.animationQuality} → ${newQuality} (FPS: ${currentFPS})`);
+      this.animationQuality = newQuality;
+      this.applyAnimationQuality(newQuality);
+    }
+  }
+
+  // ✅ NEW: Apply animation quality settings
+  applyAnimationQuality(quality) {
+    const settings = this.animationSettings[quality];
+    const gameMapElement = this.framework.getCachedElement('game-map');
+
+    if (!gameMapElement) return;
+
+    // Apply CSS custom properties for dynamic animation control
+    const root = document.documentElement;
+    root.style.setProperty('--explosion-duration', `${settings.explosionDuration}s`);
+    root.style.setProperty('--powerup-pulse', settings.powerUpPulse ? 'running' : 'paused');
+    root.style.setProperty('--bomb-pulse', settings.bombPulse ? 'running' : 'paused');
+
+    // Toggle animation classes based on quality
+    gameMapElement.classList.toggle('high-quality', quality === 'high');
+    gameMapElement.classList.toggle('medium-quality', quality === 'medium');
+    gameMapElement.classList.toggle('low-quality', quality === 'low');
+
+    // Disable/enable transitions for player movement
+    const players = gameMapElement.querySelectorAll('.player');
+    players.forEach(player => {
+      if (settings.playerTransitions) {
+        player.style.transition = 'transform 0.1s ease';
+      } else {
+        player.style.transition = 'none';
+      }
+    });
+  }
+
+  // ✅ NEW: Get current animation settings
+  getCurrentAnimationSettings() {
+    return this.animationSettings[this.animationQuality];
+  }
+
+  // ✅ NEW: Check if specific animation should be enabled
+  shouldUseAnimation(animationType) {
+    const settings = this.getCurrentAnimationSettings();
+    return settings[animationType] !== false;
   }
 
   setupGameControls() {
@@ -1594,15 +1984,17 @@ class BombermanApp {
     }
   }
 
+  // ✅ OPTIMIZED: Use cached elements for timer updates
   updateTimer() {
-    const timerElement = document.getElementById('timer-value');
-    if (timerElement && this.gameState) {
-      const timeLeft = this.gameState.gameTimeLeft || 0;
-      timerElement.textContent = this.formatTime(timeLeft);
-      
+    if (this.gameState && this.gameState.gameTimeLeft !== undefined) {
+      const timeLeft = this.gameState.gameTimeLeft;
+
+      this.framework.updateElement('timer-value', (timerElement) => {
+        timerElement.textContent = this.formatTime(timeLeft);
+      });
+
       // Add warning class when time is low
-      const timerDisplay = document.getElementById('timer-display');
-      if (timerDisplay) {
+      this.framework.updateElement('timer-display', (timerDisplay) => {
         if (timeLeft <= 10) {
           timerDisplay.classList.add('timer-warning');
         } else if (timeLeft <= 30) {
@@ -1610,7 +2002,7 @@ class BombermanApp {
         } else {
           timerDisplay.classList.remove('timer-warning', 'timer-caution');
         }
-      }
+      });
     }
   }
 
