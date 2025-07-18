@@ -29,6 +29,10 @@ class GameServer {
     this.gameLoopInterval = null;
     this.gameLoopRunning = false;
 
+    // ✅ NEW: Chain reaction tracking to prevent infinite loops and duplicate explosions
+    this.explodingBombs = new Set(); // Track bombs currently exploding
+    this.explodedBombs = new Set(); // Track bombs that have already exploded
+
     console.log('GameServer initialized with 12x12 map');
   }
 
@@ -335,6 +339,9 @@ class GameServer {
       console.log(`🔄 Processing ${this.gameState.bombs.length} bombs`);
     }
 
+    // ✅ UPDATED: Process bombs with chain reaction support
+    const bombsToExplode = []; // Collect bombs that need to explode this cycle
+
     for (let i = this.gameState.bombs.length - 1; i >= 0; i--) {
       const bomb = this.gameState.bombs[i];
       bomb.timer -= 0.1; // Decrease by 100ms
@@ -342,12 +349,18 @@ class GameServer {
       console.log(`💣 Bomb ${bomb.id} at (${bomb.x}, ${bomb.y}) timer: ${bomb.timer.toFixed(1)}s`);
 
       if (bomb.timer <= 0) {
-        console.log(`💥 BOMB EXPLODING at (${bomb.x}, ${bomb.y})!`);
-        this.explodeBomb(bomb);
-        this.gameState.bombs.splice(i, 1);
+        console.log(`💥 BOMB TIMER EXPIRED at (${bomb.x}, ${bomb.y})!`);
+        bombsToExplode.push(bomb);
+        this.gameState.bombs.splice(i, 1); // Remove from active bombs
         gameStateChanged = true;
       }
     }
+
+    // ✅ NEW: Explode all bombs that reached timer = 0 (not chain reactions)
+    bombsToExplode.forEach(bomb => {
+      console.log(`💥 Exploding timer-expired bomb: ${bomb.id}`);
+      this.explodeBomb(bomb, 0); // Start chain reaction with depth 0
+    });
 
     // Process power-up spawning (if needed)
     // TODO: Add power-up spawning logic here
@@ -436,6 +449,11 @@ class GameServer {
       waitingTimer: null,
       waitingTimeLeft: 20
     };
+
+    // ✅ NEW: Reset chain reaction tracking sets
+    this.explodingBombs.clear();
+    this.explodedBombs.clear();
+    console.log('🔄 Chain reaction tracking sets reset');
 
     // Broadcast game reset event
     this.broadcastEvent('game_reset', { gameState: this.gameState });
@@ -531,12 +549,31 @@ class GameServer {
     return true;
   }
 
-  // ✅ UPDATED: Handle bomb explosion (called from game loop)
-  explodeBomb(bomb) {
-    console.log('Exploding bomb:', bomb.id, 'at position', bomb.x, bomb.y);
+  // ✅ UPDATED: Handle bomb explosion with chain reaction support (called from game loop)
+  explodeBomb(bomb, chainReactionDepth = 0) {
+    console.log(`💥 Exploding bomb: ${bomb.id} at position (${bomb.x}, ${bomb.y}) - Chain depth: ${chainReactionDepth}`);
+
+    // ✅ NEW: Prevent duplicate explosions - check if bomb already exploded or is exploding
+    if (this.explodedBombs.has(bomb.id) || this.explodingBombs.has(bomb.id)) {
+      console.log(`⚠️ Bomb ${bomb.id} already exploded or is exploding, skipping`);
+      return;
+    }
+
+    // Mark bomb as currently exploding
+    this.explodingBombs.add(bomb.id);
+
+    // Prevent infinite chain reactions by limiting depth
+    const MAX_CHAIN_DEPTH = 10;
+    if (chainReactionDepth > MAX_CHAIN_DEPTH) {
+      console.warn(`⚠️ Chain reaction depth limit reached (${MAX_CHAIN_DEPTH}), stopping chain`);
+      this.explodingBombs.delete(bomb.id);
+      this.explodedBombs.add(bomb.id);
+      return;
+    }
 
     // Create explosion pattern
     const explosions = [{ x: bomb.x, y: bomb.y }];
+    const triggeredBombs = []; // Track bombs triggered by this explosion
 
     // Add explosion in 4 directions
     const directions = [
@@ -555,6 +592,18 @@ class GameServer {
         if (this.gameState.map[y][x] === 'wall') break;
 
         explosions.push({ x, y });
+
+        // ✅ NEW: Check for bombs in explosion range for chain reactions
+        const bombsAtPosition = this.gameState.bombs.filter(otherBomb =>
+          otherBomb.x === x && otherBomb.y === y && otherBomb.id !== bomb.id
+        );
+
+        if (bombsAtPosition.length > 0) {
+          bombsAtPosition.forEach(triggeredBomb => {
+            console.log(`🔗 Chain reaction: Bomb ${triggeredBomb.id} at (${x}, ${y}) triggered by explosion`);
+            triggeredBombs.push(triggeredBomb);
+          });
+        }
 
         // Check for player hits
         Object.values(this.gameState.players).forEach(player => {
@@ -611,13 +660,14 @@ class GameServer {
       }
     });
 
-    // Broadcast explosion event
+    // Broadcast explosion event for this bomb
     if (this.wsManager) {
       const explosionEvent = {
         bombId: bomb.id,
         position: { x: bomb.x, y: bomb.y },
         explosions: explosions,
-        range: bomb.range
+        range: bomb.range,
+        chainReactionDepth: chainReactionDepth
       };
 
       console.log('📡 BROADCASTING bomb_exploded event:', explosionEvent);
@@ -627,7 +677,32 @@ class GameServer {
       console.error('❌ wsManager not available for broadcasting explosion event');
     }
 
-    console.log('💥 Bomb exploded at:', bomb.x, bomb.y, 'with explosions at:', explosions);
+    console.log(`💥 Bomb exploded at: (${bomb.x}, ${bomb.y}) with explosions at:`, explosions);
+
+    // ✅ NEW: Process chain reactions - trigger bombs that were hit by this explosion
+    if (triggeredBombs.length > 0) {
+      console.log(`🔗 Processing ${triggeredBombs.length} chain reaction bombs at depth ${chainReactionDepth + 1}`);
+
+      triggeredBombs.forEach(triggeredBomb => {
+        // Remove the triggered bomb from the game state bombs array
+        const bombIndex = this.gameState.bombs.findIndex(b => b.id === triggeredBomb.id);
+        if (bombIndex !== -1) {
+          this.gameState.bombs.splice(bombIndex, 1);
+          console.log(`🗑️ Removed triggered bomb ${triggeredBomb.id} from game state`);
+
+          // Recursively explode the triggered bomb with increased chain depth
+          // Add small delay to create visual sequence of explosions
+          setTimeout(() => {
+            this.explodeBomb(triggeredBomb, chainReactionDepth + 1);
+          }, 100); // 100ms delay between chain explosions for visual effect
+        }
+      });
+    }
+
+    // ✅ NEW: Mark bomb as exploded and clean up tracking
+    this.explodingBombs.delete(bomb.id);
+    this.explodedBombs.add(bomb.id);
+    console.log(`✅ Bomb ${bomb.id} explosion complete, marked as exploded`);
   }
 
   // ✅ PHASE 2: Power-up spawning system

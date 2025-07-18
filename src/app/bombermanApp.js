@@ -1618,12 +1618,21 @@ class BombermanApp {
     this.showNotification(`${eventData.nickname} left the game`);
   }
 
-  // ✅ CRITICAL: Handle bomb explosion events from server
+  // ✅ CRITICAL: Handle bomb explosion events from server with chain reaction support
   handleBombExplosion(eventData) {
-    console.log('Bomb explosion received:', eventData);
+    console.log('🔥 Bomb explosion received:', eventData);
+    console.log('Chain reaction depth:', eventData.chainReactionDepth || 0);
 
-    // Show explosion animation/effects
-    this.showExplosionEffect(eventData.position, eventData.explosions);
+    // ✅ NEW: Handle chain reaction explosions with proper sequencing
+    const chainDepth = eventData.chainReactionDepth || 0;
+    const isChainReaction = chainDepth > 0;
+
+    if (isChainReaction) {
+      console.log(`🔗 Chain reaction explosion at depth ${chainDepth}`);
+    }
+
+    // Show explosion animation/effects with chain reaction awareness
+    this.showExplosionEffect(eventData.position, eventData.explosions, eventData.range, chainDepth);
 
     // Play explosion sound (if implemented)
     // this.playExplosionSound();
@@ -1631,9 +1640,9 @@ class BombermanApp {
     // The game state will be updated via game_state_update message
   }
 
-  // ✅ ENHANCED: Show explosion visual effects with animation
-  showExplosionEffect(position, explosions, range = 1) {
-    console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} cells`);
+  // ✅ ENHANCED: Show explosion visual effects with animation and chain reaction support
+  showExplosionEffect(position, explosions, range = 1, chainDepth = 0) {
+    console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} cells - Chain depth: ${chainDepth}`);
 
     const gameMap = document.getElementById('game-map');
     if (!gameMap) {
@@ -1644,23 +1653,31 @@ class BombermanApp {
     console.log('✅ Game map found:', gameMap);
     console.log('📍 Explosion cells:', explosions);
 
-    // Create explosion animations for each affected cell
+    // ✅ NEW: Create explosion animations with chain reaction awareness
     explosions.forEach((cell, index) => {
       const type = index === 0 ? 'center' : 'blast';
-      console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y})`);
-      this.createExplosionAnimation(cell.x, cell.y, type);
+      console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y}) - Chain depth: ${chainDepth}`);
+
+      // Add slight delay for chain reactions to create visual sequence
+      const delay = chainDepth > 0 ? chainDepth * 50 : 0; // 50ms delay per chain level
+
+      setTimeout(() => {
+        this.createExplosionAnimation(cell.x, cell.y, type, chainDepth);
+      }, delay);
     });
 
-    // Clean up explosion animations after 1.5 seconds
+    // ✅ NEW: Improved cleanup - don't clean up immediately for chain reactions
+    // Let each explosion manage its own cleanup to avoid conflicts
+    const cleanupDelay = 1500 + (chainDepth * 100); // Longer cleanup for chain reactions
     setTimeout(() => {
-      console.log('🧹 Cleaning up explosion animations');
+      console.log(`🧹 Cleaning up explosion animations for chain depth ${chainDepth}`);
       this.cleanupExplosionAnimations();
-    }, 1500);
+    }, cleanupDelay);
   }
 
-  // ✅ NEW: Create individual explosion animation for a cell
-  createExplosionAnimation(x, y, type = 'blast') {
-    console.log(`🎯 Creating ${type} explosion animation at (${x}, ${y})`);
+  // ✅ NEW: Create individual explosion animation for a cell with chain reaction support
+  createExplosionAnimation(x, y, type = 'blast', chainDepth = 0) {
+    console.log(`🎯 Creating ${type} explosion animation at (${x}, ${y}) - Chain depth: ${chainDepth}`);
 
     const gameMap = document.getElementById('game-map');
     if (!gameMap) {
@@ -1691,14 +1708,15 @@ class BombermanApp {
     // Create explosion element with simplified approach
     const explosionElement = document.createElement('div');
     explosionElement.setAttribute('data-explosion', 'true');
+    explosionElement.setAttribute('data-chain-depth', chainDepth.toString());
 
-    // Add explosion content and classes based on type
+    // ✅ NEW: Add explosion content and classes based on type and chain depth
     if (type === 'center') {
       explosionElement.innerHTML = '💥';
-      explosionElement.className = 'explosion-effect explosion-center';
+      explosionElement.className = `explosion-effect explosion-center ${chainDepth > 0 ? 'chain-reaction' : ''}`;
     } else {
       explosionElement.innerHTML = '🔥';
-      explosionElement.className = 'explosion-effect explosion-blast';
+      explosionElement.className = `explosion-effect explosion-blast ${chainDepth > 0 ? 'chain-reaction' : ''}`;
     }
 
     // ✅ SIMPLIFIED: Direct inline styles for reliability

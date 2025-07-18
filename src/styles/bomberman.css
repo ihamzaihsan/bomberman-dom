@@ -1099,6 +1099,22 @@ body {
   transition: all 0.3s ease-in !important;
 }
 
+/* ✅ NEW: Chain reaction explosion styles */
+.explosion-effect.chain-reaction {
+  filter: hue-rotate(60deg) brightness(1.3);
+  animation-duration: 1.8s !important;
+}
+
+.explosion-center.chain-reaction {
+  font-size: 3em !important;
+  animation: explosionChainCenter 1.8s ease-out !important;
+}
+
+.explosion-blast.chain-reaction {
+  font-size: 2.3em !important;
+  animation: explosionChainBlast 1.8s ease-out !important;
+}
+
 /* ✅ FIXED: EXPLOSION ANIMATIONS */
 @keyframes explosionCenter {
   0% {
@@ -1161,6 +1177,63 @@ body {
       0 0 20px rgba(255, 150, 0, 0.6),
       0 0 30px rgba(255, 200, 0, 0.4),
       2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ✅ NEW: Chain reaction explosion animations */
+@keyframes explosionChainCenter {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+    filter: brightness(3) hue-rotate(60deg) saturate(1.5);
+  }
+  15% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(2.2) rotate(30deg);
+    filter: brightness(4) hue-rotate(90deg) saturate(2);
+  }
+  40% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.8) rotate(60deg);
+    filter: brightness(3.5) hue-rotate(120deg) saturate(1.8);
+  }
+  70% {
+    opacity: 0.9;
+    transform: translate3d(0, 0, 0) scale(1.4) rotate(90deg);
+    filter: brightness(3) hue-rotate(150deg) saturate(1.5);
+  }
+  100% {
+    opacity: 0.3;
+    transform: translate3d(0, 0, 0) scale(1.1) rotate(120deg);
+    filter: brightness(2) hue-rotate(180deg) saturate(1.2);
+  }
+}
+
+@keyframes explosionChainBlast {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.5);
+    filter: brightness(2.5) hue-rotate(60deg) saturate(1.5);
+  }
+  25% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.6);
+    filter: brightness(3.5) hue-rotate(90deg) saturate(2);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.4);
+    filter: brightness(3) hue-rotate(120deg) saturate(1.8);
+  }
+  80% {
+    opacity: 0.8;
+    transform: translate3d(0, 0, 0) scale(1.2);
+    filter: brightness(2.5) hue-rotate(150deg) saturate(1.3);
+  }
+  100% {
+    opacity: 0.3;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: brightness(1.8) hue-rotate(180deg) saturate(1);
   }
 }
 
