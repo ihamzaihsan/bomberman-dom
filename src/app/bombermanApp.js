@@ -43,6 +43,11 @@ class BombermanApp {
       powerUps: new Map()
     }; // Track entity states for selective updates
 
+    // ✅ NEW: Movement-aware rendering optimization
+    this.lastInvalidMoveTime = 0; // Track when last invalid move occurred
+    this.lastInvalidMove = null; // Cache for repeated invalid move detection
+    this.lastRenderStateSignature = ''; // Track rendering state changes
+
     // ✅ NEW: Performance-aware animation system
     this.animationQuality = 'high'; // 'high', 'medium', 'low'
     this.lastPerformanceCheck = 0;
@@ -102,6 +107,38 @@ class BombermanApp {
     const nicknameInput = document.getElementById('nickname-input');
     if (nicknameInput) {
       nicknameInput.focus();
+    }
+
+    // ✅ NEW: Expose debug tools for movement checker testing
+    this.setupDebugTools();
+  }
+
+  // ✅ NEW: Setup debugging tools for movement performance analysis
+  setupDebugTools() {
+    if (typeof window !== 'undefined') {
+      window.bombermanDebug = {
+        togglePerformanceStats: () => this.togglePerformanceStats(),
+        resetPerformanceCounters: () => this.resetPerformanceCounters(),
+        getMovementStats: () => this.getMovementCheckerStats(),
+        getFrameworkCounters: () => this.framework.getAllCounters(),
+        simulateInvalidMoves: (count = 10) => {
+          const directions = ['up', 'down', 'left', 'right'];
+          for (let i = 0; i < count; i++) {
+            setTimeout(() => {
+              const dir = directions[Math.floor(Math.random() * directions.length)];
+              console.log(`Simulating move: ${dir}`);
+              this.movePlayer(dir);
+            }, i * 100);
+          }
+        }
+      };
+      
+      console.log('🎮 Bomberman Debug Tools Available:');
+      console.log('  bombermanDebug.togglePerformanceStats() - Show/hide movement performance stats');
+      console.log('  bombermanDebug.resetPerformanceCounters() - Reset all performance counters');
+      console.log('  bombermanDebug.getMovementStats() - Get current movement checker stats');
+      console.log('  bombermanDebug.getFrameworkCounters() - Get all framework performance counters');
+      console.log('  bombermanDebug.simulateInvalidMoves(count) - Simulate invalid moves for testing');
     }
   }
 
@@ -1063,6 +1100,48 @@ class BombermanApp {
         speedElement.textContent = player.powerUps?.speed || 1;
       }
     });
+
+    // ✅ NEW: Movement checker performance stats (visible in debug mode)
+    if (window.location.hash.includes('debug') || window.localStorage.getItem('showPerformanceStats') === 'true') {
+      this.updateMovementCheckerStats();
+    }
+  }
+
+  // ✅ NEW: Update movement checker performance display
+  updateMovementCheckerStats() {
+    const stats = this.getMovementCheckerStats();
+    
+    // Create or update performance stats container
+    let perfContainer = document.getElementById('movement-perf-stats');
+    if (!perfContainer) {
+      perfContainer = document.createElement('div');
+      perfContainer.id = 'movement-perf-stats';
+      perfContainer.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-family: monospace;
+        z-index: 10000;
+        max-width: 250px;
+      `;
+      document.body.appendChild(perfContainer);
+    }
+
+    perfContainer.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 5px;">🎮 Movement Checker Stats</div>
+      <div>Skipped (Invalid): ${stats.skippedRendersInvalidMove}</div>
+      <div>Skipped (No Change): ${stats.skippedRendersNoChange}</div>
+      <div>Total Optimizations: ${stats.skippedRendersInvalidMove + stats.skippedRendersNoChange}</div>
+      <div>Last Invalid: ${stats.lastInvalidMoveTime ? stats.lastInvalidMoveTime + 'ms ago' : 'None'}</div>
+      <div style="margin-top: 5px; font-size: 10px; opacity: 0.7;">
+        Add #debug to URL or set localStorage.showPerformanceStats=true to show
+      </div>
+    `;
   }
 
   renderGameMap() {
@@ -1120,7 +1199,7 @@ class BombermanApp {
     }
   }
 
-  // ✅ ENHANCED: Selective rendering with framework integration
+  // ✅ ENHANCED: Selective rendering with movement-aware optimization
   updateGameMapOptimized() {
     if (!this.gameState || !this.gameState.map) return;
 
@@ -1129,8 +1208,80 @@ class BombermanApp {
 
     if (!gameMapElement) return;
 
+    // ✅ FPS OPTIMIZATION: Skip rendering if no meaningful changes occurred
+    if (this.shouldSkipRendering()) {
+      console.log('Skipping rendering - no significant changes detected');
+      return;
+    }
+
     // Use framework's selective rendering for optimal performance
     this.updateGameMapSelective();
+  }
+
+  // ✅ NEW: Intelligent rendering skip detection
+  shouldSkipRendering() {
+    // Skip if there's been a recent invalid movement attempt
+    if (this.lastInvalidMoveTime && (Date.now() - this.lastInvalidMoveTime) < 50) {
+      this.framework.incrementCounter('skipped-renders-invalid-move');
+      return true;
+    }
+
+    // Skip if no players are currently moving and no dynamic entities changed
+    const currentPlayerPositions = Object.values(this.gameState.players || {})
+      .filter(p => p.alive)
+      .map(p => `${p.x}-${p.y}`).join(',');
+    
+    const currentBombCount = (this.gameState.bombs || []).length;
+    const currentPowerUpCount = (this.gameState.powerUps || []).length;
+
+    const stateSignature = `${currentPlayerPositions}-${currentBombCount}-${currentPowerUpCount}`;
+    
+    if (this.lastRenderStateSignature === stateSignature) {
+      this.framework.incrementCounter('skipped-renders-no-change');
+      return true;
+    }
+
+    this.lastRenderStateSignature = stateSignature;
+    return false;
+  }
+
+  // ✅ NEW: Movement checker performance stats
+  getMovementCheckerStats() {
+    return {
+      skippedRendersInvalidMove: this.framework.getCounter('skipped-renders-invalid-move') || 0,
+      skippedRendersNoChange: this.framework.getCounter('skipped-renders-no-change') || 0,
+      lastInvalidMoveTime: this.lastInvalidMoveTime ? Date.now() - this.lastInvalidMoveTime : null,
+      cachedInvalidMove: this.lastInvalidMove
+    };
+  }
+
+  // ✅ NEW: Toggle performance stats display
+  togglePerformanceStats() {
+    const current = window.localStorage.getItem('showPerformanceStats') === 'true';
+    window.localStorage.setItem('showPerformanceStats', (!current).toString());
+    
+    if (!current) {
+      console.log('🎮 Movement checker performance stats enabled');
+      this.updateMovementCheckerStats();
+    } else {
+      console.log('🎮 Movement checker performance stats disabled');
+      const perfContainer = document.getElementById('movement-perf-stats');
+      if (perfContainer) {
+        perfContainer.remove();
+      }
+    }
+    
+    return !current;
+  }
+
+  // ✅ NEW: Reset performance counters
+  resetPerformanceCounters() {
+    this.framework.resetCounter('skipped-renders-invalid-move');
+    this.framework.resetCounter('skipped-renders-no-change');
+    this.lastInvalidMoveTime = 0;
+    this.lastInvalidMove = null;
+    this.lastRenderStateSignature = '';
+    console.log('🎮 Movement checker performance counters reset');
   }
 
   // ✅ NEW: Selective map rendering using framework capabilities
@@ -1511,6 +1662,19 @@ class BombermanApp {
   movePlayer(direction) {
     if (this.isMoving) return; // Prevent multiple simultaneous moves
 
+    // ✅ ENHANCED: Pre-validate movement with rendering optimization
+    const moveValidation = this.validateClientMoveWithRenderCheck(direction);
+    if (!moveValidation.isValid) {
+      console.log(`Move ${direction} blocked: ${moveValidation.reason}`);
+      
+      // ✅ FPS OPTIMIZATION: Track invalid move for rendering skip
+      this.lastInvalidMoveTime = Date.now();
+      
+      // ✅ FPS OPTIMIZATION: Skip all rendering operations for invalid moves
+      // No network request, no rendering update, no state change
+      return;
+    }
+
     this.isMoving = true;
 
     console.log(`Attempting to move ${direction} for player ${this.playerId}`);
@@ -1529,6 +1693,143 @@ class BombermanApp {
     setTimeout(() => {
       this.isMoving = false;
     }, 100);
+  }
+
+  // ✅ ENHANCED: Movement validation with detailed feedback for rendering optimization
+  validateClientMoveWithRenderCheck(direction) {
+    const player = this.gameState?.players[this.playerId];
+    
+    // ✅ OPTIMIZATION: Check for repeated invalid moves in the same direction
+    const moveKey = `${player?.x}-${player?.y}-${direction}`;
+    if (this.lastInvalidMove === moveKey && (Date.now() - this.lastInvalidMoveTime) < 100) {
+      return { isValid: false, reason: 'Repeated invalid move - cached result' };
+    }
+    
+    // Basic validation checks
+    if (!player) {
+      return { isValid: false, reason: 'No player found' };
+    }
+    
+    if (!player.alive) {
+      return { isValid: false, reason: 'Player is not alive' };
+    }
+    
+    if (!this.gameState?.gameStarted) {
+      return { isValid: false, reason: 'Game not started' };
+    }
+    
+    if (this.gameState?.gameEnded) {
+      return { isValid: false, reason: 'Game has ended' };
+    }
+
+    let newX = player.x;
+    let newY = player.y;
+
+    // Calculate new position
+    switch (direction) {
+      case 'up':
+        newY = Math.max(0, player.y - 1);
+        break;
+      case 'down':
+        newY = Math.min(11, player.y + 1);
+        break;
+      case 'left':
+        newX = Math.max(0, player.x - 1);
+        break;
+      case 'right':
+        newX = Math.min(11, player.x + 1);
+        break;
+      default:
+        return { isValid: false, reason: 'Invalid direction' };
+    }
+
+    // Check if position actually changed (hitting boundary)
+    if (newX === player.x && newY === player.y) {
+      this.lastInvalidMove = moveKey;
+      return { isValid: false, reason: 'Boundary collision - no movement needed' };
+    }
+
+    // Check if new position is valid (not wall or block)
+    if (!this.gameState.map[newY] || this.gameState.map[newY][newX] !== 'empty') {
+      const cellType = this.gameState.map[newY]?.[newX] || 'out-of-bounds';
+      this.lastInvalidMove = moveKey;
+      return { isValid: false, reason: `Terrain collision - ${cellType}` };
+    }
+
+    // Check for bomb collision
+    const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
+    if (bombAtPosition) {
+      this.lastInvalidMove = moveKey;
+      return { isValid: false, reason: 'Bomb collision' };
+    }
+
+    // Check for other players at the same position
+    const playerAtPosition = Object.values(this.gameState.players).find(
+      p => p.id !== this.playerId && p.alive && p.x === newX && p.y === newY
+    );
+    if (playerAtPosition) {
+      this.lastInvalidMove = moveKey;
+      return { isValid: false, reason: `Player collision - ${playerAtPosition.nickname}` };
+    }
+
+    // Clear invalid move cache on successful validation
+    this.lastInvalidMove = null;
+    return { isValid: true, reason: 'Valid move', newPosition: { x: newX, y: newY } };
+  }
+
+  // ✅ PERFORMANCE: Client-side movement validation to prevent unnecessary requests
+  validateClientMove(direction) {
+    const player = this.gameState?.players[this.playerId];
+    if (!player || !player.alive || !this.gameState?.gameStarted || this.gameState?.gameEnded) {
+      return false;
+    }
+
+    let newX = player.x;
+    let newY = player.y;
+
+    // Calculate new position
+    switch (direction) {
+      case 'up':
+        newY = Math.max(0, player.y - 1);
+        break;
+      case 'down':
+        newY = Math.min(11, player.y + 1);
+        break;
+      case 'left':
+        newX = Math.max(0, player.x - 1);
+        break;
+      case 'right':
+        newX = Math.min(11, player.x + 1);
+        break;
+      default:
+        return false;
+    }
+
+    // Check if position actually changed (hitting boundary)
+    if (newX === player.x && newY === player.y) {
+      return false;
+    }
+
+    // Check if new position is valid (not wall or block)
+    if (!this.gameState.map[newY] || this.gameState.map[newY][newX] !== 'empty') {
+      return false;
+    }
+
+    // Check for bomb collision
+    const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
+    if (bombAtPosition) {
+      return false;
+    }
+
+    // Check for other players at the same position
+    const playerAtPosition = Object.values(this.gameState.players).find(
+      p => p.id !== this.playerId && p.alive && p.x === newX && p.y === newY
+    );
+    if (playerAtPosition) {
+      return false;
+    }
+
+    return true;
   }
 
   placeBomb() {
