@@ -44,6 +44,9 @@ export class Framework {
     this.renderingStrategy = 'selective'; // 'full' or 'selective'
     this.lastRenderState = new Map();
     
+    // ✅ NEW: Performance counters for optimization tracking
+    this.performanceCounters = new Map();
+    
     // Performance monitoring
     this.performanceObserver = null;
     this.performanceCallbacks = [];
@@ -757,6 +760,47 @@ export class Framework {
     } else {
       handler();
     }
+    return this;
+  }
+
+  // ✅ NEW: Performance counter methods for optimization tracking
+  
+  /**
+   * Increment a performance counter
+   */
+  incrementCounter(counterName) {
+    const current = this.performanceCounters.get(counterName) || 0;
+    this.performanceCounters.set(counterName, current + 1);
+    return this;
+  }
+
+  /**
+   * Get current value of a performance counter
+   */
+  getCounter(counterName) {
+    return this.performanceCounters.get(counterName) || 0;
+  }
+
+  /**
+   * Reset a performance counter
+   */
+  resetCounter(counterName) {
+    this.performanceCounters.set(counterName, 0);
+    return this;
+  }
+
+  /**
+   * Get all performance counters
+   */
+  getAllCounters() {
+    return Object.fromEntries(this.performanceCounters);
+  }
+
+  /**
+   * Set a counter to a specific value
+   */
+  setCounter(counterName, value) {
+    this.performanceCounters.set(counterName, value);
     return this;
   }
 }
