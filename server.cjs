@@ -14,7 +14,7 @@ class GameServer {
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
-      gameTimeLeft: 60,
+      gameTimeLeft: 180,
       gameTimeTimer: null,
       gameEnded: false,
       winner: null,

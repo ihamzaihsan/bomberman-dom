@@ -491,7 +491,7 @@ class BombermanApp {
   }
 
   // Show notification for player events
-  showNotification(message) {
+  showNotification(message, type = 'success') {
     let notificationDiv = document.getElementById('game-notification');
     if (!notificationDiv) {
       notificationDiv = document.createElement('div');
@@ -501,7 +501,6 @@ class BombermanApp {
         top: 60px;
         left: 50%;
         transform: translateX(-50%);
-        background: #27ae60;
         color: white;
         padding: 10px 20px;
         border-radius: 5px;
@@ -509,17 +508,35 @@ class BombermanApp {
         font-weight: bold;
         opacity: 0;
         transition: opacity 0.3s;
+        max-width: 400px;
+        text-align: center;
       `;
       document.body.appendChild(notificationDiv);
     }
 
+    // Set background color based on notification type
+    const colors = {
+      success: '#27ae60',
+      damage: '#e74c3c',
+      warning: '#f39c12',
+      info: '#3498db'
+    };
+
+    notificationDiv.style.background = colors[type] || colors.success;
     notificationDiv.textContent = message;
     notificationDiv.style.opacity = '1';
 
-    // Auto-hide after 3 seconds
+    // Auto-hide after different durations based on type
+    const durations = {
+      success: 3000,
+      damage: 4000,  // Damage notifications stay longer
+      warning: 3500,
+      info: 3000
+    };
+
     setTimeout(() => {
       notificationDiv.style.opacity = '0';
-    }, 3000);
+    }, durations[type] || 3000);
   }
 
   initPerformanceMonitoring() {
@@ -1075,31 +1092,32 @@ class BombermanApp {
   }
 
   // ✅ OPTIMIZED: Use cached elements for player stats updates
-  updatePlayerStats() {
+  updatePlayerStats(forceUpdate = false) {
     const player = this.gameState.players[this.playerId];
     if (!player) return;
 
     // Use framework's selective updating for better performance
+    // ✅ FIX: Use forceUpdate when we know player data has changed (e.g., damage, power-ups)
     this.framework.updateElement('player-lives', (livesElement) => {
       livesElement.textContent = player.alive ? player.lives : 0;
-    });
+    }, forceUpdate);
 
     this.framework.updateElement('player-bombs', (bombsElement) => {
       bombsElement.textContent = player.powerUps?.bombs || 1;
-    });
+    }, forceUpdate);
 
     // ✅ POWER-UP SYSTEM: Enhanced stats display with caching
     this.framework.updateElement('player-flames', (flamesElement) => {
       if (flamesElement) {
         flamesElement.textContent = player.powerUps?.flames || 1;
       }
-    });
+    }, forceUpdate);
 
     this.framework.updateElement('player-speed', (speedElement) => {
       if (speedElement) {
         speedElement.textContent = player.powerUps?.speed || 1;
       }
-    });
+    }, forceUpdate);
 
     // ✅ NEW: Movement checker performance stats (visible in debug mode)
     if (window.location.hash.includes('debug') || window.localStorage.getItem('showPerformanceStats') === 'true') {
@@ -2094,7 +2112,7 @@ class BombermanApp {
 
     // Update player stats if it's the current player
     if (isCurrentPlayer) {
-      this.updatePlayerStats();
+      this.updatePlayerStats(true); // forceUpdate = true since power-ups changed
     }
   }
 
@@ -2151,11 +2169,165 @@ class BombermanApp {
 
   handlePlayerDamaged(eventData) {
     console.log(`Player ${eventData.nickname} damaged! Lives: ${eventData.livesRemaining}`);
-    // Could add visual feedback here (screen flash, damage indicator, etc.)
 
     // Update player stats if it's the current player
     if (eventData.playerId === this.playerId) {
-      this.updatePlayerStats();
+      // ✅ FIX: Update the game state immediately with the correct lives value
+      // This ensures the UI shows the correct value even before the server sends game_state_update
+      if (this.gameState && this.gameState.players[this.playerId]) {
+        this.gameState.players[this.playerId].lives = eventData.livesRemaining;
+      }
+
+      // ✅ FIX: Force update player stats since we know the data has changed
+      this.updatePlayerStats(true); // forceUpdate = true
+
+      // ✅ NEW: Trigger damage effect for visual feedback (without popup notification)
+      this.triggerDamageEffect(eventData);
+    }
+  }
+
+  // ✅ NEW: Visual damage effect system (without popup notifications)
+  triggerDamageEffect(eventData) {
+    console.log('🩸 Triggering damage effect for player:', eventData.nickname);
+
+    // 1. Screen flash effect
+    this.createScreenFlash();
+
+    // 2. Screen shake effect
+    this.createScreenShake();
+
+    // 3. Lives counter highlight effect
+    this.highlightLivesCounter();
+
+    // 4. Play damage sound (if audio is enabled)
+    this.playDamageSound();
+
+    // Note: Removed damage indicator popup and notification as requested
+  }
+
+  // ✅ NEW: Screen flash effect
+  createScreenFlash() {
+    // Create or get existing flash overlay
+    let flashOverlay = document.getElementById('damage-flash-overlay');
+    if (!flashOverlay) {
+      flashOverlay = document.createElement('div');
+      flashOverlay.id = 'damage-flash-overlay';
+      flashOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(circle, rgba(255,0,0,0.4) 0%, rgba(255,0,0,0.1) 100%);
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.1s ease-in-out;
+      `;
+      document.body.appendChild(flashOverlay);
+    }
+
+    // Trigger flash animation
+    flashOverlay.style.opacity = '1';
+    setTimeout(() => {
+      flashOverlay.style.opacity = '0';
+    }, 150);
+  }
+
+
+
+  // ✅ NEW: Screen shake effect
+  createScreenShake() {
+    const gameScreen = document.querySelector('.game-screen') || document.body;
+
+    // Add shake class
+    gameScreen.classList.add('damage-shake');
+
+    // Add CSS for shake animation if not present
+    if (!document.getElementById('damage-shake-styles')) {
+      const style = document.createElement('style');
+      style.id = 'damage-shake-styles';
+      style.textContent = `
+        @keyframes damageShake {
+          0%, 100% { transform: translateX(0); }
+          10% { transform: translateX(-5px); }
+          20% { transform: translateX(5px); }
+          30% { transform: translateX(-3px); }
+          40% { transform: translateX(3px); }
+          50% { transform: translateX(-2px); }
+          60% { transform: translateX(2px); }
+          70% { transform: translateX(-1px); }
+          80% { transform: translateX(1px); }
+          90% { transform: translateX(0); }
+        }
+        .damage-shake {
+          animation: damageShake 0.5s ease-in-out;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Remove shake class after animation
+    setTimeout(() => {
+      gameScreen.classList.remove('damage-shake');
+    }, 500);
+  }
+
+  // ✅ NEW: Highlight lives counter
+  highlightLivesCounter() {
+    const livesElement = this.framework.getCachedElement('player-lives') ||
+                        document.getElementById('player-lives');
+
+    if (livesElement) {
+      // Add highlight effect
+      livesElement.style.transition = 'all 0.3s ease';
+      livesElement.style.color = '#ff0000';
+      livesElement.style.fontWeight = 'bold';
+      livesElement.style.textShadow = '0 0 10px rgba(255, 0, 0, 0.8)';
+      livesElement.style.transform = 'scale(1.2)';
+
+      // Reset after effect
+      setTimeout(() => {
+        livesElement.style.color = '';
+        livesElement.style.fontWeight = '';
+        livesElement.style.textShadow = '';
+        livesElement.style.transform = '';
+      }, 1000);
+    }
+  }
+
+  // ✅ NEW: Play damage sound effect
+  playDamageSound() {
+    try {
+      // Create audio context if not exists
+      if (!this.audioContext && typeof AudioContext !== 'undefined') {
+        this.audioContext = new AudioContext();
+      }
+
+      if (!this.audioContext) {
+        console.warn('AudioContext not available');
+        return;
+      }
+
+      // Generate damage sound using Web Audio API
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+
+      // Configure damage sound (low frequency hit sound)
+      oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.2);
+
+      gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + 0.2);
+
+    } catch (error) {
+      console.warn('Could not play damage sound:', error);
     }
   }
 
