@@ -163,10 +163,25 @@ class WebSocketManager {
       return;
     }
     
+    // ✅ PERFORMANCE: Pre-validate move to avoid unnecessary processing
+    const canMove = this.gameServer.validatePlayerMove(playerId, direction);
+    
+    if (!canMove) {
+      // ✅ OPTIMIZATION: Early rejection - no server processing or broadcasting needed
+      this.sendToClient(ws, {
+        type: 'move_result',
+        success: false,
+        direction: direction,
+        reason: 'Invalid move'
+      });
+      return;
+    }
+    
+    // Only call movePlayer if the move is valid
     const success = this.gameServer.movePlayer(playerId, direction);
     
     if (success) {
-      // Broadcast updated game state to all players
+      // ✅ PERFORMANCE: Only broadcast when position actually changes
       this.broadcastGameState();
     }
     
