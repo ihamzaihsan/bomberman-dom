@@ -459,6 +459,63 @@ class GameServer {
     this.broadcastEvent('game_reset', { gameState: this.gameState });
   }
 
+  // ✅ PERFORMANCE: Pre-validate player movement without actually moving
+  validatePlayerMove(playerId, direction) {
+    const player = this.gameState.players[playerId];
+    
+    // Basic validation checks
+    if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) {
+      return false;
+    }
+
+    let newX = player.x;
+    let newY = player.y;
+
+    // Calculate new position
+    switch (direction) {
+      case 'up':
+        newY = Math.max(0, player.y - 1);
+        break;
+      case 'down':
+        newY = Math.min(11, player.y + 1);
+        break;
+      case 'left':
+        newX = Math.max(0, player.x - 1);
+        break;
+      case 'right':
+        newX = Math.min(11, player.x + 1);
+        break;
+      default:
+        return false;
+    }
+
+    // Check if position actually changed (hitting boundary)
+    if (newX === player.x && newY === player.y) {
+      return false;
+    }
+
+    // Check if new position is valid (not wall or block)
+    if (!this.gameState.map[newY] || this.gameState.map[newY][newX] !== 'empty') {
+      return false;
+    }
+
+    // Check for bomb collision
+    const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
+    if (bombAtPosition) {
+      return false;
+    }
+
+    // Check for other players at the same position
+    const playerAtPosition = Object.values(this.gameState.players).find(
+      p => p.id !== playerId && p.alive && p.x === newX && p.y === newY
+    );
+    if (playerAtPosition) {
+      return false;
+    }
+
+    return true;
+  }
+
   movePlayer(playerId, direction) {
     const player = this.gameState.players[playerId];
     if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) {
