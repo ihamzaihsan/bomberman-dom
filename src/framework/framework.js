@@ -1,806 +1,152 @@
+import {
+  StateManager,
+  EventManager,
+  PerformanceMonitor,
+  SelectiveRenderer,
+  GameLoop,
+  Router,
+  VirtualDOM
+} from './modules/index.js';
+
 export class Framework {
   constructor() {
-    this.state = {};
-    this.routes = {};
-    this.currentRoute = '';
-    this.subscribers = [];
-    this.eventHandlers = new Map();
-    this.errorComponent = null;
-    this.updateQueue = [];
-    this.isUpdating = false;
-    
-    // Add event emitter functionality
-    this.eventEmitter = new Map();
-    
-    // Performance optimization properties
-    this.gameLoop = null;
-    this.lastFrameTime = 0;
-    this.frameCount = 0;
-    this.fps = 0;
-    this.fpsUpdateTime = 0;
-    this.performanceMetrics = {
-      frameTime: 0,
-      renderTime: 0,
-      updateTime: 0,
-      totalFrames: 0,
-      droppedFrames: 0,
-      averageFrameTime: 0,
-      minFrameTime: Infinity,
-      maxFrameTime: 0
-    };
-    this.targetFPS = 60;
-    this.frameTimeThreshold = 1000 / this.targetFPS; // 16.67ms for 60fps
-    
-    // ✅ ENHANCED: Virtual DOM and selective rendering optimization
-    this.previousVDOM = null;
-    this.renderQueue = [];
-    this.isRendering = false;
-    this.dirtyComponents = new Set();
-    this.renderCache = new Map();
-    
-    // ✅ NEW: Selective rendering system
-    this.elementCache = new Map();
-    this.dirtyElements = new Set();
-    this.renderingStrategy = 'selective'; // 'full' or 'selective'
-    this.lastRenderState = new Map();
-    
-    // ✅ NEW: Performance counters for optimization tracking
-    this.performanceCounters = new Map();
-    
-    // Performance monitoring
-    this.performanceObserver = null;
-    this.performanceCallbacks = [];
-    this.initPerformanceMonitoring();
+    // Initialize all modules
+    this.stateManager = new StateManager();
+    this.eventManager = new EventManager();
+    this.performanceMonitor = new PerformanceMonitor();
+    this.selectiveRenderer = new SelectiveRenderer();
+    this.router = new Router();
+    this.virtualDOM = new VirtualDOM();
+
+    // Initialize GameLoop with dependencies
+    this.gameLoop = new GameLoop(
+      this.performanceMonitor,
+      this.selectiveRenderer,
+      this.eventManager
+    );
+
+    // Set up cross-module connections
+    this.router.setRenderCallback(() => this.render());
+
+    // Legacy compatibility properties - delegate to modules
+    // These maintain the existing API for BombermanApp
   }
 
-  // ✅ NEW: Selective rendering methods
-  
-  /**
-   * Mark specific elements as dirty for selective re-rendering
-   */
-  markElementDirty(elementId, data = null) {
-    this.dirtyElements.add(elementId);
-    if (data) {
-      this.lastRenderState.set(elementId, data);
-    }
-    return this;
-  }
+  // ===== STATE MANAGEMENT DELEGATION =====
+  get state() { return this.stateManager.state; }
+  set state(value) { this.stateManager.state = value; }
 
-  /**
-   * Check if element needs re-rendering by comparing current vs last state
-   */
-  shouldUpdateElement(elementId, currentData) {
-    if (!this.lastRenderState.has(elementId)) {
-      return true; // First render
-    }
-    
-    const lastData = this.lastRenderState.get(elementId);
-    return JSON.stringify(currentData) !== JSON.stringify(lastData);
-  }
+  setState(newState, callback) { return this.stateManager.setState(newState, callback); }
+  getState() { return this.stateManager.getState(); }
+  get(key) { return this.stateManager.get(key); }
+  set(key, value, callback) { return this.stateManager.set(key, value, callback); }
+  merge(key, object, callback) { return this.stateManager.merge(key, object, callback); }
+  push(key, item, callback) { return this.stateManager.push(key, item, callback); }
+  remove(key, predicate, callback) { return this.stateManager.remove(key, predicate, callback); }
+  updateItem(key, predicate, updater, callback) { return this.stateManager.updateItem(key, predicate, updater, callback); }
+  subscribe(callback) { return this.stateManager.subscribe(callback); }
+  notify() { return this.stateManager.notify(); }
 
-  /**
-   * Cache DOM element for faster access
-   */
-  cacheElement(elementId, element) {
-    this.elementCache.set(elementId, element);
-    return element;
-  }
+  // ===== EVENT MANAGEMENT DELEGATION =====
+  emit(eventName, ...args) { return this.eventManager.emit(eventName, ...args); }
+  addEventListener(eventName, listener) { return this.eventManager.addEventListener(eventName, listener); }
+  removeEventListener(eventName, listener) { return this.eventManager.removeEventListener(eventName, listener); }
+  on(eventType, selector, handler, options) { return this.eventManager.on(eventType, selector, handler, options); }
+  off(eventType, selector, handler) { return this.eventManager.off(eventType, selector, handler); }
+  once(eventType, selector, handler) { return this.eventManager.once(eventType, selector, handler); }
+  click(selector, handler) { return this.eventManager.click(selector, handler); }
+  change(selector, handler) { return this.eventManager.change(selector, handler); }
+  input(selector, handler) { return this.eventManager.input(selector, handler); }
+  keydown(selector, handler) { return this.eventManager.keydown(selector, handler); }
+  keyup(selector, handler) { return this.eventManager.keyup(selector, handler); }
+  keypress(selector, handler) { return this.eventManager.keypress(selector, handler); }
+  submit(selector, handler) { return this.eventManager.submit(selector, handler); }
+  focus(selector, handler) { return this.eventManager.focus(selector, handler); }
+  blur(selector, handler) { return this.eventManager.blur(selector, handler); }
+  onHashChange(handler) { return this.eventManager.onHashChange(handler); }
+  onReady(handler) { return this.eventManager.onReady(handler); }
 
-  /**
-   * Get cached DOM element or query and cache it
-   */
-  getCachedElement(elementId) {
-    if (this.elementCache.has(elementId)) {
-      const element = this.elementCache.get(elementId);
-      // Verify element is still in DOM
-      if (element && element.parentNode) {
-        return element;
-      } else {
-        // Element was removed, clear from cache
-        this.elementCache.delete(elementId);
-      }
-    }
-    
-    // Query and cache the element
-    const element = document.getElementById(elementId);
-    if (element) {
-      this.cacheElement(elementId, element);
-    }
-    return element;
-  }
+  // ===== ROUTER DELEGATION =====
+  route(path, component) { return this.router.route(path, component); }
+  routes(routeMap) { return this.router.routes(routeMap); }
+  setErrorPage(component) { return this.router.setErrorPage(component); }
+  navigate(path, state) { return this.router.navigate(path, state); }
+  back() { return this.router.back(); }
+  forward() { return this.router.forward(); }
+  getCurrentRoute() { return this.router.getCurrentRoute(); }
+  isRoute(pattern) { return this.router.isRoute(pattern); }
 
-  /**
-   * Optimized batch update for selective rendering
-   */
-  updateElement(elementId, updateFunction, forceUpdate = false) {
-    const element = this.getCachedElement(elementId);
-    if (!element) {
-      console.warn(`Element ${elementId} not found for update`);
-      return false;
-    }
+  // ===== SELECTIVE RENDERER DELEGATION =====
+  markElementDirty(elementId, data) { return this.selectiveRenderer.markElementDirty(elementId, data); }
+  shouldUpdateElement(elementId, currentData) { return this.selectiveRenderer.shouldUpdateElement(elementId, currentData); }
+  cacheElement(elementId, element) { return this.selectiveRenderer.cacheElement(elementId, element); }
+  getCachedElement(elementId) { return this.selectiveRenderer.getCachedElement(elementId); }
+  updateElement(elementId, updateFunction, forceUpdate) { return this.selectiveRenderer.updateElement(elementId, updateFunction, forceUpdate); }
+  processDirtyElements() { return this.selectiveRenderer.processDirtyElements(); }
+  clearAllCaches() { return this.selectiveRenderer.clearAllCaches(); }
+  when(condition, element) { return this.selectiveRenderer.when(condition, element); }
+  map(array, callback, keyExtractor) { return this.selectiveRenderer.map(array, callback, keyExtractor); }
+  clearRenderCache() { return this.selectiveRenderer.clearRenderCache(); }
 
-    if (forceUpdate || this.dirtyElements.has(elementId)) {
-      try {
-        updateFunction(element);
-        this.dirtyElements.delete(elementId);
-        return true;
-      } catch (error) {
-        console.error(`Error updating element ${elementId}:`, error);
-        return false;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Batch process all dirty elements
-   */
-  processDirtyElements() {
-    if (this.dirtyElements.size === 0) return;
-
-    const startTime = performance.now();
-    
-    // Process dirty elements in batches to avoid blocking
-    const batchSize = 10;
-    const dirtyArray = Array.from(this.dirtyElements);
-    
-    for (let i = 0; i < dirtyArray.length; i += batchSize) {
-      const batch = dirtyArray.slice(i, i + batchSize);
-      
-      // Process batch
-      batch.forEach(elementId => {
-        const element = this.getCachedElement(elementId);
-        if (element) {
-          // Element exists and is dirty, will be processed by specific update functions
-          // This is just cleanup
-        } else {
-          // Element no longer exists, remove from dirty set
-          this.dirtyElements.delete(elementId);
-        }
-      });
-      
-      // Yield control if processing takes too long
-      if (performance.now() - startTime > 8) { // 8ms budget
-        // Schedule remaining work for next frame
-        if (i + batchSize < dirtyArray.length) {
-          requestAnimationFrame(() => {
-            this.processDirtyElements();
-          });
-        }
-        break;
-      }
-    }
-  }
-
-  /**
-   * Clear all caches (useful for major state changes)
-   */
-  clearAllCaches() {
-    this.elementCache.clear();
-    this.renderCache.clear();
-    this.dirtyElements.clear();
-    this.lastRenderState.clear();
-  }
-
-  // Event emitter methods
-  emit(eventName, ...args) {
-    const listeners = this.eventEmitter.get(eventName) || [];
-    listeners.forEach(listener => {
-      try {
-        listener(...args);
-      } catch (error) {
-        console.error(`Error in event listener for ${eventName}:`, error);
-      }
-    });
-    return this;
-  }
-
-  addEventListener(eventName, listener) {
-    if (!this.eventEmitter.has(eventName)) {
-      this.eventEmitter.set(eventName, []);
-    }
-    this.eventEmitter.get(eventName).push(listener);
-    return this;
-  }
-
-  removeEventListener(eventName, listener) {
-    if (this.eventEmitter.has(eventName)) {
-      const listeners = this.eventEmitter.get(eventName);
-      const index = listeners.indexOf(listener);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    }
-    return this;
-  }
-
-  // Performance monitoring initialization
-  initPerformanceMonitoring() {
-    if (typeof PerformanceObserver !== 'undefined') {
-      try {
-        this.performanceObserver = new PerformanceObserver((list) => {
-          const entries = list.getEntries();
-          entries.forEach(entry => {
-            if (entry.entryType === 'measure') {
-              this.performanceMetrics[entry.name] = entry.duration;
-            }
-          });
-        });
-        
-        this.performanceObserver.observe({ entryTypes: ['measure'] });
-      } catch (e) {
-        console.warn('Performance Observer not fully supported:', e.message);
-      }
-    }
-
-    // Monitor long tasks
-    if (typeof PerformanceObserver !== 'undefined') {
-      try {
-        const longTaskObserver = new PerformanceObserver((list) => {
-          const entries = list.getEntries();
-          entries.forEach(entry => {
-            if (entry.duration > 50) { // Tasks longer than 50ms
-              console.warn(`Long task detected: ${entry.duration.toFixed(2)}ms`);
-              this.performanceMetrics.droppedFrames++;
-            }
-          });
-        });
-        longTaskObserver.observe({ entryTypes: ['longtask'] });
-      } catch (e) {
-        console.warn('Long task observer not supported:', e.message);
-      }
-    }
-  }
-
-  // Enhanced game loop with requestAnimationFrame
-  startGameLoop(callback) {
-    if (this.gameLoop) {
-      this.stopGameLoop();
-    }
-
-    const loop = (currentTime) => {
-      const startTime = performance.now();
-      
-      // Calculate delta time
-      const deltaTime = currentTime - this.lastFrameTime;
-      this.lastFrameTime = currentTime;
-
-      // Update FPS counter
-      this.updateFPS(currentTime);
-
-      // Check for frame drops
-      if (deltaTime > this.frameTimeThreshold * 1.5) {
-        this.performanceMetrics.droppedFrames++;
-        console.warn(`Frame drop detected: ${deltaTime.toFixed(2)}ms`);
-      }
-
-      // Performance measurement start
-      if (typeof performance !== 'undefined' && performance.mark) {
-        performance.mark('frame-start');
-      }
-      
-      try {
-        // Execute game logic callback
-        if (callback && typeof callback === 'function') {
-          if (typeof performance !== 'undefined' && performance.mark) {
-            performance.mark('update-start');
-          }
-          callback(deltaTime, currentTime);
-          if (typeof performance !== 'undefined' && performance.mark) {
-            performance.mark('update-end');
-            performance.measure('updateTime', 'update-start', 'update-end');
-          }
-        }
-
-        // ✅ ENHANCED: Process selective rendering
-        this.processSelectiveRendering();
-
-        // Update performance metrics
-        const endTime = performance.now();
-        const frameTime = endTime - startTime;
-        this.performanceMetrics.frameTime = frameTime;
-        this.performanceMetrics.totalFrames++;
-        
-        // Track min/max frame times
-        this.performanceMetrics.minFrameTime = Math.min(this.performanceMetrics.minFrameTime, frameTime);
-        this.performanceMetrics.maxFrameTime = Math.max(this.performanceMetrics.maxFrameTime, frameTime);
-        
-        // Calculate average frame time
-        this.performanceMetrics.averageFrameTime = 
-          (this.performanceMetrics.averageFrameTime * (this.performanceMetrics.totalFrames - 1) + frameTime) / 
-          this.performanceMetrics.totalFrames;
-
-        if (typeof performance !== 'undefined' && performance.mark) {
-          performance.mark('frame-end');
-          performance.measure('frameTime', 'frame-start', 'frame-end');
-        }
-
-        // Notify performance callbacks
-        this.notifyPerformanceCallbacks();
-
-      } catch (error) {
-        console.error('Game loop error:', error);
-        this.handleError(error);
-      }
-
-      this.gameLoop = requestAnimationFrame(loop);
-    };
-
-    this.gameLoop = requestAnimationFrame(loop);
-    return this;
-  }
-
-  /**
-   * ✅ NEW: Process selective rendering optimizations
-   */
-  processSelectiveRendering() {
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('selective-render-start');
-    }
-
-    // Process dirty elements
-    this.processDirtyElements();
-
-    // Process render queue
-    this.processRenderQueue();
-
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('selective-render-end');
-      performance.measure('selectiveRenderTime', 'selective-render-start', 'selective-render-end');
-    }
-  }
-
-  stopGameLoop() {
-    if (this.gameLoop) {
-      cancelAnimationFrame(this.gameLoop);
-      this.gameLoop = null;
-    }
-    return this;
-  }
-
-  // FPS calculation
-  updateFPS(currentTime) {
-    this.frameCount++;
-    
-    if (currentTime - this.fpsUpdateTime >= 1000) {
-      this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.fpsUpdateTime));
-      this.frameCount = 0;
-      this.fpsUpdateTime = currentTime;
-      
-      // Emit FPS update event
-      this.emit('fps-update', this.fps);
-    }
-  }
-
-  // Enhanced processRenderQueue method
-  processRenderQueue() {
-    if (this.renderQueue.length === 0) return;
-    
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('render-start');
-    }
-    
-    const startTime = performance.now();
-    const maxRenderTime = 8; // 8ms budget for rendering
-    
-    // Process render operations with time budget
-    while (this.renderQueue.length > 0 && (performance.now() - startTime) < maxRenderTime) {
-      const renderOp = this.renderQueue.shift();
-      try {
-        renderOp();
-      } catch (error) {
-        console.error('Render operation error:', error);
-      }
-    }
-    
-    // If we have remaining operations, schedule them for next frame
-    if (this.renderQueue.length > 0) {
-      requestAnimationFrame(() => this.processRenderQueue());
-    }
-    
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('render-end');
-      performance.measure('renderTime', 'render-start', 'render-end');
-    }
-  }
-
-  // Add missing handleError method
-  handleError(error) {
-    console.error('Framework error:', error);
-    
-    // Emit error event
-    this.emit('error', error);
-    
-    // Show error component if available
-    if (this.errorComponent) {
-      try {
-        this.errorComponent(error);
-      } catch (componentError) {
-        console.error('Error component failed:', componentError);
-      }
-    }
-  }
-
-  // Get current FPS
-  getFPS() {
-    return this.fps;
-  }
-
-  // Get performance metrics
+  // ===== PERFORMANCE MONITOR DELEGATION =====
   getPerformanceMetrics() {
-    return {
-      ...this.performanceMetrics,
-      fps: this.fps,
-      frameDropPercentage: this.performanceMetrics.totalFrames > 0 
-        ? (this.performanceMetrics.droppedFrames / this.performanceMetrics.totalFrames) * 100 
-        : 0,
-      dirtyElementsCount: this.dirtyElements.size,
-      cachedElementsCount: this.elementCache.size
-    };
+    return this.performanceMonitor.getPerformanceMetrics(
+      this.gameLoop.getFPS(),
+      this.selectiveRenderer.dirtyElements.size,
+      this.selectiveRenderer.elementCache.size
+    );
+  }
+  onPerformanceUpdate(callback) { return this.performanceMonitor.onPerformanceUpdate(callback); }
+  incrementCounter(counterName) { return this.performanceMonitor.incrementCounter(counterName); }
+  getCounter(counterName) { return this.performanceMonitor.getCounter(counterName); }
+  resetCounter(counterName) { return this.performanceMonitor.resetCounter(counterName); }
+  getAllCounters() { return this.performanceMonitor.getAllCounters(); }
+  setCounter(counterName, value) { return this.performanceMonitor.setCounter(counterName, value); }
+
+  // ===== GAME LOOP DELEGATION =====
+  startGameLoop(callback) { return this.gameLoop.startGameLoop(callback); }
+  stopGameLoop() { return this.gameLoop.stopGameLoop(); }
+  getFPS() { return this.gameLoop.getFPS(); }
+
+  // ===== LEGACY COMPATIBILITY PROPERTIES =====
+  // These properties maintain backward compatibility with existing code
+  get routes() { return this.router.routes; }
+  get currentRoute() { return this.router.currentRoute; }
+  get subscribers() { return this.stateManager.subscribers; }
+  get eventHandlers() { return this.eventManager.eventHandlers; }
+  get eventEmitter() { return this.eventManager.eventEmitter; }
+  get errorComponent() { return this.router.errorComponent; }
+  get updateQueue() { return this.stateManager.updateQueue; }
+  get isUpdating() { return this.stateManager.isUpdating; }
+  get previousVDOM() { return this.virtualDOM.previousVDOM; }
+  get renderQueue() { return this.selectiveRenderer.renderQueue; }
+  get isRendering() { return this.selectiveRenderer.isRendering; }
+  get dirtyComponents() { return this.stateManager.dirtyComponents; }
+  get renderCache() { return this.selectiveRenderer.renderCache; }
+  get elementCache() { return this.selectiveRenderer.elementCache; }
+  get dirtyElements() { return this.selectiveRenderer.dirtyElements; }
+  get renderingStrategy() { return this.selectiveRenderer.renderingStrategy; }
+  get lastRenderState() { return this.selectiveRenderer.lastRenderState; }
+  get performanceCounters() { return this.performanceMonitor.performanceCounters; }
+  get performanceObserver() { return this.performanceMonitor.performanceObserver; }
+  get performanceCallbacks() { return this.performanceMonitor.performanceCallbacks; }
+  get performanceMetrics() { return this.performanceMonitor.performanceMetrics; }
+  get targetFPS() { return this.performanceMonitor.targetFPS; }
+  get frameTimeThreshold() { return this.performanceMonitor.frameTimeThreshold; }
+  get lastFrameTime() { return this.gameLoop.lastFrameTime; }
+  get frameCount() { return this.gameLoop.frameCount; }
+  get fps() { return this.gameLoop.fps; }
+  get fpsUpdateTime() { return this.gameLoop.fpsUpdateTime; }
+
+  // ===== ADDITIONAL METHODS =====
+
+  // Add any additional methods that don't fit into the modules
+  // For now, we'll add a render method placeholder
+  render() {
+    // This method would typically trigger the rendering process
+    // For now, it's a placeholder that could be implemented based on specific needs
+    console.log('Framework render called');
   }
 
-  // Add performance callback
-  onPerformanceUpdate(callback) {
-    this.performanceCallbacks.push(callback);
-    return () => {
-      const index = this.performanceCallbacks.indexOf(callback);
-      if (index > -1) {
-        this.performanceCallbacks.splice(index, 1);
-      }
-    };
-  }
 
-  // Notify performance callbacks
-  notifyPerformanceCallbacks() {
-    const metrics = this.getPerformanceMetrics();
-    this.performanceCallbacks.forEach(callback => {
-      try {
-        callback(metrics);
-      } catch (error) {
-        console.error('Performance callback error:', error);
-      }
-    });
-  }
-
-  // Conditional rendering helper
-  when(condition, element) {
-    return condition ? element : null;
-  }
-
-  // List rendering helper with caching
-  map(array, callback, keyExtractor = null) {
-    if (!Array.isArray(array)) return [];
-    
-    return array.map((item, index) => {
-      const key = keyExtractor ? keyExtractor(item, index) : index;
-      
-      // Use cache if available
-      if (this.renderCache.has(key)) {
-        const cached = this.renderCache.get(key);
-        if (JSON.stringify(cached.item) === JSON.stringify(item)) {
-          return cached.result;
-        }
-      }
-      
-      const result = callback(item, index);
-      
-      // Cache the result
-      this.renderCache.set(key, { item: JSON.parse(JSON.stringify(item)), result });
-      
-      return result;
-    }).filter(item => item !== null && item !== undefined);
-  }
-
-  // Clear render cache
-  clearRenderCache() {
-    this.renderCache.clear();
-  }
-
-  // Optimized state management with batching
-  setState(newState, callback) {
-    const oldState = { ...this.state };
-    this.state = { ...this.state, ...newState };
-
-    // Mark components as dirty for selective re-rendering
-    this.markDirty();
-
-    if (callback) {
-      this.updateQueue.push(callback);
-    }
-
-    this.batchUpdate();
-    return this;
-  }
-
-  // Mark components as dirty for selective rendering
-  markDirty(componentId = 'root') {
-    this.dirtyComponents.add(componentId);
-  }
-
-  // Enhanced batch update with performance optimization
-  batchUpdate() {
-    if (this.isUpdating) return;
-
-    this.isUpdating = true;
-    
-    // Use requestAnimationFrame for smooth updates
-    requestAnimationFrame(() => {
-      if (typeof performance !== 'undefined' && performance.mark) {
-        performance.mark('batch-update-start');
-      }
-      
-      try {
-        // Only notify if there are actual changes
-        if (this.dirtyComponents.size > 0) {
-          this.notify();
-          this.dirtyComponents.clear();
-        }
-
-        // Execute queued callbacks
-        while (this.updateQueue.length > 0) {
-          const callback = this.updateQueue.shift();
-          callback();
-        }
-      } catch (error) {
-        console.error('Batch update error:', error);
-      }
-
-      if (typeof performance !== 'undefined' && performance.mark) {
-        performance.mark('batch-update-end');
-        performance.measure('batchUpdateTime', 'batch-update-start', 'batch-update-end');
-      }
-      
-      this.isUpdating = false;
-    });
-  }
-
-  getState() {
-    return this.state;
-  }
-
-  // Get specific state property
-  get(key) {
-    return this.state[key];
-  }
-
-  // Update specific state property
-  set(key, value, callback) {
-    this.setState({ [key]: value }, callback);
-  }
-
-  // Merge object into state
-  merge(key, object, callback) {
-    const currentValue = this.state[key] || {};
-    this.setState({ [key]: { ...currentValue, ...object } }, callback);
-  }
-
-  // Add item to array in state
-  push(key, item, callback) {
-    const currentArray = this.state[key] || [];
-    this.setState({ [key]: [...currentArray, item] }, callback);
-  }
-
-  // Remove item from array in state
-  remove(key, predicate, callback) {
-    const currentArray = this.state[key] || [];
-    this.setState({ [key]: currentArray.filter(predicate) }, callback);
-  }
-
-  // Update item in array
-  updateItem(key, predicate, updater, callback) {
-    const currentArray = this.state[key] || [];
-    this.setState({
-      [key]: currentArray.map(item => predicate(item) ? updater(item) : item)
-    }, callback);
-  }
-
-  subscribe(callback) {
-    this.subscribers.push(callback);
-    return () => {
-      const index = this.subscribers.indexOf(callback);
-      if (index > -1) {
-        this.subscribers.splice(index, 1);
-      }
-    };
-  }
-
-  notify() {
-    this.subscribers.forEach(callback => callback(this.state));
-  }
-
-  // Enhanced routing system
-  route(path, component) {
-    this.routes[path] = component;
-    return this; // Allow chaining
-  }
-
-  // Multiple routes at once
-  routes(routeMap) {
-    Object.entries(routeMap).forEach(([path, component]) => {
-      this.route(path, component);
-    });
-    return this;
-  }
-
-  // Set error page component
-  setErrorPage(component) {
-    this.errorComponent = component;
-    return this;
-  }
-
-  // Enhanced navigation with optional state
-  navigate(path, state = {}) {
-    window.history.pushState(state, '', path);
-    this.currentRoute = path;
-    this.render();
-    return this;
-  }
-
-  // Go back in history
-  back() {
-    window.history.back();
-    return this;
-  }
-
-  // Go forward in history
-  forward() {
-    window.history.forward();
-    return this;
-  }
-
-  // Get current route
-  getCurrentRoute() {
-    return this.currentRoute;
-  }
-
-  // Check if current route matches pattern
-  isRoute(pattern) {
-    return this.currentRoute === pattern;
-  }
-
-  // Enhanced event handling with more options
-  on(eventType, selector, handler, options = {}) {
-    if (!this.eventHandlers.has(eventType)) {
-      this.eventHandlers.set(eventType, []);
-      // Set up delegation for this event type
-      document.addEventListener(eventType, (e) => {
-        const handlers = this.eventHandlers.get(eventType) || [];
-        handlers.forEach(({ selector, handler, options }) => {
-          try {
-            let target = null;
-            if (e.target.matches && e.target.matches(selector)) {
-              target = e.target;
-            } else if (e.target.closest && e.target.closest(selector)) {
-              target = e.target.closest(selector);
-            }
-
-            if (target) {
-              if (options.once) {
-                this.off(eventType, selector, handler);
-              }
-              handler(e, target);
-            }
-          } catch (error) {
-            console.error('Event handler error:', error);
-            this.handleError(error);
-          }
-        });
-      });
-    }
-
-    this.eventHandlers.get(eventType).push({ selector, handler, options });
-    return this; // Allow chaining
-  }
-
-  // Remove event handler
-  off(eventType, selector, handler) {
-    if (this.eventHandlers.has(eventType)) {
-      const handlers = this.eventHandlers.get(eventType);
-      const index = handlers.findIndex(h =>
-        h.selector === selector && h.handler === handler
-      );
-      if (index > -1) {
-        handlers.splice(index, 1);
-      }
-    }
-    return this;
-  }
-
-  // One-time event handler
-  once(eventType, selector, handler) {
-    return this.on(eventType, selector, handler, { once: true });
-  }
-
-  // Shorthand event methods
-  click(selector, handler) {
-    return this.on('click', selector, handler);
-  }
-
-  change(selector, handler) {
-    return this.on('change', selector, handler);
-  }
-
-  input(selector, handler) {
-    return this.on('input', selector, handler);
-  }
-
-  keydown(selector, handler) {
-    return this.on('keydown', selector, handler);
-  }
-
-  keyup(selector, handler) {
-    return this.on('keyup', selector, handler);
-  }
-
-  keypress(selector, handler) {
-    return this.on('keypress', selector, handler);
-  }
-
-  submit(selector, handler) {
-    return this.on('submit', selector, handler);
-  }
-
-  focus(selector, handler) {
-    return this.on('focus', selector, handler);
-  }
-
-  blur(selector, handler) {
-    return this.on('blur', selector, handler);
-  }
-
-  // Handle hash changes
-  onHashChange(handler) {
-    window.addEventListener('hashchange', handler);
-  }
-
-  // Handle DOM ready
-  onReady(handler) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', handler);
-    } else {
-      handler();
-    }
-    return this;
-  }
-
-  // ✅ NEW: Performance counter methods for optimization tracking
-  
-  /**
-   * Increment a performance counter
-   */
-  incrementCounter(counterName) {
-    const current = this.performanceCounters.get(counterName) || 0;
-    this.performanceCounters.set(counterName, current + 1);
-    return this;
-  }
-
-  /**
-   * Get current value of a performance counter
-   */
-  getCounter(counterName) {
-    return this.performanceCounters.get(counterName) || 0;
-  }
-
-  /**
-   * Reset a performance counter
-   */
-  resetCounter(counterName) {
-    this.performanceCounters.set(counterName, 0);
-    return this;
-  }
-
-  /**
-   * Get all performance counters
-   */
-  getAllCounters() {
-    return Object.fromEntries(this.performanceCounters);
-  }
-
-  /**
-   * Set a counter to a specific value
-   */
-  setCounter(counterName, value) {
-    this.performanceCounters.set(counterName, value);
-    return this;
-  }
 }
