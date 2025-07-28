@@ -280,6 +280,10 @@ class BombermanApp {
 
   updateGameScreen(previousState, newState) {
     this.gameUIManager.updateGameScreen(previousState, newState);
+    // ✅ SPEED POWER-UP: Update movement speed when game state changes
+    if (this.playerController && this.playerId) {
+      this.playerController.updateMovementSpeed();
+    }
   }
 
   applyAnimationSettings() {
@@ -347,6 +351,11 @@ class BombermanApp {
     }
     if (isCurrentPlayer) {
       this.gameUIManager.updatePlayerStats(true);
+      // ✅ SPEED POWER-UP: Update movement speed when current player collects power-ups
+      if (eventData.powerUpType === 'speed') {
+        this.playerController.updateMovementSpeed();
+        console.log('Speed power-up collected - movement speed updated');
+      }
     }
   }
 }
