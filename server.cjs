@@ -229,7 +229,9 @@ class GameServer {
       });
 
       if (this.gameState.waitingTimeLeft <= 0) {
-        console.log('20-second wait completed - starting countdown...');
+        console.log('=== 20-SECOND WAIT COMPLETED - STARTING COUNTDOWN ===');
+        clearInterval(this.gameState.waitingTimer);
+        this.gameState.waitingTimer = null;
         this.skipToCountdown();
       }
     }, 1000);
@@ -252,23 +254,28 @@ class GameServer {
 
   // Skip to 10-second countdown (called when 4 players join or 20s wait expires)
   skipToCountdown() {
+    console.log('=== SKIPPING TO COUNTDOWN ===');
     // Clear waiting timer if it exists
     if (this.gameState.waitingTimer) {
+      console.log('Clearing waiting timer');
       clearInterval(this.gameState.waitingTimer);
       this.gameState.waitingTimer = null;
     }
 
     // Start the 10-second countdown
+    console.log('About to start game timer (countdown)');
     this.startGameTimer();
   }
 
   startGameTimer() {
+    console.log('=== STARTING GAME TIMER ===');
     this.gameState.countdown = 10; // 10-second countdown as per requirements
     this.gameTimer = setInterval(() => {
       this.gameState.countdown--;
       console.log(`Game starting in: ${this.gameState.countdown}`);
 
       // Broadcast countdown update
+      console.log('Broadcasting countdown_update event:', { countdown: this.gameState.countdown });
       this.broadcastEvent('countdown_update', { countdown: this.gameState.countdown });
 
       if (this.gameState.countdown <= 0) {
@@ -291,12 +298,14 @@ class GameServer {
   }
 
   startGameTimeTimer() {
-    console.log('Starting 1-minute game timer...');
+    console.log('=== STARTING GAME TIME TIMER ===');
+    console.log('Initial game time:', this.gameState.gameTimeLeft);
     this.gameTimeTimer = setInterval(() => {
       this.gameState.gameTimeLeft--;
       console.log(`Game time left: ${this.gameState.gameTimeLeft} seconds`);
 
       // ✅ FIX: Broadcast timer update EVERY SECOND for real-time display
+      console.log('Broadcasting timer_update event:', { timeLeft: this.gameState.gameTimeLeft });
       this.broadcastEvent('timer_update', { timeLeft: this.gameState.gameTimeLeft });
 
       if (this.gameState.gameTimeLeft <= 0) {

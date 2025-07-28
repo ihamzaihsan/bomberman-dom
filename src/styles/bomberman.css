@@ -1067,231 +1067,70 @@ body {
   }
 }
 
-/* ✅ FIXED: Bomb Explosion Animation System */
+/* ✅ ENHANCED: Advanced Bomb Explosion Animation System */
 .explosion-effect {
   font-size: 2em;
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 
+    0 0 8px rgba(255, 100, 0, 0.9),
+    0 0 16px rgba(255, 150, 0, 0.7),
+    0 0 24px rgba(255, 200, 0, 0.5),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
   animation: explosionPulse 1.5s ease-out;
+  position: relative;
 
   /* ✅ PERFORMANCE: Hardware acceleration for smooth explosions */
-  will-change: transform, opacity;
+  will-change: transform, opacity, filter;
   backface-visibility: hidden;
   transform-style: preserve-3d;
 }
 
-
-
-.explosion-center {
-  font-size: 2.5em !important;
-  animation: explosionCenter 1.5s ease-out !important;
+/* --- IMPROVED EXPLOSION VISIBILITY (FINAL FILTER SYNTAX FIX) --- */
+.explosion-effect,
+.explosion-center,
+.explosion-blast,
+.explosion-effect.enhanced-explosion {
+  /* Stronger glow and outline */
+  box-shadow:
+    0 0 32px 16px rgba(255, 200, 0, 0.85),
+    0 0 64px 32px rgba(255, 100, 0, 0.7),
+    0 0 128px 32px rgba(255, 0, 0, 0.4);
+  outline: 3px solid rgba(255,255,0,0.7);
+  outline-offset: 2px;
+  z-index: 1000;
 }
 
-.explosion-blast {
-  font-size: 2em !important;
-  animation: explosionBlast 1.5s ease-out !important;
-}
-
-.explosion-fade-out {
-  opacity: 0 !important;
-  transform: translate3d(0, 0, 0) scale(0.8) !important;
-  transition: all 0.3s ease-in !important;
-}
-
-/* ✅ NEW: Chain reaction explosion styles */
-.explosion-effect.chain-reaction {
-  filter: hue-rotate(60deg) brightness(1.3);
-  animation-duration: 1.8s !important;
-}
-
+.explosion-center,
 .explosion-center.chain-reaction {
-  font-size: 3em !important;
-  animation: explosionChainCenter 1.8s ease-out !important;
+  filter: brightness(3.5) contrast(2) saturate(2.2) drop-shadow(0 0 40px #fff200) drop-shadow(0 0 80px #ff6600) !important;
 }
 
+.explosion-blast,
 .explosion-blast.chain-reaction {
-  font-size: 2.3em !important;
-  animation: explosionChainBlast 1.8s ease-out !important;
+  filter: brightness(2.8) contrast(1.7) saturate(1.7) drop-shadow(0 0 30px #ffae00) drop-shadow(0 0 60px #ff3300) !important;
 }
 
-/* ✅ FIXED: EXPLOSION ANIMATIONS */
-@keyframes explosionCenter {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(0.5) rotate(0deg);
-    filter: brightness(2) hue-rotate(0deg);
-  }
-  20% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.8) rotate(45deg);
-    filter: brightness(3) hue-rotate(30deg);
-  }
-  50% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.5) rotate(90deg);
-    filter: brightness(2.5) hue-rotate(60deg);
-  }
-  80% {
-    opacity: 0.8;
-    transform: translate3d(0, 0, 0) scale(1.2) rotate(135deg);
-    filter: brightness(2) hue-rotate(90deg);
-  }
-  100% {
-    opacity: 0.2;
-    transform: translate3d(0, 0, 0) scale(1) rotate(180deg);
-    filter: brightness(1.5) hue-rotate(120deg);
-  }
+.explosion-effect.enhanced-explosion {
+  background: radial-gradient(
+    circle,
+    rgba(255,255,255,0.7) 0%,
+    rgba(255,255,0,0.5) 30%,
+    rgba(255,200,0,0.4) 60%,
+    rgba(255,0,0,0.2) 80%,
+    transparent 100%
+  );
 }
 
-@keyframes explosionBlast {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(0.7);
-    filter: brightness(1.5) hue-rotate(0deg);
-  }
-  30% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.4);
-    filter: brightness(2.5) hue-rotate(45deg);
-  }
-  60% {
-    opacity: 0.9;
-    transform: translate3d(0, 0, 0) scale(1.2);
-    filter: brightness(2) hue-rotate(90deg);
-  }
-  100% {
-    opacity: 0.2;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: brightness(1.2) hue-rotate(135deg);
-  }
-}
-
-@keyframes explosionPulse {
-  0%, 100% {
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  }
-  50% {
-    text-shadow:
-      0 0 10px rgba(255, 100, 0, 0.8),
-      0 0 20px rgba(255, 150, 0, 0.6),
-      0 0 30px rgba(255, 200, 0, 0.4),
-      2px 2px 4px rgba(0, 0, 0, 0.8);
-  }
-}
-
-/* ✅ NEW: Chain reaction explosion animations */
-@keyframes explosionChainCenter {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
-    filter: brightness(3) hue-rotate(60deg) saturate(1.5);
-  }
-  15% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(2.2) rotate(30deg);
-    filter: brightness(4) hue-rotate(90deg) saturate(2);
-  }
-  40% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.8) rotate(60deg);
-    filter: brightness(3.5) hue-rotate(120deg) saturate(1.8);
-  }
-  70% {
-    opacity: 0.9;
-    transform: translate3d(0, 0, 0) scale(1.4) rotate(90deg);
-    filter: brightness(3) hue-rotate(150deg) saturate(1.5);
-  }
-  100% {
-    opacity: 0.3;
-    transform: translate3d(0, 0, 0) scale(1.1) rotate(120deg);
-    filter: brightness(2) hue-rotate(180deg) saturate(1.2);
-  }
-}
-
-@keyframes explosionChainBlast {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(0.5);
-    filter: brightness(2.5) hue-rotate(60deg) saturate(1.5);
-  }
-  25% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.6);
-    filter: brightness(3.5) hue-rotate(90deg) saturate(2);
-  }
-  50% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.4);
-    filter: brightness(3) hue-rotate(120deg) saturate(1.8);
-  }
-  80% {
-    opacity: 0.8;
-    transform: translate3d(0, 0, 0) scale(1.2);
-    filter: brightness(2.5) hue-rotate(150deg) saturate(1.3);
-  }
-  100% {
-    opacity: 0.3;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: brightness(1.8) hue-rotate(180deg) saturate(1);
-  }
-}
-
-/* ✅ PERFORMANCE OPTIMIZATION: Use hardware acceleration */
-.explosion-effect {
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
-}
-
-/* ✅ NEW: Performance-aware animation system with CSS custom properties */
-:root {
-  --explosion-duration: 1.5s;
-  --powerup-pulse: running;
-  --bomb-pulse: running;
-  --player-transition-duration: 0.1s;
-}
-
-/* ✅ NEW: Quality-based animation controls */
-.game-map.low-quality .powerup {
-  animation-play-state: var(--powerup-pulse);
-}
-
-.game-map.low-quality .bomb {
-  animation-play-state: var(--bomb-pulse);
-}
-
-.game-map.low-quality .explosion-effect {
-  animation-duration: var(--explosion-duration);
-}
-
-/* ✅ NEW: Reduced motion for low-quality mode */
-.game-map.low-quality * {
-  animation-duration: 0.3s !important;
-  transition-duration: 0.1s !important;
-}
-
-.game-map.medium-quality .explosion-effect {
-  animation-duration: var(--explosion-duration);
-}
-
-/* ✅ NEW: High-quality mode with full effects */
-.game-map.high-quality .explosion-effect {
-  animation-duration: var(--explosion-duration);
-  filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.8));
-}
-
-/* ✅ RESPONSIVE: Smaller explosions on mobile */
 @media (max-width: 768px) {
-  .explosion-effect {
-    font-size: 1.5em;
-  }
-
-  .explosion-center {
-    font-size: 2em;
-  }
-
+  .explosion-effect,
+  .explosion-center,
   .explosion-blast {
-    font-size: 1.5em;
+    box-shadow:
+      0 0 16px 8px rgba(255, 200, 0, 0.7),
+      0 0 32px 16px rgba(255, 100, 0, 0.5);
+    outline-width: 2px;
   }
 }
+
+
