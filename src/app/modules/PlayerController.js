@@ -6,7 +6,8 @@ export class PlayerController {
     // Movement state
     this.isMoving = false;
     this.lastMoveTime = 0;
-    this.moveThrottle = 10; // Reduced throttle for debugging
+    this.baseMoveThrottle = 150; // Base movement delay in ms (slower default)
+    this.moveThrottle = this.baseMoveThrottle; // Current throttle (will be modified by speed)
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
     
@@ -31,6 +32,9 @@ export class PlayerController {
     });
     this.gameState = gameState;
     this.playerId = playerId;
+    
+    // ✅ SPEED POWER-UP: Update movement speed when game state changes
+    this.updateMovementSpeed();
   }
 
   // Set callback functions
@@ -343,6 +347,36 @@ export class PlayerController {
     this.framework.resetCounter('invalid-moves-wall');
     this.framework.resetCounter('invalid-moves-player');
     this.framework.resetCounter('invalid-moves-bomb');
+  }
+
+  // ===== SPEED POWER-UP IMPLEMENTATION =====
+
+  // ✅ SPEED POWER-UP: Calculate movement throttle based on speed level
+  updateMovementSpeed() {
+    if (!this.gameState || !this.gameState.players || !this.playerId) {
+      this.moveThrottle = this.baseMoveThrottle;
+      return;
+    }
+
+    const player = this.gameState.players[this.playerId];
+    if (!player || !player.powerUps) {
+      this.moveThrottle = this.baseMoveThrottle;
+      return;
+    }
+
+    const speedLevel = player.powerUps.speed || 1;
+    
+    // Speed level 1: 150ms (slow), level 2: 100ms (medium), level 3: 50ms (fast)
+    const speedMultipliers = {
+      1: 1.0,    // 150ms - base speed
+      2: 0.67,   // 100ms - 33% faster
+      3: 0.33    // 50ms - 67% faster
+    };
+
+    const multiplier = speedMultipliers[speedLevel] || 1.0;
+    this.moveThrottle = Math.round(this.baseMoveThrottle * multiplier);
+    
+    console.log(`PlayerController: Speed level ${speedLevel}, movement throttle: ${this.moveThrottle}ms`);
   }
 
   // ===== GETTERS FOR OPTIMIZATION =====
