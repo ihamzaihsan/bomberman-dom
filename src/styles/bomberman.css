@@ -1050,6 +1050,45 @@ body {
   }
 }
 
+/* ✅ FIXED: Missing bomb explosion animation keyframes */
+@keyframes bomberman-explosion-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.4);
+    opacity: 0.9;
+  }
+  30% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes explosion-fade-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.explosion-fade-out {
+  animation: explosion-fade-out 0.3s ease-out forwards;
+}
+
 .powerup.spawning {
   animation: powerupSpawn 0.6s ease-out;
 }
