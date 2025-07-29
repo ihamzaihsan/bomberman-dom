@@ -91,7 +91,8 @@ class GameServer {
         if (x % 2 === 1 && y % 2 === 1) {
           map[y][x] = 'wall';
         } else if (this.isStartingPosition(x, y, width, height)) {
-          map[y][x] = 'empty';
+          // ✅ NEW: Mark spawn areas with special cell type for visual distinction
+          map[y][x] = this.isPlayerSpawnPoint(x, y) ? 'spawn' : 'spawn-safe';
         } else if (Math.random() < 0.6) { // Reduced block density slightly
           map[y][x] = 'block';
         } else {
@@ -105,16 +106,29 @@ class GameServer {
   }
 
   isStartingPosition(x, y, width, height) {
-    // Ensure starting corners are clear (2x2 areas)
-    // Top-left corner
-    if (x <= 1 && y <= 1) return true;
-    // Top-right corner
-    if (x >= width - 2 && y <= 1) return true;
-    // Bottom-left corner
-    if (x <= 1 && y >= height - 2) return true;
-    // Bottom-right corner
-    if (x >= width - 2 && y >= height - 2) return true;
+    // ✅ FIXED: Ensure starting corners are clear (3x3 areas for better safety)
+    // This provides more space around spawn points to prevent immediate damage
+
+    // Top-left corner (3x3 area)
+    if (x <= 2 && y <= 2) return true;
+    // Top-right corner (3x3 area)
+    if (x >= width - 3 && y <= 2) return true;
+    // Bottom-left corner (3x3 area)
+    if (x <= 2 && y >= height - 3) return true;
+    // Bottom-right corner (3x3 area)
+    if (x >= width - 3 && y >= height - 3) return true;
     return false;
+  }
+
+  // ✅ NEW: Check if position is exact player spawn point (for visual distinction)
+  isPlayerSpawnPoint(x, y) {
+    const spawnPoints = [
+      { x: 1, y: 1 },     // Top-left
+      { x: 10, y: 1 },    // Top-right
+      { x: 1, y: 10 },    // Bottom-left
+      { x: 10, y: 10 }    // Bottom-right
+    ];
+    return spawnPoints.some(point => point.x === x && point.y === y);
   }
 
   getGameState() {
@@ -169,12 +183,12 @@ class GameServer {
       return { success: false, error: 'Game is starting - please wait for next round' };
     }
 
-    // Starting positions for 12x12 map
+    // ✅ FIXED: Starting positions for 12x12 map (centered in 3x3 safe areas)
     const startingPositions = [
-      { x: 1, y: 1 },     // Top-left
-      { x: 10, y: 1 },    // Top-right
-      { x: 1, y: 10 },    // Bottom-left
-      { x: 10, y: 10 }    // Bottom-right
+      { x: 1, y: 1 },     // Top-left (center of 3x3 area)
+      { x: 10, y: 1 },    // Top-right (center of 3x3 area)
+      { x: 1, y: 10 },    // Bottom-left (center of 3x3 area)
+      { x: 10, y: 10 }    // Bottom-right (center of 3x3 area)
     ];
 
     const player = {
@@ -506,8 +520,9 @@ class GameServer {
       return false;
     }
 
-    // Check if new position is valid (not wall or block)
-    if (!this.gameState.map[newY] || this.gameState.map[newY][newX] !== 'empty') {
+    // ✅ FIXED: Check if new position is valid (walkable cells)
+    const walkableCells = ['empty', 'spawn', 'spawn-safe'];
+    if (!this.gameState.map[newY] || !walkableCells.includes(this.gameState.map[newY][newX])) {
       return false;
     }
 
@@ -558,8 +573,9 @@ class GameServer {
         break;
     }
 
-    // ✅ BOMB COLLISION: Check if new position is valid (not wall, block, or bomb)
-    if (this.gameState.map[newY] && this.gameState.map[newY][newX] === 'empty') {
+    // ✅ BOMB COLLISION: Check if new position is valid (walkable cells, not bomb)
+    const walkableCells = ['empty', 'spawn', 'spawn-safe'];
+    if (this.gameState.map[newY] && walkableCells.includes(this.gameState.map[newY][newX])) {
       // Check for bomb collision - bombs act as solid obstacles
       const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
 

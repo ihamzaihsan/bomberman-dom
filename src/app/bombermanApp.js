@@ -254,6 +254,10 @@ class BombermanApp {
   showWaitingScreen() {
     this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.gameUIManager.showWaitingScreen();
+
+    // ✅ CRITICAL FIX: Set waitingScreenReady flag so isInWaitingRoom() works
+    this.waitingScreenReady = true;
+
     // Remove or hide timer elements in the lobby
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay) timerDisplay.style.display = 'none';
@@ -268,6 +272,9 @@ class BombermanApp {
   }
 
   showGameScreen() {
+    // ✅ CRITICAL FIX: Reset waitingScreenReady flag when leaving waiting screen
+    this.waitingScreenReady = false;
+
     this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.gameUIManager.showGameScreen();
     // Render the map with the latest state

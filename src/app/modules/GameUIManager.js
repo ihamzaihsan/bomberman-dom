@@ -312,17 +312,18 @@ export class GameUIManager {
 
   showWaitingScreen() {
     const app = document.getElementById('app');
-    
+
     app.innerHTML = `
       <div class="waiting-screen">
         <h1>Waiting for Game to Start</h1>
-        
-        <div class="waiting-info">
-          <div class="player-list-container">
+
+        <div class="waiting-content">
+          <div class="player-info">
             <h3>Players in Lobby:</h3>
-            <div id="player-list" class="player-list"></div>
+            <div id="players-list" class="players-list"></div>
+            <p id="player-count-info">Waiting for players...</p>
           </div>
-          
+
           <div class="chat-container">
             <h3>Chat:</h3>
             <div id="chat-messages" class="chat-messages"></div>
@@ -332,17 +333,88 @@ export class GameUIManager {
             </div>
           </div>
         </div>
-        
+
         <div class="waiting-timer-container">
           <p>Game starts in: <span id="waiting-timer">--:--</span></p>
           <p>Game will start automatically when timer expires or 4 players join</p>
         </div>
-        
-        <div id="countdown-container" style="display: none;">
+
+        <div id="countdown-container" class="countdown" style="display: none;">
           <h2 id="countdown-text">Game starting in: 10</h2>
         </div>
       </div>
     `;
+
+    // ✅ CRITICAL FIX: Update player list immediately after showing waiting screen
+    this.updateWaitingScreen();
+  }
+
+  // ✅ NEW: Implement missing updateWaitingScreen method
+  updateWaitingScreen() {
+    if (!this.gameState) return;
+
+    // Update player list
+    this.updatePlayerList();
+
+    // Update player count info
+    this.updatePlayerCountInfo();
+
+    // Update waiting timer if it exists
+    if (this.gameState.waitingTimeLeft !== undefined) {
+      this.updateWaitingTimer(this.gameState.waitingTimeLeft);
+    }
+
+    // Update countdown if it exists
+    if (this.gameState.countdown > 0) {
+      this.updateCountdown(this.gameState.countdown);
+    }
+  }
+
+  // ✅ NEW: Update player list in lobby
+  updatePlayerList() {
+    const playersListElement = document.getElementById('players-list');
+    if (!playersListElement || !this.gameState) return;
+
+    const players = Object.values(this.gameState.players);
+
+    if (players.length === 0) {
+      playersListElement.innerHTML = '<div class="player-item">No players in lobby</div>';
+      return;
+    }
+
+    playersListElement.innerHTML = players.map((player) => {
+      const isCurrentPlayer = player.id === this.playerId;
+      return `
+        <div class="player-item ${isCurrentPlayer ? 'current-player' : ''}">
+          <span class="player-name">
+            ${player.nickname}${isCurrentPlayer ? ' (You)' : ''}
+          </span>
+          <span class="player-status">Ready</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ✅ NEW: Update player count information
+  updatePlayerCountInfo() {
+    const playerCountElement = document.getElementById('player-count-info');
+    if (!playerCountElement || !this.gameState) return;
+
+    const playerCount = Object.keys(this.gameState.players).length;
+    const maxPlayers = 4;
+
+    let message = '';
+    if (playerCount === 0) {
+      message = 'Waiting for players to join...';
+    } else if (playerCount === 1) {
+      message = `${playerCount}/4 players - Need at least 2 players to start`;
+    } else if (playerCount < maxPlayers) {
+      message = `${playerCount}/4 players - Game will start soon`;
+    } else {
+      message = `${playerCount}/4 players - Lobby full!`;
+    }
+
+    playerCountElement.textContent = message;
   }
 
   showGameScreen() {
