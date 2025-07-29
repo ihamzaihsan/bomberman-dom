@@ -184,10 +184,13 @@ class GameServer {
       y: startingPositions[playerCount].y,
       lives: 3,
       powerUps: {
-        bombs: 1,
+        bombs: 1, // Keep for backward compatibility
         flames: 1, // ✅ PHASE 1: Default bomb range = 1 block
         speed: 1
       },
+      // ✅ NEW: Proper bomb management system
+      maxBombs: 1,      // Maximum bombs player can place simultaneously
+      currentBombs: 0,  // Current number of active bombs on field
       alive: true
     };
 
@@ -451,7 +454,7 @@ class GameServer {
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
-      gameTimeLeft: 60,
+      gameTimeLeft: 180,
       gameTimeTimer: null,
       gameEnded: false,
       winner: null,
@@ -593,9 +596,11 @@ class GameServer {
     const player = this.gameState.players[playerId];
     if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) return false;
 
-    // Check if player can place more bombs
-    const playerBombs = this.gameState.bombs.filter(bomb => bomb.playerId === playerId);
-    if (playerBombs.length >= player.powerUps.bombs) return false;
+    // ✅ UPDATED: Check if player can place more bombs using new system
+    if (player.currentBombs >= player.maxBombs) {
+      console.log(`Player ${player.nickname} cannot place bomb: ${player.currentBombs}/${player.maxBombs} bombs active`);
+      return false;
+    }
 
     const bomb = {
       id: 'bomb_' + Date.now(),
@@ -607,7 +612,11 @@ class GameServer {
     };
 
     this.gameState.bombs.push(bomb);
-    console.log('Bomb placed:', bomb);
+
+    // ✅ NEW: Increment current bomb count
+    player.currentBombs++;
+
+    console.log(`Bomb placed by ${player.nickname}: ${bomb.id} at (${bomb.x}, ${bomb.y}). Active bombs: ${player.currentBombs}/${player.maxBombs}`);
 
     // ✅ REMOVED: setTimeout approach - now handled by real-time game loop
     // The game loop will automatically process bomb timers and trigger explosions
@@ -623,6 +632,13 @@ class GameServer {
     if (this.explodedBombs.has(bomb.id) || this.explodingBombs.has(bomb.id)) {
       console.log(`⚠️ Bomb ${bomb.id} already exploded or is exploding, skipping`);
       return;
+    }
+
+    // ✅ NEW: Decrement bomb count for the player who placed this bomb
+    const bombOwner = this.gameState.players[bomb.playerId];
+    if (bombOwner && bombOwner.currentBombs > 0) {
+      bombOwner.currentBombs--;
+      console.log(`💣 Decremented bomb count for ${bombOwner.nickname}: ${bombOwner.currentBombs}/${bombOwner.maxBombs}`);
     }
 
     // Mark bomb as currently exploding
@@ -676,6 +692,13 @@ class GameServer {
           if (player.alive && player.x === x && player.y === y) {
             player.lives--;
             console.log(`Player ${player.nickname} hit by explosion! Lives: ${player.lives}`);
+
+            // ✅ CRITICAL FIX: Reset bomb system on damage
+            player.maxBombs = 1;
+            player.currentBombs = 0;
+            // ✅ ALSO reset powerUps.bombs for backward compatibility
+            player.powerUps.bombs = 1;
+            console.log(`💣 Reset bomb system for ${player.nickname}: maxBombs=1, currentBombs=0, powerUps.bombs=1`);
 
             // Broadcast player damage event
             this.broadcastEvent('player_damaged', {
@@ -769,6 +792,16 @@ class GameServer {
     this.explodingBombs.delete(bomb.id);
     this.explodedBombs.add(bomb.id);
     console.log(`✅ Bomb ${bomb.id} explosion complete, marked as exploded`);
+
+    // ✅ CRITICAL FIX: Broadcast game state after bomb explosion
+    // This ensures clients get the updated currentBombs count immediately
+    if (this.wsManager && chainReactionDepth === 0) {
+      // Only broadcast on the root explosion to avoid spam during chain reactions
+      setTimeout(() => {
+        this.wsManager.broadcastGameState();
+        console.log(`📡 Game state broadcasted after bomb explosion`);
+      }, 150); // Small delay to ensure all chain reactions complete
+    }
   }
 
   // ✅ PHASE 2: Power-up spawning system
@@ -807,9 +840,12 @@ class GameServer {
       const player = this.gameState.players[playerId];
 
       console.log(`🎁 Player ${player.nickname} collected ${powerUp.type} power-up at (${x}, ${y})`);
+      console.log(`   Before: maxBombs=${player.maxBombs}, powerUps.bombs=${player.powerUps.bombs}`);
 
       // Apply power-up effect
       this.applyPowerUpEffect(player, powerUp.type);
+
+      console.log(`   After: maxBombs=${player.maxBombs}, powerUps.bombs=${player.powerUps.bombs}`);
 
       // Remove power-up from game state
       this.gameState.powerUps.splice(powerUpIndex, 1);
@@ -825,9 +861,14 @@ class GameServer {
           newStats: {
             bombs: player.powerUps.bombs,
             flames: player.powerUps.flames,
-            speed: player.powerUps.speed
+            speed: player.powerUps.speed,
+            maxBombs: player.maxBombs,
+            currentBombs: player.currentBombs
           }
         });
+
+        // ✅ CRITICAL: Broadcast updated game state after power-up collection
+        this.wsManager.broadcastGameState();
       }
     }
   }
@@ -835,16 +876,19 @@ class GameServer {
   // ✅ PHASE 3: Apply power-up effects
   applyPowerUpEffect(player, powerUpType) {
     const maxLimits = {
-      bombs: 5,   // Maximum 5 concurrent bombs
+      bombs: 8,   // ✅ UPDATED: Maximum 8 concurrent bombs (as per requirements)
       flames: 4,  // Maximum 4 block explosion range
       speed: 3    // Maximum speed level
     };
 
     switch (powerUpType) {
       case 'bombs':
-        if (player.powerUps.bombs < maxLimits.bombs) {
-          player.powerUps.bombs++;
-          console.log(`💣 ${player.nickname} bombs increased to ${player.powerUps.bombs}`);
+        // ✅ UPDATED: Use new maxBombs system instead of powerUps.bombs
+        if (player.maxBombs < maxLimits.bombs) {
+          player.maxBombs++;
+          // Keep powerUps.bombs for backward compatibility
+          player.powerUps.bombs = player.maxBombs;
+          console.log(`💣 ${player.nickname} maxBombs increased to ${player.maxBombs}`);
         } else {
           console.log(`💣 ${player.nickname} already at max bombs (${maxLimits.bombs})`);
         }

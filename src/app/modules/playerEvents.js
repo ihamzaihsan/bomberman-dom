@@ -3,6 +3,8 @@ export function handlePlayerDamaged(app, eventData) {
   if (eventData.playerId === app.playerId) {
     if (app.gameState && app.gameState.players[app.playerId]) {
       app.gameState.players[app.playerId].lives = eventData.livesRemaining;
+      // ✅ REMOVED: Don't modify bomb counts on client - server handles this
+      // The server resets maxBombs=1 and currentBombs=0 on damage
       app.gameUIManager.setGameState(app.gameState, app.playerId);
     }
     app.gameUIManager.updatePlayerStats(true);
@@ -47,4 +49,17 @@ export function handleGameStarted(app, eventData) {
       }, 100);
     }
   }
+}
+
+export function handlePowerUpCollected(app, eventData) {
+  // ✅ FIXED: Let server handle all bomb logic, client just shows notification
+  // The server increments maxBombs and sends updated game state
+
+  if (eventData.powerUpType === 'bombs' && eventData.playerId === app.playerId) {
+    app.showNotification('Bomb Power-Up collected!', 'success');
+    // ✅ CRITICAL: Don't modify client state - wait for server update
+    // The server will increment maxBombs and broadcast the new game state
+    // Client will receive the update and UI will refresh automatically
+  }
+  // ...existing code for other power-ups...
 }

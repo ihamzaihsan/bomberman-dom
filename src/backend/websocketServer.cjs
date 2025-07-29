@@ -196,23 +196,46 @@ class WebSocketManager {
   // Handle bomb placement via WebSocket
   handleBombPlace(ws, data) {
     const playerId = ws.playerId;
-    
+
     if (!playerId) {
       this.sendToClient(ws, { type: 'error', message: 'Player not authenticated' });
       return;
     }
-    
+
+    console.log(`🧪 BOMB PLACEMENT REQUEST from ${playerId}`);
+
+    // ✅ CRITICAL FIX: Get player state before and after bomb placement
+    const playerBefore = this.gameServer.gameState.players[playerId];
+    const beforeState = playerBefore ? {
+      maxBombs: playerBefore.maxBombs,
+      currentBombs: playerBefore.currentBombs
+    } : null;
+
     const success = this.gameServer.placeBomb(playerId);
-    
-    if (success) {
-      // Broadcast updated game state to all players
-      this.broadcastGameState();
-    }
-    
-    // Send bomb placement result to the requesting player
+
+    const playerAfter = this.gameServer.gameState.players[playerId];
+    const afterState = playerAfter ? {
+      maxBombs: playerAfter.maxBombs,
+      currentBombs: playerAfter.currentBombs
+    } : null;
+
+    console.log(`🧪 BOMB PLACEMENT RESULT: ${success}`);
+    console.log(`🧪 PLAYER STATE: Before: ${beforeState ? `${beforeState.currentBombs}/${beforeState.maxBombs}` : 'null'}, After: ${afterState ? `${afterState.currentBombs}/${afterState.maxBombs}` : 'null'}`);
+
+    // ✅ CRITICAL FIX: Immediately broadcast game state after bomb placement
+    // This ensures all clients get the updated currentBombs count immediately
+    this.broadcastGameState();
+
+    // Send bomb placement result to the requesting player with detailed state info
     this.sendToClient(ws, {
       type: 'bomb_result',
-      success: success
+      success: success,
+      playerBombState: afterState,
+      debug: {
+        before: beforeState,
+        after: afterState,
+        timestamp: Date.now()
+      }
     });
   }
 

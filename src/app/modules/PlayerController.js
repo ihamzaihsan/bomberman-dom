@@ -1,4 +1,6 @@
 export class PlayerController {
+  static BOMB_CAP = 8;
+
   constructor(framework, webSocketManager) {
     this.framework = framework;
     this.webSocketManager = webSocketManager;
@@ -14,6 +16,9 @@ export class PlayerController {
     // Game state reference (will be set by parent)
     this.gameState = null;
     this.playerId = null;
+
+    // ✅ NEW: Bomb placement rate limiting
+    this.lastBombPlacementTime = 0;
     
     // Callbacks
     this.onInvalidMove = null;
@@ -32,7 +37,15 @@ export class PlayerController {
     });
     this.gameState = gameState;
     this.playerId = playerId;
-    
+
+    // ✅ UPDATED: Ensure player has proper bomb attributes from server
+    if (gameState && gameState.players && playerId && gameState.players[playerId]) {
+      const player = gameState.players[playerId];
+      // Initialize bomb attributes if missing (for backward compatibility)
+      if (typeof player.maxBombs !== 'number') player.maxBombs = 1;
+      if (typeof player.currentBombs !== 'number') player.currentBombs = 0;
+    }
+
     // ✅ SPEED POWER-UP: Update movement speed when game state changes
     this.updateMovementSpeed();
   }
@@ -157,37 +170,59 @@ export class PlayerController {
   }
 
   placeBomb() {
-    if (!this.gameState?.gameStarted || !this.playerId) {
-      return;
-    }
-
+    if (!this.gameState?.gameStarted || !this.playerId) return;
     const player = this.gameState.players[this.playerId];
-    if (!player) {
+    if (!player) return;
+
+    // ✅ NEW: Rate limiting to prevent rapid bomb placement attempts
+    const now = Date.now();
+    if (now - this.lastBombPlacementTime < 100) { // 100ms cooldown
+      console.log('🚫 Bomb placement rate limited');
       return;
     }
 
-    // Check if player has bombs available
-    if (player.bombCount <= 0) {
-      console.log('No bombs available');
+    if (typeof player.maxBombs !== 'number') player.maxBombs = 1;
+    if (typeof player.currentBombs !== 'number') player.currentBombs = 0;
+
+    console.log(`🎯 CLIENT BOMB ATTEMPT: ${player.nickname} - currentBombs=${player.currentBombs}, maxBombs=${player.maxBombs}`);
+
+    // ✅ CRITICAL FIX: Use exact same logic as server
+    if (player.currentBombs >= player.maxBombs) {
+      console.log(`🚫 CLIENT VALIDATION FAILED: ${player.currentBombs} >= ${player.maxBombs}`);
       return;
     }
 
     // Check if there's already a bomb at player's position
-    const existingBomb = this.gameState.bombs?.find(bomb => 
-      bomb.x === player.x && bomb.y === player.y
-    );
-
+    const existingBomb = this.gameState.bombs?.find(bomb => bomb.x === player.x && bomb.y === player.y);
     if (existingBomb) {
-      console.log('Bomb already exists at this position');
+      console.log('🚫 CLIENT VALIDATION FAILED: Bomb already exists at position');
       return;
     }
 
-    console.log('Placing bomb');
-    // FIX: Use 'bomb' as message type for server compatibility
+    console.log('✅ CLIENT VALIDATION PASSED: Sending bomb placement request');
+    this.lastBombPlacementTime = now;
+
+    // ✅ REMOVED: Don't optimistically increment currentBombs on client
+    // This causes synchronization issues - let server handle the increment
+    // and send back the updated game state
+
+    // Send bomb placement to server
     this.webSocketManager.sendWebSocketMessage({
-      type: 'bomb'
+      type: 'bomb',
+      x: player.x,
+      y: player.y
     });
+
+    // ✅ NOTE: UI will be updated when server sends back the updated game state
+    // The server will increment currentBombs and broadcast the new state
   }
+
+  // ✅ REMOVED: These methods are no longer needed as server manages bomb state
+  // The server now handles:
+  // - Bomb explosion decrementing currentBombs
+  // - Power-up collection incrementing maxBombs
+  // - Player damage resetting both maxBombs and currentBombs
+  // Client just receives updated game state from server
 
   // ===== MOVEMENT VALIDATION =====
 

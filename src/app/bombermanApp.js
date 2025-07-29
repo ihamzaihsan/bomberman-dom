@@ -375,10 +375,34 @@ class BombermanApp {
 
   handleBombResult(data) {
     // Handle bomb placement result feedback from server
+    console.log('🧪 BOMB RESULT RECEIVED:', data);
+
     if (!data.success) {
-      console.log('Bomb placement rejected');
-      // Could show user feedback here if needed
+      console.log('❌ Bomb placement rejected by server');
+      if (data.debug) {
+        console.log('🧪 Debug info:', data.debug);
+      }
+    } else {
+      console.log('✅ Bomb placement successful');
+
+      // ✅ CRITICAL FIX: Update client state immediately with server state
+      if (data.playerBombState && this.playerId && this.gameState?.players[this.playerId]) {
+        const clientPlayer = this.gameState.players[this.playerId];
+        console.log(`🔄 Updating client state: ${clientPlayer.currentBombs}/${clientPlayer.maxBombs} → ${data.playerBombState.currentBombs}/${data.playerBombState.maxBombs}`);
+
+        clientPlayer.maxBombs = data.playerBombState.maxBombs;
+        clientPlayer.currentBombs = data.playerBombState.currentBombs;
+
+        // Force immediate UI update
+        this.gameUIManager.updatePlayerStats(true);
+      }
     }
+  }
+
+  handlePlayerJoined(eventData) {
+    // Add logic if needed, for now just a stub to prevent errors
+    // Example: update player list, show notification, etc.
+    // this.showNotification(`${eventData.nickname} joined the game!`, 'info');
   }
 }
 

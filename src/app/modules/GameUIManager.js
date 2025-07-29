@@ -102,36 +102,44 @@ export class GameUIManager {
 
   // ✅ ENHANCED: Update player stats with selective updating
   updatePlayerStats(forceUpdate = false) {
-    if (!this.gameState || !this.gameState.players || !this.playerId) {
-      return;
-    }
-
+    if (!this.gameState || !this.gameState.players || !this.playerId) return;
     const currentPlayer = this.gameState.players[this.playerId];
-    if (!currentPlayer) {
-      return;
-    }
+    if (!currentPlayer) return;
 
-    // Only update if player stat elements exist (we're in game screen)
     const livesElement = document.getElementById('player-lives');
     const bombsElement = document.getElementById('player-bombs');
 
     if (livesElement) {
-      // Update lives counter
-      this.framework.updateElement('player-lives', (livesElement) => {
-        if (livesElement) {
-          livesElement.textContent = currentPlayer.lives;
-        }
-      }, forceUpdate);
+      livesElement.textContent = `Lives: ${currentPlayer.lives ?? 1}`;
     }
 
+    // ✅ UPDATED: Use new bomb system with maxBombs and currentBombs
+    const maxBombs = typeof currentPlayer.maxBombs === 'number' ? currentPlayer.maxBombs : 1;
+    const currentBombs = typeof currentPlayer.currentBombs === 'number' ? currentPlayer.currentBombs : 0;
+    const availableBombs = maxBombs - currentBombs;
+
+
+
     if (bombsElement) {
-      // Update bombs counter
-      this.framework.updateElement('player-bombs', (bombsElement) => {
-        if (bombsElement) {
-          const availableBombs = currentPlayer.bombCount || 1;
-          bombsElement.textContent = availableBombs;
-        }
-      }, forceUpdate);
+      // ✅ UPDATED: Display maximum bomb capacity as requested
+      bombsElement.textContent = `${maxBombs}`;
+
+      // Visual indicator based on bomb availability
+      if (availableBombs <= 0) {
+        bombsElement.style.color = '#e74c3c';
+        bombsElement.style.fontWeight = 'bold';
+        bombsElement.title = `No bombs left! (${currentBombs}/${maxBombs} active)`;
+      } else if (availableBombs === maxBombs) {
+        // All bombs available
+        bombsElement.style.color = '#27ae60';
+        bombsElement.style.fontWeight = '';
+        bombsElement.title = `Max capacity: ${maxBombs} bombs, ${availableBombs} available`;
+      } else {
+        // Some bombs available
+        bombsElement.style.color = '#f39c12';
+        bombsElement.style.fontWeight = '';
+        bombsElement.title = `Max capacity: ${maxBombs} bombs, ${availableBombs} available, ${currentBombs} active`;
+      }
     }
   }
 
