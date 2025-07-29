@@ -87,6 +87,8 @@ class BombermanApp {
     this.webSocketManager.registerMessageHandler("game_event", (data) => this.handleGameEvent(data.eventType, data.data));
     this.webSocketManager.registerMessageHandler("chat_message", (data) => this.handleChatMessage(data));
     this.webSocketManager.registerMessageHandler("error", (data) => this.showError(data.message));
+    this.webSocketManager.registerMessageHandler("move_result", (data) => this.handleMoveResult(data));
+    this.webSocketManager.registerMessageHandler("bomb_result", (data) => this.handleBombResult(data));
     this.webSocketManager.initWebSocket();
     setTimeout(() => this.updateConnectionStatus(), 100);
   }
@@ -320,9 +322,13 @@ class BombermanApp {
   }
 
   handleBombExplosion(eventData) {
+    console.log('🎯 handleBombExplosion called with:', eventData);
     // Show explosion effect on the map
-    if (eventData.explosions) {
-      this.mapRenderer.showExplosionEffect(eventData.explosions);
+    if (eventData.explosions && eventData.position) {
+      console.log('🎆 Calling showExplosionEffect with position:', eventData.position, 'explosions:', eventData.explosions);
+      this.mapRenderer.showExplosionEffect(eventData.position, eventData.explosions, eventData.range, eventData.chainReactionDepth);
+    } else {
+      console.log('❌ Missing explosions or position data in event:', eventData);
     }
     if (this.appEventHandlers.handleBombExplosion) {
       return this.appEventHandlers.handleBombExplosion(eventData);
@@ -356,6 +362,22 @@ class BombermanApp {
         this.playerController.updateMovementSpeed();
         console.log('Speed power-up collected - movement speed updated');
       }
+    }
+  }
+
+  handleMoveResult(data) {
+    // Handle movement result feedback from server
+    if (!data.success) {
+      console.log(`Move ${data.direction} rejected: ${data.reason || 'Unknown reason'}`);
+      // Could show user feedback here if needed
+    }
+  }
+
+  handleBombResult(data) {
+    // Handle bomb placement result feedback from server
+    if (!data.success) {
+      console.log('Bomb placement rejected');
+      // Could show user feedback here if needed
     }
   }
 }
