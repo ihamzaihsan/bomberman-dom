@@ -141,6 +141,9 @@ export class GameUIManager {
         bombsElement.title = `Max capacity: ${maxBombs} bombs, ${availableBombs} available, ${currentBombs} active`;
       }
     }
+
+    // ✅ NEW: Update the game players list when stats change
+    this.updateGamePlayersList();
   }
 
   // ✅ NEW: Highlight lives counter when taking damage
@@ -417,47 +420,246 @@ export class GameUIManager {
     playerCountElement.textContent = message;
   }
 
-  showGameScreen() {
-    const app = document.getElementById('app');
+  // ✅ NEW: Update player list in game screen with lives and crown identifier
+  updateGamePlayersList() {
+    const playersListElement = document.getElementById('players-list-game');
+    if (!playersListElement || !this.gameState || !this.gameState.players) return;
+
+    // Clear existing content
+    playersListElement.innerHTML = '';
+
+    const players = Object.values(this.gameState.players);
     
-    app.innerHTML = `
-      <div class="game-screen">
-        <div class="game-ui">
-          <div class="game-info">
-            <div class="timer-display" id="timer-display">
-              Time: <span id="timer-value">0:00</span>
-            </div>
-            <div class="player-stats">
-              <div class="stat">
-                <span>Lives:</span>
-                <span id="player-lives">3</span>
-              </div>
-              <div class="stat">
-                <span>Bombs:</span>
-                <span id="player-bombs">1</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="game-map-container">
-            <div id="game-map" class="game-map"></div>
-          </div>
-          
-          <div class="game-chat-container">
-            <div id="game-chat-messages" class="game-chat-messages"></div>
-            <div class="game-chat-input-container">
-              <input id="game-chat-input" type="text" placeholder="Chat..." maxlength="100">
-              <button id="game-chat-send">Send</button>
-            </div>
-          </div>
-        </div>
-        
-        <div class="game-controls-info">
-          <p>Controls: Arrow keys or WASD to move, Space/Enter to place bomb</p>
-          <p>Press F12 to toggle performance monitor</p>
-        </div>
-      </div>
-    `;
+    if (players.length === 0) {
+      const emptyMessage = this.framework.selectiveRenderer.createElement('div', {
+        className: 'no-players-message',
+        textContent: 'No players in game',
+        style: 'color: #bdc3c7; font-style: italic; text-align: center; padding: 10px;'
+      });
+      playersListElement.appendChild(emptyMessage);
+      return;
+    }
+
+    // Create player list items
+    players.forEach((player, index) => {
+      const isCurrentPlayer = player.id === this.playerId;
+      
+      // Create player item container
+      const playerItem = this.framework.selectiveRenderer.createElement('div', {
+        className: `game-player-item ${isCurrentPlayer ? 'current-player' : ''}`,
+        style: `
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px;
+          margin-bottom: 6px;
+          background: ${isCurrentPlayer ? 'linear-gradient(135deg, #3498db, #2980b9)' : 'linear-gradient(135deg, #34495e, #2c3e50)'};
+          border-radius: 8px;
+          border: ${isCurrentPlayer ? '2px solid #3498db' : '2px solid transparent'};
+          color: #ecf0f1;
+          font-size: 0.9em;
+          transition: all 0.3s ease;
+          position: relative;
+        `
+      });
+
+      // Create player name with crown for current player
+      const playerNameContainer = this.framework.selectiveRenderer.createElement('div', {
+        className: 'player-name-container',
+        style: 'display: flex; align-items: center; gap: 6px;'
+      });
+
+      // Add crown for current player
+      if (isCurrentPlayer) {
+        const crown = this.framework.selectiveRenderer.createElement('span', {
+          className: 'player-crown',
+          innerHTML: '👑',
+          style: 'font-size: 1.1em; filter: drop-shadow(0 0 3px gold);',
+          title: 'You'
+        });
+        playerNameContainer.appendChild(crown);
+      }
+
+      const playerName = this.framework.selectiveRenderer.createElement('span', {
+        className: 'player-name',
+        textContent: player.nickname,
+        style: 'font-weight: bold;'
+      });
+
+      playerNameContainer.appendChild(playerName);
+
+      // Create lives display
+      const livesContainer = this.framework.selectiveRenderer.createElement('div', {
+        className: 'player-lives-container',
+        style: 'display: flex; align-items: center; gap: 4px;'
+      });
+
+      const livesLabel = this.framework.selectiveRenderer.createElement('span', {
+        textContent: 'Lives:',
+        style: 'font-size: 0.8em; color: #bdc3c7;'
+      });
+
+      const livesCount = this.framework.selectiveRenderer.createElement('span', {
+        className: 'player-lives-count',
+        textContent: player.lives || 0,
+        style: `
+          font-weight: bold;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: ${player.lives > 1 ? '#27ae60' : player.lives === 1 ? '#f39c12' : '#e74c3c'};
+          color: white;
+          font-size: 0.85em;
+          min-width: 16px;
+          text-align: center;
+        `
+      });
+
+      livesContainer.appendChild(livesLabel);
+      livesContainer.appendChild(livesCount);
+
+      // Assemble player item
+      playerItem.appendChild(playerNameContainer);
+      playerItem.appendChild(livesContainer);
+
+      // Add to list
+      playersListElement.appendChild(playerItem);
+    });
+  }
+
+  showGameScreen() {
+    // ✅ NEW: Use framework to create the game screen structure
+    const gameScreenContainer = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-screen'
+    });
+
+    // Create game UI section
+    const gameUI = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-ui'
+    });
+
+    // Game info section (timer and current player stats)
+    const gameInfo = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-info'
+    });
+
+    // Timer display
+    const timerDisplay = this.framework.selectiveRenderer.createElement('div', {
+      className: 'timer-display',
+      id: 'timer-display',
+      innerHTML: 'Time: <span id="timer-value">0:00</span>'
+    });
+
+    // Current player stats
+    const playerStats = this.framework.selectiveRenderer.createElement('div', {
+      className: 'player-stats'
+    });
+
+    const livesStatsDiv = this.framework.selectiveRenderer.createElement('div', {
+      className: 'stat',
+      innerHTML: '<span>Lives:</span><span id="player-lives">3</span>'
+    });
+
+    const bombsStatsDiv = this.framework.selectiveRenderer.createElement('div', {
+      className: 'stat',
+      innerHTML: '<span>Bombs:</span><span id="player-bombs">1</span>'
+    });
+
+    // ✅ NEW: Players list with lives (moved to game-info)
+    const playersListContainer = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-players-list',
+      id: 'game-players-list'
+    });
+
+    const playersListTitle = this.framework.selectiveRenderer.createElement('h4', {
+      innerHTML: 'Players',
+      style: 'margin: 10px 0 5px 0; color: #ecf0f1; font-size: 0.9em;'
+    });
+
+    const playersListDiv = this.framework.selectiveRenderer.createElement('div', {
+      id: 'players-list-game',
+      className: 'players-list-game'
+    });
+
+    // Assemble game info section
+    playerStats.appendChild(livesStatsDiv);
+    playerStats.appendChild(bombsStatsDiv);
+    
+    playersListContainer.appendChild(playersListTitle);
+    playersListContainer.appendChild(playersListDiv);
+    
+    gameInfo.appendChild(timerDisplay);
+    gameInfo.appendChild(playerStats);
+    gameInfo.appendChild(playersListContainer);
+
+    // Game map container
+    const gameMapContainer = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-map-container'
+    });
+
+    const gameMap = this.framework.selectiveRenderer.createElement('div', {
+      id: 'game-map',
+      className: 'game-map'
+    });
+
+    gameMapContainer.appendChild(gameMap);
+
+    // Game chat container
+    const gameChatContainer = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-chat-container'
+    });
+
+    const gameChatMessages = this.framework.selectiveRenderer.createElement('div', {
+      id: 'game-chat-messages',
+      className: 'game-chat-messages'
+    });
+
+    const gameChatInputContainer = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-chat-input-container',
+      innerHTML: `
+        <input id="game-chat-input" type="text" placeholder="Chat..." maxlength="100">
+        <button id="game-chat-send">Send</button>
+      `
+    });
+
+    gameChatContainer.appendChild(gameChatMessages);
+    gameChatContainer.appendChild(gameChatInputContainer);
+
+    // Assemble game UI
+    gameUI.appendChild(gameInfo);
+    gameUI.appendChild(gameMapContainer);
+    gameUI.appendChild(gameChatContainer);
+
+    // Controls info
+    const controlsInfo = this.framework.selectiveRenderer.createElement('div', {
+      className: 'game-controls-info',
+      innerHTML: `
+        <p>Controls: Arrow keys or WASD to move, Space/Enter to place bomb</p>
+        <p>Press F12 to toggle performance monitor</p>
+      `
+    });
+
+    // Assemble final structure
+    gameScreenContainer.appendChild(gameUI);
+    gameScreenContainer.appendChild(controlsInfo);
+
+    // Add to DOM
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    app.appendChild(gameScreenContainer);
+
+    // Initialize the player list
+    this.updateGamePlayersList();
+  }
+
+  // ✅ NEW: Update game screen when state changes
+  updateGameScreen(previousState, newState) {
+    // Update player stats (which also updates the player list)
+    this.updatePlayerStats();
+    
+    // Update timer if it has changed
+    if (newState && newState.gameTimeLeft !== undefined) {
+      this.updateTimer();
+    }
   }
 
   // ===== NOTIFICATIONS =====
