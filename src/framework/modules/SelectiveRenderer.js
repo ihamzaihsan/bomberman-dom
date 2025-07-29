@@ -132,6 +132,28 @@ export class SelectiveRenderer {
         this.lastRenderState.clear();
     }
 
+    // ✅ NEW: createElement method for framework element creation
+    createElement(tagName, attributes = {}) {
+        const element = document.createElement(tagName);
+        
+        // Set attributes
+        Object.keys(attributes).forEach(key => {
+            if (key === 'innerHTML') {
+                element.innerHTML = attributes[key];
+            } else if (key === 'textContent') {
+                element.textContent = attributes[key];
+            } else if (key === 'className') {
+                element.className = attributes[key];
+            } else if (key === 'style') {
+                element.style.cssText = attributes[key];
+            } else {
+                element.setAttribute(key, attributes[key]);
+            }
+        });
+        
+        return element;
+    }
+
     // Conditional rendering helper
     when(condition, element) {
         return condition ? element : null;
