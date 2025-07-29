@@ -382,7 +382,7 @@ export class MapRenderer {
   }
 
   showExplosionEffect(position, explosions, range = 1, chainDepth = 0) {
-    console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} cells - Chain depth: ${chainDepth}`);
+    console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} affected cells - Chain depth: ${chainDepth}`);
 
     const gameMap = document.getElementById('game-map');
     if (!gameMap) {
@@ -393,9 +393,10 @@ export class MapRenderer {
     console.log('✅ Game map found:', gameMap);
     console.log('📍 Explosion cells:', explosions);
 
-    // Create explosion animations with chain reaction awareness
+    // Create explosion animations on all affected cells
     explosions.forEach((cell, index) => {
-      const type = index === 0 ? 'center' : 'blast';
+      // First cell is bomb center, others are blast areas
+      const type = (cell.x === position.x && cell.y === position.y) ? 'center' : 'blast';
       console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y}) - Chain depth: ${chainDepth}`);
 
       // Add slight delay for chain reactions to create visual sequence
@@ -406,9 +407,8 @@ export class MapRenderer {
       }, delay);
     });
 
-    // Improved cleanup - don't clean up immediately for chain reactions
-    // Let each explosion manage its own cleanup to avoid conflicts
-    const cleanupDelay = 1500 + (chainDepth * 100); // Longer cleanup for chain reactions
+    // Cleanup after animation completes
+    const cleanupDelay = 1200 + (chainDepth * 100); // Wait for animation to complete
     setTimeout(() => {
       console.log(`🧹 Cleaning up explosion animations for chain depth ${chainDepth}`);
       this.cleanupExplosionAnimations();
@@ -457,7 +457,7 @@ export class MapRenderer {
       explosionElement.className = `explosion-effect explosion-blast ${chainDepth > 0 ? 'chain-reaction' : ''}`;
     }
 
-    // Direct inline styles for reliability
+    // Direct inline styles for reliability - Adjusted for multiple explosion cells
     explosionElement.style.cssText = `
       position: absolute;
       top: 0;
@@ -469,10 +469,11 @@ export class MapRenderer {
       justify-content: center;
       pointer-events: none;
       z-index: 1000;
-      font-size: ${type === 'center' ? '2.5em' : '2em'};
+      font-size: ${type === 'center' ? '3em' : '2.5em'};
       opacity: 1;
       transform: scale(1);
-      animation: bomberman-explosion-pop 0.5s cubic-bezier(.68,-0.55,.27,1.55);
+      animation: bomberman-explosion-pop 0.6s cubic-bezier(.68,-0.55,.27,1.55);
+      text-shadow: 0 0 15px rgba(255, 100, 0, 0.9), 0 0 30px rgba(255, 150, 0, 0.7);
     `;
 
     // Add to cell with relative positioning
