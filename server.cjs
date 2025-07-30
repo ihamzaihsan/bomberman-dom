@@ -673,6 +673,41 @@ class GameServer {
     const explosions = [{ x: bomb.x, y: bomb.y }];
     const triggeredBombs = []; // Track bombs triggered by this explosion
 
+    // Damage bomb owner if still standing on their own bomb
+    if (bombOwner && bombOwner.alive && bombOwner.x === bomb.x && bombOwner.y === bomb.y) {
+      bombOwner.lives--;
+      console.log(`Player ${bombOwner.nickname} damaged by their own bomb! Lives: ${bombOwner.lives}`);
+      bombOwner.maxBombs = 1;
+      bombOwner.currentBombs = 0;
+      bombOwner.powerUps.bombs = 1;
+      this.broadcastEvent('player_damaged', {
+        playerId: bombOwner.id,
+        nickname: bombOwner.nickname,
+        livesRemaining: bombOwner.lives,
+        position: { x: bombOwner.x, y: bombOwner.y }
+      });
+      if (bombOwner.lives <= 0) {
+        bombOwner.lives = 0;
+        bombOwner.alive = false;
+        console.log(`Player ${bombOwner.nickname} eliminated by their own bomb! Lives: ${bombOwner.lives}`);
+        this.broadcastEvent('player_eliminated', {
+          playerId: bombOwner.id,
+          nickname: bombOwner.nickname,
+          finalLives: bombOwner.lives
+        });
+        if (this.wsManager) {
+          this.wsManager.broadcastGameState();
+        }
+        setTimeout(() => {
+          const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+          if (alivePlayers.length <= 1) {
+            this.endGame('Last player standing!');
+          }
+        }, 100);
+      }
+    }
+    // === END NEW ===
+
     // Add explosion in 4 directions
     const directions = [
       { dx: 0, dy: -1 }, // up
