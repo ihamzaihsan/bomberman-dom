@@ -9,6 +9,12 @@ export class GameStateManager {
     this.app.gameState = newGameState;
     this.app.gameUIManager.setGameState(newGameState, this.app.playerId);
     this.app.playerController.setGameState(newGameState, this.app.playerId);
+
+    // Ensure the player list is updated in the waiting room
+    if (this.app.isInWaitingRoom()) {
+      this.app.gameUIManager.updatePlayerList();
+    }
+
     // Optionally, trigger map/UI updates
     this.app.mapRenderer.updateGameMapOptimized(newGameState, Date.now());
   }

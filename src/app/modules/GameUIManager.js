@@ -396,6 +396,17 @@ export class GameUIManager {
         </div>
       `;
     }).join('');
+
+    // Remove "Waiting for players..." if at least two players are in the lobby
+    const playerCountElement = document.getElementById('player-count-info');
+    if (playerCountElement) {
+      const playerCount = players.length;
+      if (playerCount >= 2) {
+        playerCountElement.style.display = 'none';
+      } else {
+        playerCountElement.style.display = 'block';
+      }
+    }
   }
 
   // ✅ NEW: Update player count information

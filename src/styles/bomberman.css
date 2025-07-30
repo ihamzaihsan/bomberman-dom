@@ -1458,4 +1458,36 @@ body {
   outline: none; /* Remove outline */
 }
 
+/* Player item styles */
+.player-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  border-radius: 6px;
+  color: #ecf0f1;
+  font-size: 0.8em;
+  transition: all 0.3s ease;
+}
+
+.player-item.current-player {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  border: 2px solid #3498db;
+}
+
+.player-item:not(.current-player) {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  border: 1px solid #2c3e50;
+}
+
+.player-name {
+  font-weight: bold;
+}
+
+.player-status {
+  font-size: 0.7em;
+  color: #bdc3c7;
+}
+
 
