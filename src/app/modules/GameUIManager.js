@@ -1,15 +1,21 @@
+// ✅ CONSOLIDATED: Import shared constants
+import { GAME_TIMING } from '../../shared/GameConstants.js';
+
 export class GameUIManager {
   constructor(framework) {
     this.framework = framework;
-    
+
     // UI state
     this.gameState = null;
     this.playerId = null;
-    
+
     // Event callbacks
     this.onReturnToLobby = null;
     this.onShowError = null;
     this.onShowNotification = null;
+
+    // ✅ CONSOLIDATED: Reference to NotificationManager for notifications
+    this.notificationManager = null;
   }
 
   // Set game state reference
@@ -23,6 +29,11 @@ export class GameUIManager {
     this.onReturnToLobby = callbacks.onReturnToLobby || null;
     this.onShowError = callbacks.onShowError || null;
     this.onShowNotification = callbacks.onShowNotification || null;
+  }
+
+  // ✅ CONSOLIDATED: Set notification manager reference
+  setNotificationManager(notificationManager) {
+    this.notificationManager = notificationManager;
   }
 
   // ===== TIMER FUNCTIONALITY =====
@@ -263,7 +274,7 @@ export class GameUIManager {
   }
 
   startLobbyCountdown() {
-    let countdown = 10;
+    let countdown = GAME_TIMING.COUNTDOWN_DURATION; // ✅ CONSOLIDATED: Use shared constant
     const countdownElement = document.getElementById('lobby-countdown');
     
     const countdownInterval = setInterval(() => {
@@ -278,7 +289,7 @@ export class GameUIManager {
           this.onReturnToLobby();
         }
       }
-    }, 1000);
+    }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
   }
 
   // ===== SCREEN MANAGEMENT =====
@@ -673,71 +684,20 @@ export class GameUIManager {
     }
   }
 
-  // ===== NOTIFICATIONS =====
-
+  // ✅ CONSOLIDATED: Use NotificationManager instead of duplicate methods
   showNotification(message, type = 'success') {
-    let notificationDiv = document.getElementById('game-notification');
-    if (!notificationDiv) {
-      notificationDiv = document.createElement('div');
-      notificationDiv.id = 'game-notification';
-      notificationDiv.style.cssText = `
-        position: fixed;
-        top: 60px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 20px;
-        border-radius: 6px;
-        z-index: 10000;
-        font-weight: bold;
-        max-width: 400px;
-        text-align: center;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      `;
-      document.body.appendChild(notificationDiv);
+    if (this.notificationManager) {
+      this.notificationManager.showNotification(message, type);
+    } else if (this.onShowNotification) {
+      this.onShowNotification(message, type);
     }
-
-    // Set notification style based on type
-    switch (type) {
-      case 'success':
-        notificationDiv.style.background = '#27ae60';
-        notificationDiv.style.color = 'white';
-        break;
-      case 'error':
-        notificationDiv.style.background = '#e74c3c';
-        notificationDiv.style.color = 'white';
-        break;
-      case 'warning':
-        notificationDiv.style.background = '#f39c12';
-        notificationDiv.style.color = 'white';
-        break;
-      case 'info':
-        notificationDiv.style.background = '#3498db';
-        notificationDiv.style.color = 'white';
-        break;
-      default:
-        notificationDiv.style.background = '#95a5a6';
-        notificationDiv.style.color = 'white';
-    }
-
-    notificationDiv.textContent = message;
-    notificationDiv.style.opacity = '1';
-
-    // Auto-hide after different durations based on type
-    const duration = type === 'error' ? 5000 : 3000;
-    setTimeout(() => {
-      notificationDiv.style.opacity = '0';
-    }, duration);
   }
 
   showError(message) {
-    const errorDiv = document.getElementById('error-message');
-    if (errorDiv) {
-      errorDiv.textContent = message;
-      errorDiv.style.display = 'block';
-    } else {
-      // Fallback to notification
-      this.showNotification(message, 'error');
+    if (this.notificationManager) {
+      this.notificationManager.showError(message);
+    } else if (this.onShowError) {
+      this.onShowError(message);
     }
   }
 
@@ -746,23 +706,28 @@ export class GameUIManager {
   // ✅ NEW: Screen flash effect
   createScreenFlash() {
     // Create or get existing flash overlay
-    let flashOverlay = document.getElementById('damage-flash-overlay');
+    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
+    let flashOverlay = this.framework.getCachedElement('damage-flash-overlay');
     if (!flashOverlay) {
-      flashOverlay = document.createElement('div');
-      flashOverlay.id = 'damage-flash-overlay';
-      flashOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: radial-gradient(circle, rgba(255,0,0,0.4) 0%, rgba(255,0,0,0.1) 100%);
-        pointer-events: none;
-        z-index: 9999;
-        opacity: 0;
-        transition: opacity 0.1s ease-in-out;
-      `;
+      // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
+      flashOverlay = this.framework.createElement('div', {
+        id: 'damage-flash-overlay',
+        style: `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: radial-gradient(circle, rgba(255,0,0,0.4) 0%, rgba(255,0,0,0.1) 100%);
+          pointer-events: none;
+          z-index: 9999;
+          opacity: 0;
+          transition: opacity 0.1s ease-in-out;
+        `
+      });
       document.body.appendChild(flashOverlay);
+      // Cache the newly created element
+      this.framework.cacheElement('damage-flash-overlay', flashOverlay);
     }
 
     // Trigger flash animation
@@ -774,7 +739,8 @@ export class GameUIManager {
 
   // ✅ NEW: Screen shake effect
   createScreenShake() {
-    const gameScreen = document.querySelector('.game-screen') || document.body;
+    // ✅ FRAMEWORK: Use framework's find instead of document.querySelector
+    const gameScreen = this.framework.find('.game-screen') || document.body;
 
     // Add shake class
     gameScreen.classList.add('damage-shake');

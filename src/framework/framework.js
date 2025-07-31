@@ -88,6 +88,11 @@ export class Framework {
   map(array, callback, keyExtractor) { return this.selectiveRenderer.map(array, callback, keyExtractor); }
   clearRenderCache() { return this.selectiveRenderer.clearRenderCache(); }
 
+  // ✅ NEW: DOM manipulation methods
+  createElement(tagName, attributes) { return this.selectiveRenderer.createElement(tagName, attributes); }
+  find(selector) { return document.querySelector(selector); }
+  findAll(selector) { return document.querySelectorAll(selector); }
+
   // ===== PERFORMANCE MONITOR DELEGATION =====
   getPerformanceMetrics() {
     return this.performanceMonitor.getPerformanceMetrics(

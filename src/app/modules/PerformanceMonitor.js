@@ -1,53 +1,57 @@
-export class PerformanceMonitor {
+// ✅ CONSOLIDATED: Import framework PerformanceMonitor and extend it
+import { PerformanceMonitor as FrameworkPerformanceMonitor } from '../../framework/modules/PerformanceMonitor.js';
+
+export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   constructor(framework) {
+    // ✅ CONSOLIDATED: Call parent constructor for core performance monitoring
+    super();
+
     this.framework = framework;
-    
-    // Performance state
-    this.performanceMonitor = null;
+
+    // App-specific performance state
     this.performanceDisplay = null;
     this.domObserver = null;
     this.isMonitoringEnabled = false;
-    
-    // Performance metrics
-    this.lastUpdateTime = 0;
-    this.frameCounter = 0;
+
+    // App-specific metrics (extending parent metrics)
     this.domMutationCount = 0;
     this.lastLayoutThrashingWarning = 0;
-    
+
     // Display state
     this.showPerformanceStats = localStorage.getItem('showPerformanceStats') === 'true';
-    
+
     // Movement tracking
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
-    
+
     this.init();
   }
 
   init() {
-    this.initPerformanceMonitoring();
+    // ✅ CONSOLIDATED: Initialize app-specific monitoring (parent already initialized)
+    this.initAppPerformanceMonitoring();
     this.setupKeyboardShortcuts();
   }
 
-  // ===== PERFORMANCE MONITORING INITIALIZATION =====
+  // ===== APP-SPECIFIC PERFORMANCE MONITORING =====
 
-  initPerformanceMonitoring() {
-    console.log('🔍 Initializing comprehensive performance monitoring...');
-    
+  initAppPerformanceMonitoring() {
+    console.log('🔍 Initializing app-specific performance monitoring...');
+
     // Create performance display overlay
     this.createPerformanceDisplay();
-    
+
     // Setup framework performance callbacks
     this.framework.onPerformanceUpdate((metrics) => {
       this.updatePerformanceDisplay(metrics);
       this.triggerPerformanceWarnings(metrics);
     });
-    
-    // Monitor DOM performance
+
+    // Monitor DOM performance (app-specific)
     this.monitorDOMPerformance();
-    
+
     this.isMonitoringEnabled = true;
-    console.log('✅ Performance monitoring initialized successfully');
+    console.log('✅ App performance monitoring initialized successfully');
   }
 
   createPerformanceDisplay() {

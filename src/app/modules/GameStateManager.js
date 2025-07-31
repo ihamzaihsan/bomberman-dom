@@ -5,17 +5,41 @@ export class GameStateManager {
   }
 
   handleGameStateUpdate(newGameState) {
+    // ✅ CONSOLIDATED: Merged logic from gameState.js
+    const previousState = this.app.gameState;
+
     // Update the app's game state and trigger UI updates
     this.app.gameState = newGameState;
     this.app.gameUIManager.setGameState(newGameState, this.app.playerId);
     this.app.playerController.setGameState(newGameState, this.app.playerId);
 
-    // Ensure the player list is updated in the waiting room
-    if (this.app.isInWaitingRoom()) {
-      this.app.gameUIManager.updatePlayerList();
+    // ✅ MERGED: Ensure all players have proper bomb attributes from server
+    Object.values(newGameState.players).forEach(player => {
+      if (typeof player.maxBombs !== 'number') player.maxBombs = 1;
+      if (typeof player.currentBombs !== 'number') player.currentBombs = 0;
+    });
+
+    // Handle waiting room updates
+    const inWaitingRoom = this.app.isInWaitingRoom();
+    if (inWaitingRoom) {
+      this.app.updateWaitingScreen();
+      this.app.updateChatDisplay();
     }
 
-    // Optionally, trigger map/UI updates
+    // Handle game state changes
+    if (previousState) {
+      this.handleGameStateChange(previousState, newGameState);
+    }
+
+    // ✅ MERGED: Force immediate UI update after game state change
+    this.app.gameUIManager.updatePlayerStats(true);
+
+    // ✅ MERGED: Force another UI update after a short delay for race conditions
+    setTimeout(() => {
+      this.app.gameUIManager.updatePlayerStats(true);
+    }, 50);
+
+    // Trigger map/UI updates
     this.app.mapRenderer.updateGameMapOptimized(newGameState, Date.now());
   }
 

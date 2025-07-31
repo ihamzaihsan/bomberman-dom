@@ -725,15 +725,16 @@ body {
   position: absolute;
   width: 35px;
   height: 35px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
   z-index: 10;
-  border: 3px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 
   /* ✅ PERFORMANCE: Hardware acceleration for smooth movement */
   will-change: transform, opacity;
@@ -741,31 +742,44 @@ body {
   transform-style: preserve-3d;
   transform: translate3d(0, 0, 0);
   transition: transform 0.1s ease;
+
+  /* Hide text content when using images */
+  font-size: 0;
+  color: transparent;
 }
 
 .player:hover {
   transform: translate3d(0, 0, 0) scale(1.05);
+  border-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
-.player.player-0 { 
+/* ✅ NEW: Character sprite backgrounds */
+.player.player-0 {
+  background-image: url('../../assets/chara_aka.png');
+  /* Fallback for image loading issues */
   background-color: #e74c3c;
-  background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%);
 }
 
-.player.player-1 { 
+.player.player-1 {
+  background-image: url('../../assets/chara_shiro.png');
+  /* Fallback for image loading issues */
   background-color: #3498db;
-  background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%);
 }
 
-.player.player-2 { 
+.player.player-2 {
+  background-image: url('../../assets/chara_pink.png');
+  /* Fallback for image loading issues */
   background-color: #f39c12;
-  background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%);
 }
 
-.player.player-3 { 
+.player.player-3 {
+  background-image: url('../../assets/chara_kuro.png');
+  /* Fallback for image loading issues */
   background-color: #9b59b6;
-  background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%);
 }
+
+
 
 /* Performance display styling */
 #performance-display {
@@ -792,7 +806,10 @@ body {
     width: 28px;
     height: 28px;
     font-size: 12px;
-    border: 2px solid white;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
   }
   
   .bomb {
@@ -920,6 +937,10 @@ body {
     width: 22px;
     height: 22px;
     font-size: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
   }
 
   .bomb {

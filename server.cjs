@@ -2,8 +2,21 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocketManager = require('./src/backend/websocketServer.cjs');
+const {
+  MAP_CONFIG,
+  GAME_TIMING,
+  PLAYER_CONFIG,
+  STARTING_POSITIONS,
+  CELL_TYPES,
+  WALKABLE_CELLS,
+  POWER_UP_CONFIG,
+  EXPLOSION_CONFIG,
+  SERVER_CONFIG,
+  VALIDATION,
+  MIME_TYPES
+} = require('./src/shared/GameConstants.cjs');
 
-// GameServer class - handles game logic
+const { MovementValidator } = require('./src/shared/MovementValidator.cjs');
 class GameServer {
   constructor() {
     this.gameState = {
@@ -14,12 +27,12 @@ class GameServer {
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
-      gameTimeLeft: 180,
+      gameTimeLeft: GAME_TIMING.GAME_DURATION, // ✅ CONSOLIDATED: Use shared constant
       gameTimeTimer: null,
       gameEnded: false,
       winner: null,
       waitingTimer: null,
-      waitingTimeLeft: 20
+      waitingTimeLeft: GAME_TIMING.WAITING_DURATION // ✅ CONSOLIDATED: Use shared constant
     };
 
     // WebSocket manager will be injected
@@ -33,7 +46,7 @@ class GameServer {
     this.explodingBombs = new Set(); // Track bombs currently exploding
     this.explodedBombs = new Set(); // Track bombs that have already exploded
 
-    console.log('GameServer initialized with 12x12 map');
+    console.log(`GameServer initialized with ${MAP_CONFIG.WIDTH}x${MAP_CONFIG.HEIGHT} map`); // ✅ CONSOLIDATED: Use shared constant
   }
 
   // Set WebSocket manager reference
@@ -62,11 +75,11 @@ class GameServer {
       // Check if we need to cancel timers due to insufficient players
       const remainingPlayers = Object.keys(this.gameState.players).length;
 
-      if (remainingPlayers < 2 && this.gameState.waitingTimer) {
+      if (remainingPlayers < PLAYER_CONFIG.MIN_PLAYERS && this.gameState.waitingTimer) { // ✅ CONSOLIDATED: Use shared constant
         // Cancel waiting timer if less than 2 players
         clearInterval(this.gameState.waitingTimer);
         this.gameState.waitingTimer = null;
-        this.gameState.waitingTimeLeft = 20;
+        this.gameState.waitingTimeLeft = GAME_TIMING.WAITING_DURATION; // ✅ CONSOLIDATED: Use shared constant
         console.log('Waiting timer cancelled - insufficient players');
       }
 
@@ -80,56 +93,45 @@ class GameServer {
   }
 
   generateMap() {
-    console.log('Generating 12x12 map...');
-    const width = 12;
-    const height = 12;
+    console.log(`Generating ${MAP_CONFIG.WIDTH}x${MAP_CONFIG.HEIGHT} map...`); // ✅ CONSOLIDATED: Use shared constant
+    const width = MAP_CONFIG.WIDTH; // ✅ CONSOLIDATED: Use shared constant
+    const height = MAP_CONFIG.HEIGHT; // ✅ CONSOLIDATED: Use shared constant
     const map = [];
 
     for (let y = 0; y < height; y++) {
       map[y] = [];
       for (let x = 0; x < width; x++) {
         if (x % 2 === 1 && y % 2 === 1) {
-          map[y][x] = 'wall';
+          map[y][x] = CELL_TYPES.WALL; // ✅ CONSOLIDATED: Use shared constant
         } else if (this.isStartingPosition(x, y, width, height)) {
           // ✅ NEW: Mark spawn areas with special cell type for visual distinction
-          map[y][x] = this.isPlayerSpawnPoint(x, y) ? 'spawn' : 'spawn-safe';
-        } else if (Math.random() < 0.6) { // Reduced block density slightly
-          map[y][x] = 'block';
+          map[y][x] = VALIDATION.isPlayerSpawnPoint(x, y) ? CELL_TYPES.SPAWN : CELL_TYPES.SPAWN_SAFE; // ✅ CONSOLIDATED: Use shared constants
+        } else if (Math.random() < MAP_CONFIG.BLOCK_DENSITY) { // ✅ CONSOLIDATED: Use shared constant
+          map[y][x] = CELL_TYPES.BLOCK; // ✅ CONSOLIDATED: Use shared constant
         } else {
-          map[y][x] = 'empty';
+          map[y][x] = CELL_TYPES.EMPTY; // ✅ CONSOLIDATED: Use shared constant
         }
       }
     }
 
-    console.log('12x12 Map generated successfully');
+    console.log(`${MAP_CONFIG.WIDTH}x${MAP_CONFIG.HEIGHT} Map generated successfully`); // ✅ CONSOLIDATED: Use shared constant
     return map;
   }
 
   isStartingPosition(x, y, width, height) {
-    // ✅ FIXED: Ensure starting corners are clear (3x3 areas for better safety)
-    // This provides more space around spawn points to prevent immediate damage
-
-    // Top-left corner (3x3 area)
-    if (x <= 2 && y <= 2) return true;
-    // Top-right corner (3x3 area)
-    if (x >= width - 3 && y <= 2) return true;
-    // Bottom-left corner (3x3 area)
-    if (x <= 2 && y >= height - 3) return true;
-    // Bottom-right corner (3x3 area)
-    if (x >= width - 3 && y >= height - 3) return true;
+    const safeZoneSize = EXPLOSION_CONFIG.SAFE_ZONE_SIZE; // ✅ CONSOLIDATED: Use shared constant
+    // Top-left corner safe area
+    if (x <= safeZoneSize - 1 && y <= safeZoneSize - 1) return true;
+    // Top-right corner safe area
+    if (x >= width - safeZoneSize && y <= safeZoneSize - 1) return true;
+    // Bottom-left corner safe area
+    if (x <= safeZoneSize - 1 && y >= height - safeZoneSize) return true;
+    // Bottom-right corner safe area
+    if (x >= width - safeZoneSize && y >= height - safeZoneSize) return true;
     return false;
   }
 
-  // ✅ NEW: Check if position is exact player spawn point (for visual distinction)
-  isPlayerSpawnPoint(x, y) {
-    const spawnPoints = [
-      { x: 1, y: 1 },     // Top-left
-      { x: 10, y: 1 },    // Top-right
-      { x: 1, y: 10 },    // Bottom-left
-      { x: 10, y: 10 }    // Bottom-right
-    ];
-    return spawnPoints.some(point => point.x === x && point.y === y);
-  }
+  // ✅ CONSOLIDATED: Removed duplicate method - now using VALIDATION.isPlayerSpawnPoint from shared constants
 
   getGameState() {
     return this.gameState;
@@ -166,9 +168,9 @@ class GameServer {
     const playerCount = Object.keys(this.gameState.players).length;
     console.log(`Current player count: ${playerCount}`);
 
-    if (playerCount >= 4) {
+    if (playerCount >= PLAYER_CONFIG.MAX_PLAYERS) { // ✅ CONSOLIDATED: Use shared constant
       console.log('Rejecting player: Game is full');
-      return { success: false, error: 'Game is full (4 players maximum)' };
+      return { success: false, error: `Game is full (${PLAYER_CONFIG.MAX_PLAYERS} players maximum)` };
     }
 
     if (this.gameState.gameStarted) {
@@ -176,34 +178,23 @@ class GameServer {
       return { success: false, error: 'Game has already started' };
     }
 
-    // Allow joining and reset countdown if a new player joins during countdown
-    // Only block during the final 3 seconds to prevent last-second joins
-    if (this.gameState.countdown > 0 && this.gameState.countdown <= 3) {
+    if (this.gameState.countdown > 0 && this.gameState.countdown <= EXPLOSION_CONFIG.FINAL_COUNTDOWN_THRESHOLD) { // ✅ CONSOLIDATED: Use shared constant
       console.log('Rejecting player: Game is starting (final countdown active)');
       return { success: false, error: 'Game is starting - please wait for next round' };
     }
-
-    // ✅ FIXED: Starting positions for 12x12 map (centered in 3x3 safe areas)
-    const startingPositions = [
-      { x: 1, y: 1 },     // Top-left (center of 3x3 area)
-      { x: 10, y: 1 },    // Top-right (center of 3x3 area)
-      { x: 1, y: 10 },    // Bottom-left (center of 3x3 area)
-      { x: 10, y: 10 }    // Bottom-right (center of 3x3 area)
-    ];
-
     const player = {
       id: playerId,
       nickname,
-      x: startingPositions[playerCount].x,
-      y: startingPositions[playerCount].y,
-      lives: 3,
+      x: STARTING_POSITIONS[playerCount].x, // ✅ CONSOLIDATED: Use shared constant
+      y: STARTING_POSITIONS[playerCount].y, // ✅ CONSOLIDATED: Use shared constant
+      lives: PLAYER_CONFIG.STARTING_LIVES, // ✅ CONSOLIDATED: Use shared constant
       powerUps: {
-        bombs: 1, // Keep for backward compatibility
-        flames: 1, // ✅ PHASE 1: Default bomb range = 1 block
-        speed: 1
+        bombs: PLAYER_CONFIG.DEFAULT_MAX_BOMBS, // ✅ CONSOLIDATED: Use shared constant
+        flames: PLAYER_CONFIG.DEFAULT_BOMB_RANGE, // ✅ CONSOLIDATED: Use shared constant
+        speed: PLAYER_CONFIG.DEFAULT_SPEED // ✅ CONSOLIDATED: Use shared constant
       },
       // ✅ NEW: Proper bomb management system
-      maxBombs: 1,      // Maximum bombs player can place simultaneously
+      maxBombs: PLAYER_CONFIG.DEFAULT_MAX_BOMBS, // ✅ CONSOLIDATED: Use shared constant
       currentBombs: 0,  // Current number of active bombs on field
       alive: true
     };
@@ -213,29 +204,29 @@ class GameServer {
 
     const newPlayerCount = playerCount + 1;
 
-    // Reset countdown if a new player joins during countdown (except final 3 seconds)
-    if (this.gameState.countdown > 3) {
+    // Reset countdown if a new player joins during countdown (except final countdown threshold)
+    if (this.gameState.countdown > EXPLOSION_CONFIG.FINAL_COUNTDOWN_THRESHOLD) { // ✅ CONSOLIDATED: Use shared constant
       console.log('New player joined during countdown - resetting to waiting timer');
       this.resetToWaitingTimer();
     }
 
     // Implement proper waiting room timer logic
-    if (newPlayerCount === 2 && !this.gameState.waitingTimer && !this.gameState.gameStarted && this.gameState.countdown === 0) {
-      // Start 20-second waiting timer when 2nd player joins
-      console.log('Starting 20-second waiting timer...');
+    if (newPlayerCount === PLAYER_CONFIG.MIN_PLAYERS && !this.gameState.waitingTimer && !this.gameState.gameStarted && this.gameState.countdown === 0) { // ✅ CONSOLIDATED: Use shared constant
+      // Start waiting timer when minimum players join
+      console.log(`Starting ${GAME_TIMING.WAITING_DURATION}-second waiting timer...`);
       this.startWaitingTimer();
-    } else if (newPlayerCount === 4 && !this.gameState.gameStarted) {
-      // Skip to countdown immediately when 4th player joins
-      console.log('4 players reached - starting countdown immediately...');
+    } else if (newPlayerCount === PLAYER_CONFIG.MAX_PLAYERS && !this.gameState.gameStarted) { // ✅ CONSOLIDATED: Use shared constant
+      // Skip to countdown immediately when maximum players join
+      console.log(`${PLAYER_CONFIG.MAX_PLAYERS} players reached - starting countdown immediately...`);
       this.skipToCountdown();
     }
 
     return { success: true, player };
   }
 
-  // Start 20-second waiting timer
+  // Start waiting timer
   startWaitingTimer() {
-    this.gameState.waitingTimeLeft = 20;
+    this.gameState.waitingTimeLeft = GAME_TIMING.WAITING_DURATION; // ✅ CONSOLIDATED: Use shared constant
     this.gameState.waitingTimer = setInterval(() => {
       this.gameState.waitingTimeLeft--;
       console.log(`Waiting time left: ${this.gameState.waitingTimeLeft} seconds`);
@@ -251,7 +242,7 @@ class GameServer {
         this.gameState.waitingTimer = null;
         this.skipToCountdown();
       }
-    }, 1000);
+    }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
   }
 
   // Reset countdown back to waiting timer when new player joins
@@ -286,7 +277,7 @@ class GameServer {
 
   startGameTimer() {
     console.log('=== STARTING GAME TIMER ===');
-    this.gameState.countdown = 10; // 10-second countdown as per requirements
+    this.gameState.countdown = GAME_TIMING.COUNTDOWN_DURATION; // ✅ CONSOLIDATED: Use shared constant
     this.gameTimer = setInterval(() => {
       this.gameState.countdown--;
       console.log(`Game starting in: ${this.gameState.countdown}`);
@@ -311,7 +302,7 @@ class GameServer {
         // Start the game time countdown
         this.startGameTimeTimer();
       }
-    }, 1000);
+    }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
   }
 
   startGameTimeTimer() {
@@ -328,7 +319,7 @@ class GameServer {
       if (this.gameState.gameTimeLeft <= 0) {
         this.endGame('Time\'s up!');
       }
-    }, 1000);
+    }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
   }
 
   // ✅ CRITICAL: Start real-time game loop for processing bombs, explosions, etc.
@@ -388,9 +379,6 @@ class GameServer {
       this.explodeBomb(bomb, 0); // Start chain reaction with depth 0
     });
 
-    // Process power-up spawning (if needed)
-    // TODO: Add power-up spawning logic here
-
     // Broadcast game state if anything changed
     if (gameStateChanged && this.wsManager) {
       this.wsManager.broadcastGameState();
@@ -443,7 +431,7 @@ class GameServer {
     // Reset game after 10 seconds
     setTimeout(() => {
       this.resetGame();
-    }, 10000);
+    }, GAME_TIMING.GAME_END_RESET_DELAY); // ✅ CONSOLIDATED: Use shared constant
   }
 
   resetGame() {
@@ -468,12 +456,12 @@ class GameServer {
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
-      gameTimeLeft: 180,
+      gameTimeLeft: GAME_TIMING.GAME_DURATION, // ✅ CONSOLIDATED: Use shared constant
       gameTimeTimer: null,
       gameEnded: false,
       winner: null,
       waitingTimer: null,
-      waitingTimeLeft: 20
+      waitingTimeLeft: GAME_TIMING.WAITING_DURATION // ✅ CONSOLIDATED: Use shared constant
     };
 
     // ✅ NEW: Reset chain reaction tracking sets
@@ -485,127 +473,39 @@ class GameServer {
     this.broadcastEvent('game_reset', { gameState: this.gameState });
   }
 
-  // ✅ PERFORMANCE: Pre-validate player movement without actually moving
+  // ✅ CONSOLIDATED: Use shared movement validator
   validatePlayerMove(playerId, direction) {
     const player = this.gameState.players[playerId];
-    
-    // Basic validation checks
-    if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) {
-      return false;
-    }
+    if (!player) return false;
 
-    let newX = player.x;
-    let newY = player.y;
-
-    // Calculate new position
-    switch (direction) {
-      case 'up':
-        newY = Math.max(0, player.y - 1);
-        break;
-      case 'down':
-        newY = Math.min(11, player.y + 1);
-        break;
-      case 'left':
-        newX = Math.max(0, player.x - 1);
-        break;
-      case 'right':
-        newX = Math.min(11, player.x + 1);
-        break;
-      default:
-        return false;
-    }
-
-    // Check if position actually changed (hitting boundary)
-    if (newX === player.x && newY === player.y) {
-      return false;
-    }
-
-    // ✅ FIXED: Check if new position is valid (walkable cells)
-    const walkableCells = ['empty', 'spawn', 'spawn-safe'];
-    if (!this.gameState.map[newY] || !walkableCells.includes(this.gameState.map[newY][newX])) {
-      return false;
-    }
-
-    // Check for bomb collision
-    const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
-    if (bombAtPosition) {
-      return false;
-    }
-
-    // Check for other players at the same position
-    const playerAtPosition = Object.values(this.gameState.players).find(
-      p => p.id !== playerId && p.alive && p.x === newX && p.y === newY
-    );
-    if (playerAtPosition) {
-      return false;
-    }
-
-    return true;
+    const result = MovementValidator.validateMove(player, direction, this.gameState);
+    return result.isValid;
   }
 
   movePlayer(playerId, direction) {
     const player = this.gameState.players[playerId];
-    if (!player || !player.alive || !this.gameState.gameStarted || this.gameState.gameEnded) {
-      console.log('Move rejected:', { 
-        playerExists: !!player, 
-        alive: player?.alive, 
-        gameStarted: this.gameState.gameStarted,
-        gameEnded: this.gameState.gameEnded
-      });
+    if (!player) {
+      console.log('Move rejected: Player not found');
       return false;
     }
 
-    let newX = player.x;
-    let newY = player.y;
+    // ✅ CONSOLIDATED: Use shared movement validator
+    const validationResult = MovementValidator.validateMove(player, direction, this.gameState);
 
-    switch (direction) {
-      case 'up':
-        newY = Math.max(0, player.y - 1);
-        break;
-      case 'down':
-        newY = Math.min(11, player.y + 1); // Changed from 12 to 11
-        break;
-      case 'left':
-        newX = Math.max(0, player.x - 1);
-        break;
-      case 'right':
-        newX = Math.min(11, player.x + 1); // Changed from 14 to 11
-        break;
+    if (!validationResult.isValid) {
+      console.log('Move rejected:', validationResult.reason);
+      return false;
     }
 
-    // ✅ BOMB COLLISION: Check if new position is valid (walkable cells, not bomb)
-    const walkableCells = ['empty', 'spawn', 'spawn-safe'];
-    if (this.gameState.map[newY] && walkableCells.includes(this.gameState.map[newY][newX])) {
-      // Check for bomb collision - bombs act as solid obstacles
-      const bombAtPosition = this.gameState.bombs.find(bomb => bomb.x === newX && bomb.y === newY);
+    // Apply the validated move
+    player.x = validationResult.newX;
+    player.y = validationResult.newY;
+    console.log(`Player ${playerId} moved to (${validationResult.newX}, ${validationResult.newY})`);
 
-      if (bombAtPosition) {
-        console.log(`Move blocked: Bomb at position (${newX}, ${newY})`);
-        return false;
-      }
+    // ✅ PHASE 4: Check for power-up collection
+    this.checkPowerUpCollection(playerId, validationResult.newX, validationResult.newY);
 
-      // Check for other players at the same position
-      const playerAtPosition = Object.values(this.gameState.players).find(
-        p => p.id !== playerId && p.alive && p.x === newX && p.y === newY
-      );
-
-      if (playerAtPosition) {
-        console.log(`Move blocked: Player ${playerAtPosition.nickname} at position (${newX}, ${newY})`);
-        return false;
-      }
-
-      player.x = newX;
-      player.y = newY;
-      console.log(`Player ${playerId} moved to (${newX}, ${newY})`);
-
-      // ✅ PHASE 4: Check for power-up collection
-      this.checkPowerUpCollection(playerId, newX, newY);
-
-      return true;
-    }
-
-    console.log(`Move blocked: (${newX}, ${newY}) is ${this.gameState.map[newY]?.[newX]}`);
-    return false;
+    return true;
   }
 
   placeBomb(playerId) {
@@ -623,7 +523,7 @@ class GameServer {
       playerId,
       x: player.x,
       y: player.y,
-      timer: 3.0, // 3 seconds in decimal format for easier processing
+      timer: GAME_TIMING.BOMB_TIMER, // ✅ CONSOLIDATED: Use shared constant
       range: player.powerUps.flames
     };
 
@@ -661,7 +561,7 @@ class GameServer {
     this.explodingBombs.add(bomb.id);
 
     // Prevent infinite chain reactions by limiting depth
-    const MAX_CHAIN_DEPTH = 10;
+    const MAX_CHAIN_DEPTH = EXPLOSION_CONFIG.MAX_CHAIN_DEPTH; // ✅ CONSOLIDATED: Use shared constant
     if (chainReactionDepth > MAX_CHAIN_DEPTH) {
       console.warn(`⚠️ Chain reaction depth limit reached (${MAX_CHAIN_DEPTH}), stopping chain`);
       this.explodingBombs.delete(bomb.id);
@@ -677,9 +577,9 @@ class GameServer {
     if (bombOwner && bombOwner.alive && bombOwner.x === bomb.x && bombOwner.y === bomb.y) {
       bombOwner.lives--;
       console.log(`Player ${bombOwner.nickname} damaged by their own bomb! Lives: ${bombOwner.lives}`);
-      bombOwner.maxBombs = 1;
+      bombOwner.maxBombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS; // ✅ CONSOLIDATED: Use shared constant
       bombOwner.currentBombs = 0;
-      bombOwner.powerUps.bombs = 1;
+      bombOwner.powerUps.bombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS; // ✅ CONSOLIDATED: Use shared constant
       this.broadcastEvent('player_damaged', {
         playerId: bombOwner.id,
         nickname: bombOwner.nickname,
@@ -706,7 +606,6 @@ class GameServer {
         }, 100);
       }
     }
-    // === END NEW ===
 
     // Add explosion in 4 directions
     const directions = [
@@ -721,7 +620,7 @@ class GameServer {
         const x = bomb.x + (dir.dx * i);
         const y = bomb.y + (dir.dy * i);
 
-        if (x < 0 || x >= 12 || y < 0 || y >= 12) break; // Updated bounds
+        if (x < 0 || x >= MAP_CONFIG.WIDTH || y < 0 || y >= MAP_CONFIG.HEIGHT) break; // ✅ CONSOLIDATED: Use shared constants
         if (this.gameState.map[y][x] === 'wall') break;
 
         explosions.push({ x, y });
@@ -745,10 +644,10 @@ class GameServer {
             console.log(`Player ${player.nickname} hit by explosion! Lives: ${player.lives}`);
 
             // ✅ CRITICAL FIX: Reset bomb system on damage
-            player.maxBombs = 1;
+            player.maxBombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS; // ✅ CONSOLIDATED: Use shared constant
             player.currentBombs = 0;
             // ✅ ALSO reset powerUps.bombs for backward compatibility
-            player.powerUps.bombs = 1;
+            player.powerUps.bombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS; // ✅ CONSOLIDATED: Use shared constant
             console.log(`💣 Reset bomb system for ${player.nickname}: maxBombs=1, currentBombs=0, powerUps.bombs=1`);
 
             // Broadcast player damage event
@@ -783,13 +682,13 @@ class GameServer {
                 if (alivePlayers.length <= 1) {
                   this.endGame('Last player standing!');
                 }
-              }, 100); // Small delay to ensure state synchronization
+              }, GAME_TIMING.STATE_SYNC_DELAY); // ✅ CONSOLIDATED: Use shared constant
             }
           }
         });
 
-        if (this.gameState.map[y][x] === 'block') {
-          this.gameState.map[y][x] = 'empty';
+        if (this.gameState.map[y][x] === CELL_TYPES.BLOCK) { // ✅ CONSOLIDATED: Use shared constant
+          this.gameState.map[y][x] = CELL_TYPES.EMPTY; // ✅ CONSOLIDATED: Use shared constant
           console.log(`Block destroyed at (${x}, ${y})`);
 
           // ✅ PHASE 2: Power-up spawning system
@@ -834,7 +733,7 @@ class GameServer {
           // Add small delay to create visual sequence of explosions
           setTimeout(() => {
             this.explodeBomb(triggeredBomb, chainReactionDepth + 1);
-          }, 100); // 100ms delay between chain explosions for visual effect
+          }, GAME_TIMING.CHAIN_EXPLOSION_DELAY); // ✅ CONSOLIDATED: Use shared constant
         }
       });
     }
@@ -851,17 +750,14 @@ class GameServer {
       setTimeout(() => {
         this.wsManager.broadcastGameState();
         console.log(`📡 Game state broadcasted after bomb explosion`);
-      }, 150); // Small delay to ensure all chain reactions complete
+      }, GAME_TIMING.GAME_STATE_BROADCAST_DELAY); // ✅ CONSOLIDATED: Use shared constant
     }
   }
 
-  // ✅ PHASE 2: Power-up spawning system
+  // ✅ CONSOLIDATED: Power-up spawning system using shared constants
   trySpawnPowerUp(x, y) {
-    const spawnChance = 0.35; // 35% chance to spawn power-up
-
-    if (Math.random() < spawnChance) {
-      const powerUpTypes = ['bombs', 'flames', 'speed'];
-      const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+    if (Math.random() < POWER_UP_CONFIG.SPAWN_CHANCE) { // ✅ CONSOLIDATED: Use shared constant
+      const randomType = POWER_UP_CONFIG.TYPES[Math.floor(Math.random() * POWER_UP_CONFIG.TYPES.length)]; // ✅ CONSOLIDATED: Use shared constant
 
       const powerUp = {
         id: 'powerup_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11),
@@ -924,13 +820,8 @@ class GameServer {
     }
   }
 
-  // ✅ PHASE 3: Apply power-up effects
   applyPowerUpEffect(player, powerUpType) {
-    const maxLimits = {
-      bombs: 8,   // ✅ UPDATED: Maximum 8 concurrent bombs (as per requirements)
-      flames: 4,  // Maximum 4 block explosion range
-      speed: 3    // Maximum speed level
-    };
+    const maxLimits = POWER_UP_CONFIG.MAX_LIMITS; // ✅ CONSOLIDATED: Use shared constant
 
     switch (powerUpType) {
       case 'bombs':
@@ -969,20 +860,10 @@ class GameServer {
   }
 }
 
-const PORT = 9090;
+const PORT = SERVER_CONFIG.PORT; // ✅ CONSOLIDATED: Use shared constant
 const gameServer = new GameServer();
 const wsManager = new WebSocketManager(gameServer);
-
-// Set up bidirectional reference
 gameServer.setWebSocketManager(wsManager);
-
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'text/javascript',
-  '.json': 'application/json'
-};
-
 const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
   

@@ -1,3 +1,6 @@
+// ✅ CONSOLIDATED: Import shared constants to eliminate duplication
+import { SPRITE_CONFIG, POWER_UP_CONFIG } from '../../shared/GameConstants.js';
+
 export class MapRenderer {
   constructor(framework) {
     this.framework = framework;
@@ -26,6 +29,11 @@ export class MapRenderer {
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
     this.lastRenderStateSignature = '';
+
+    // ✅ CONSOLIDATED: Use shared constants instead of duplicating
+    this.SPRITE_MAP = SPRITE_CONFIG.PLAYER_SPRITES;
+    this.POWER_UP_EMOJIS = POWER_UP_CONFIG.EMOJIS;
+    this.FALLBACK_COLORS = SPRITE_CONFIG.FALLBACK_COLORS;
   }
 
   // ===== MAIN RENDERING FUNCTIONS =====
@@ -49,13 +57,13 @@ export class MapRenderer {
                 ${this.getPowerUpEmoji(powerUp.type)}
               </div>`
             ).join('')}
-            ${bombsAtPosition.map(bomb =>
+            ${bombsAtPosition.map(() =>
               `<div class="bomb">💣</div>`
             ).join('')}
-            ${playersAtPosition.map((player, index) => {
+            ${playersAtPosition.map((player) => {
               const playerKeys = Object.keys(players);
               const playerIndex = playerKeys.indexOf(player.id);
-              return `<div class="player player-${playerIndex}">${player.nickname.charAt(0).toUpperCase()}</div>`;
+              return this.generatePlayerHTML(player, playerIndex);
             }).join('')}
           </div>
         `;
@@ -63,12 +71,7 @@ export class MapRenderer {
     ).join('');
   }
 
-  updateGameMap(gameState) {
-    const gameMapElement = document.getElementById('game-map');
-    if (gameMapElement && gameState) {
-      gameMapElement.innerHTML = this.renderGameMap(gameState);
-    }
-  }
+
 
   renderFullGameMap(gameState) {
     console.log('MapRenderer: Starting full map render');
@@ -82,15 +85,18 @@ export class MapRenderer {
 
     console.log('MapRenderer: Rendering map with', gameState.map.length, 'rows');
     gameMapElement.innerHTML = this.renderGameMap(gameState);
-    
+
+    // ✅ NEW: Setup sprite loading for HTML-generated players
+    this.setupPlayerSprites(gameMapElement);
+
     // Initialize the last state for selective updates
     this.lastGameMapState = this.createMapStateSnapshot(
-      gameState.map, 
-      gameState.players, 
-      gameState.bombs || [], 
+      gameState.map,
+      gameState.players,
+      gameState.bombs || [],
       gameState.powerUps || []
     );
-    
+
     this.hasRenderedMapOnce = true;
     console.log('MapRenderer: Full map render complete');
   }
@@ -272,7 +278,7 @@ export class MapRenderer {
     }
   }
 
-  renderCellContent(cellElement, x, y, cellData, map, players, bombs, powerUps) {
+  renderCellContent(cellElement, _x, _y, cellData, _map, players, _bombs, _powerUps) {
     // Clear existing content
     cellElement.innerHTML = '';
 
@@ -292,8 +298,11 @@ export class MapRenderer {
     });
 
     // Add players with hardware acceleration
-    cellData.players.forEach((playerData, index) => {
-      const playerElement = this.createPlayerElement(playerData, index);
+    cellData.players.forEach((playerData) => {
+      // Calculate correct player index based on player ID
+      const playerKeys = Object.keys(players);
+      const playerIndex = playerKeys.indexOf(playerData.id);
+      const playerElement = this.createPlayerElement(playerData, playerIndex);
       cellElement.appendChild(playerElement);
     });
   }
@@ -301,35 +310,135 @@ export class MapRenderer {
   // ===== ELEMENT CREATION WITH OBJECT POOLING =====
 
   createPowerUpElement(powerUpData) {
-    const powerUpElement = this.getPooledElement('powerUps') || document.createElement('div');
-    
+    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
+    const powerUpElement = this.getPooledElement('powerUps') || this.framework.createElement('div');
+
     powerUpElement.className = `powerup powerup-${powerUpData.type}`;
     powerUpElement.setAttribute('data-powerup-id', powerUpData.id);
     powerUpElement.textContent = this.getPowerUpEmoji(powerUpData.type);
     powerUpElement.style.transform = 'translateZ(0)'; // Hardware acceleration
-    
+
     return powerUpElement;
   }
 
-  createBombElement(bombData) {
-    const bombElement = this.getPooledElement('bombs') || document.createElement('div');
-    
+  createBombElement(_bombData) {
+    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
+    const bombElement = this.getPooledElement('bombs') || this.framework.createElement('div');
+
     bombElement.className = 'bomb';
     bombElement.textContent = '💣';
     bombElement.style.transform = 'translateZ(0)'; // Hardware acceleration
-    
+
     return bombElement;
   }
 
   createPlayerElement(playerData, index) {
-    const playerElement = this.getPooledElement('players') || document.createElement('div');
-    
+    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
+    const playerElement = this.getPooledElement('players') || this.framework.createElement('div');
+
     playerElement.className = `player player-${index}`;
+
+    // Set text content for fallback (hidden by CSS when images load)
     playerElement.textContent = playerData.nickname.charAt(0).toUpperCase();
-    playerElement.style.transform = 'translateZ(0)'; // Hardware acceleration
-    
+
+    // Hardware acceleration
+    playerElement.style.transform = 'translateZ(0)';
+
+    // ✅ NEW: Handle character sprite loading with fallback
+    this.loadPlayerSprite(playerElement, index, playerData);
+
     return playerElement;
   }
+
+  // ✅ NEW: Load player sprite images with fallback handling
+  loadPlayerSprite(playerElement, playerIndex, playerData) {
+    const spritePath = this.SPRITE_MAP[playerIndex];
+    if (!spritePath) return;
+
+    // Use shared sprite loading utility
+    this.loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerData);
+  }
+
+  // ✅ CONSOLIDATED: Shared sprite loading utility to avoid duplication
+  loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerData) {
+    const img = new Image();
+
+    img.onload = () => {
+      // Image loaded successfully - apply sprite background
+      console.log(`✅ Player sprite loaded successfully: ${spritePath}`);
+      playerElement.style.backgroundImage = `url('${spritePath}')`;
+      playerElement.style.backgroundSize = 'cover';
+      playerElement.style.backgroundPosition = 'center';
+      playerElement.style.backgroundRepeat = 'no-repeat';
+
+      // Hide text content when image is loaded
+      playerElement.style.fontSize = '0';
+      playerElement.style.color = 'transparent';
+    };
+
+    img.onerror = () => {
+      // Image failed to load - use fallback styling
+      console.warn(`❌ Failed to load player sprite: ${spritePath}`);
+      this.applyFallbackPlayerStyling(playerElement, playerIndex, playerData);
+    };
+
+    // Start loading the image
+    img.src = spritePath;
+  }
+
+  // ✅ NEW: Apply fallback styling when images fail to load
+  applyFallbackPlayerStyling(playerElement, playerIndex, playerData) {
+    const color = this.FALLBACK_COLORS[playerIndex] || '#95a5a6';
+
+    // Apply circular fallback styling
+    playerElement.style.backgroundColor = color;
+    playerElement.style.backgroundImage = 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%)';
+    playerElement.style.borderRadius = '50%';
+    playerElement.style.fontSize = '14px';
+    playerElement.style.color = 'white';
+    playerElement.style.fontWeight = 'bold';
+
+    // Handle both playerData object and string initial
+    const playerInitial = typeof playerData === 'string' ? playerData : playerData.nickname.charAt(0).toUpperCase();
+    playerElement.textContent = playerInitial;
+  }
+
+  // ✅ NEW: Generate player HTML for string-based rendering
+  generatePlayerHTML(playerData, playerIndex) {
+    const spritePath = this.SPRITE_MAP[playerIndex];
+    const playerInitial = playerData.nickname.charAt(0).toUpperCase();
+
+    // Generate HTML with both sprite and fallback styling
+    return `<div class="player player-${playerIndex}"
+                 style="background-image: url('${spritePath}');
+                        background-size: cover;
+                        background-position: center;
+                        background-repeat: no-repeat;"
+                 data-player-id="${playerData.id}"
+                 data-player-initial="${playerInitial}">${playerInitial}</div>`;
+  }
+
+  // ✅ NEW: Setup sprite loading for HTML-generated players
+  setupPlayerSprites(gameMapElement) {
+    const playerElements = gameMapElement.querySelectorAll('.player');
+
+    playerElements.forEach(playerElement => {
+      const playerInitial = playerElement.getAttribute('data-player-initial');
+      const playerClass = Array.from(playerElement.classList).find(cls => cls.startsWith('player-'));
+
+      if (!playerClass) return;
+
+      const playerIndex = parseInt(playerClass.split('-')[1]);
+      const spritePath = this.SPRITE_MAP[playerIndex];
+
+      if (spritePath) {
+        // Use shared sprite loading utility
+        this.loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerInitial);
+      }
+    });
+  }
+
+
 
   // ===== OBJECT POOLING SYSTEM =====
 
@@ -363,12 +472,7 @@ export class MapRenderer {
   // ===== HELPER FUNCTIONS =====
 
   getPowerUpEmoji(powerUpType) {
-    const powerUpEmojis = {
-      bombs: '💣',   // Bombs power-up
-      flames: '🔥',  // Flames power-up
-      speed: '⚡'    // Speed power-up
-    };
-    return powerUpEmojis[powerUpType] || '💎'; // Default to gem if unknown type
+    return this.POWER_UP_EMOJIS[powerUpType] || '💎'; // Default to gem if unknown type
   }
 
   // ===== INVALID MOVE TRACKING =====
@@ -381,10 +485,11 @@ export class MapRenderer {
     this.lastInvalidMove = move;
   }
 
-  showExplosionEffect(position, explosions, range = 1, chainDepth = 0) {
+  showExplosionEffect(position, explosions, _range = 1, chainDepth = 0) {
     console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} affected cells - Chain depth: ${chainDepth}`);
 
-    const gameMap = document.getElementById('game-map');
+    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
+    const gameMap = this.framework.getCachedElement('game-map');
     if (!gameMap) {
       console.error('❌ Game map element not found for explosion animation');
       return;
@@ -394,7 +499,7 @@ export class MapRenderer {
     console.log('📍 Explosion cells:', explosions);
 
     // Create explosion animations on all affected cells
-    explosions.forEach((cell, index) => {
+    explosions.forEach((cell) => {
       // First cell is bomb center, others are blast areas
       const type = (cell.x === position.x && cell.y === position.y) ? 'center' : 'blast';
       console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y}) - Chain depth: ${chainDepth}`);
@@ -444,7 +549,8 @@ export class MapRenderer {
     console.log(`✅ Found cell element for (${x}, ${y}):`, cellElement);
 
     // Create explosion element with simplified approach
-    const explosionElement = document.createElement('div');
+    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
+    const explosionElement = this.framework.createElement('div');
     explosionElement.setAttribute('data-explosion', 'true');
     explosionElement.setAttribute('data-chain-depth', chainDepth.toString());
 
@@ -500,7 +606,8 @@ export class MapRenderer {
   }
 
   cleanupExplosionAnimations() {
-    const explosionElements = document.querySelectorAll('[data-explosion="true"]');
+    // ✅ FRAMEWORK: Use framework's findAll instead of document.querySelectorAll
+    const explosionElements = this.framework.findAll('[data-explosion="true"]');
     explosionElements.forEach(element => {
       element.classList.add('explosion-fade-out');
       setTimeout(() => {
@@ -513,7 +620,8 @@ export class MapRenderer {
   }
 
   animatePowerUpSpawn(powerUpId) {
-    const el = document.querySelector(`[data-powerup-id="${powerUpId}"]`);
+    // ✅ FRAMEWORK: Use framework's find instead of document.querySelector
+    const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('spawning');
       setTimeout(() => el.classList.remove('spawning'), 600);
@@ -521,7 +629,8 @@ export class MapRenderer {
   }
 
   animatePowerUpCollected(powerUpId) {
-    const el = document.querySelector(`[data-powerup-id="${powerUpId}"]`);
+    // ✅ FRAMEWORK: Use framework's find instead of document.querySelector
+    const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('collected');
       setTimeout(() => {

@@ -1,3 +1,7 @@
+// ✅ CONSOLIDATED: Import shared constants and validation
+import { MAP_CONFIG, WALKABLE_CELLS, VALIDATION } from '../../shared/GameConstants.js';
+import { MovementValidator } from '../../shared/MovementValidator.js';
+
 export class PlayerController {
   static BOMB_CAP = 8;
 
@@ -202,9 +206,6 @@ export class PlayerController {
     console.log('✅ CLIENT VALIDATION PASSED: Sending bomb placement request');
     this.lastBombPlacementTime = now;
 
-    // ✅ REMOVED: Don't optimistically increment currentBombs on client
-    // This causes synchronization issues - let server handle the increment
-    // and send back the updated game state
 
     // Send bomb placement to server
     this.webSocketManager.sendWebSocketMessage({
@@ -213,18 +214,9 @@ export class PlayerController {
       y: player.y
     });
 
-    // ✅ NOTE: UI will be updated when server sends back the updated game state
-    // The server will increment currentBombs and broadcast the new state
   }
 
-  // ✅ REMOVED: These methods are no longer needed as server manages bomb state
-  // The server now handles:
-  // - Bomb explosion decrementing currentBombs
-  // - Power-up collection incrementing maxBombs
-  // - Player damage resetting both maxBombs and currentBombs
-  // Client just receives updated game state from server
 
-  // ===== MOVEMENT VALIDATION =====
 
   validateClientMoveWithRenderCheck(direction) {
     if (!this.gameState || !this.gameState.players || !this.playerId) {
@@ -236,129 +228,32 @@ export class PlayerController {
       return { isValid: false, reason: 'Player not found' };
     }
 
-    const currentX = player.x;
-    const currentY = player.y;
+    // ✅ CONSOLIDATED: Use shared movement validator
+    const result = MovementValidator.validateMove(player, direction, this.gameState);
 
-    // Calculate new position
-    let newX = currentX;
-    let newY = currentY;
-
-    switch(direction) {
-      case 'up':
-        newY = currentY - 1;
-        break;
-      case 'down':
-        newY = currentY + 1;
-        break;
-      case 'left':
-        newX = currentX - 1;
-        break;
-      case 'right':
-        newX = currentX + 1;
-        break;
-      default:
-        return { isValid: false, reason: 'Invalid direction' };
+    // Update framework counters based on result
+    if (result.isValid) {
+      this.framework.incrementCounter('valid-moves');
+    } else {
+      // Categorize the type of invalid move for better tracking
+      if (result.reason.includes('bounds')) {
+        this.framework.incrementCounter('invalid-moves-boundary');
+      } else if (result.reason.includes('blocked')) {
+        this.framework.incrementCounter('invalid-moves-wall');
+      } else if (result.reason.includes('player')) {
+        this.framework.incrementCounter('invalid-moves-player');
+      } else if (result.reason.includes('bomb')) {
+        this.framework.incrementCounter('invalid-moves-bomb');
+      }
     }
 
-    // Check map boundaries
-    if (newX < 0 || newX >= this.gameState.map[0].length || 
-        newY < 0 || newY >= this.gameState.map.length) {
-      this.framework.incrementCounter('invalid-moves-boundary');
-      return { isValid: false, reason: 'Move would go out of bounds' };
-    }
-
-    // Check for walls
-    const targetCell = this.gameState.map[newY][newX];
-    if (targetCell === 'wall' || targetCell === 'block') {
-      this.framework.incrementCounter('invalid-moves-wall');
-      return { isValid: false, reason: 'Target cell is blocked' };
-    }
-
-    // Check for other players
-    const playerAtTarget = Object.values(this.gameState.players).find(p => 
-      p.x === newX && p.y === newY && p.id !== this.playerId
-    );
-    if (playerAtTarget) {
-      this.framework.incrementCounter('invalid-moves-player');
-      return { isValid: false, reason: 'Another player is at target position' };
-    }
-
-    // Check for bombs
-    const bombAtTarget = this.gameState.bombs?.find(bomb => 
-      bomb.x === newX && bomb.y === newY
-    );
-    if (bombAtTarget) {
-      this.framework.incrementCounter('invalid-moves-bomb');
-      return { isValid: false, reason: 'Bomb is at target position' };
-    }
-
-    this.framework.incrementCounter('valid-moves');
-    return { isValid: true, reason: 'Move is valid' };
+    return result;
   }
 
   validateClientMove(direction) {
-    if (!this.gameState || !this.gameState.players || !this.playerId) {
-      return false;
-    }
-
-    const player = this.gameState.players[this.playerId];
-    if (!player) {
-      return false;
-    }
-
-    const currentX = player.x;
-    const currentY = player.y;
-
-    // Calculate new position
-    let newX = currentX;
-    let newY = currentY;
-
-    switch(direction) {
-      case 'up':
-        newY = currentY - 1;
-        break;
-      case 'down':
-        newY = currentY + 1;
-        break;
-      case 'left':
-        newX = currentX - 1;
-        break;
-      case 'right':
-        newX = currentX + 1;
-        break;
-      default:
-        return false;
-    }
-
-    // Check map boundaries
-    if (newX < 0 || newX >= this.gameState.map[0].length || 
-        newY < 0 || newY >= this.gameState.map.length) {
-      return false;
-    }
-
-    // Check for walls and blocks
-    const targetCell = this.gameState.map[newY][newX];
-    if (targetCell === 'wall' || targetCell === 'block') {
-      return false;
-    }
-
-    // Check for other players
-    const playerAtTarget = Object.values(this.gameState.players).find(p => 
-      p.x === newX && p.y === newY && p.id !== this.playerId
-    );
-    if (playerAtTarget) {
-      return false;
-    }
-
-    // Check for bombs
-    const bombAtTarget = this.gameState.bombs?.find(bomb => 
-      bomb.x === newX && bomb.y === newY
-    );
-    if (bombAtTarget) {
-      return false;
-    }
-
-    return true;
+    // ✅ CONSOLIDATED: Remove duplicate validation logic - use shared validator
+    const result = this.validateClientMoveWithRenderCheck(direction);
+    return result.isValid;
   }
 
   // ===== MOVEMENT ANALYTICS =====

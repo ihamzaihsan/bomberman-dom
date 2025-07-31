@@ -9,9 +9,9 @@ import {
   ChatManager,
   GameStateManager,
   AppEventHandlers,
-  handleGameEvent,
-  handlePlayerDamaged,
 } from "./modules/index.js";
+// ✅ CONSOLIDATED: Import shared constants for validation
+import { PLAYER_CONFIG } from "../shared/GameConstants.js";
 
 class BombermanApp {
   constructor() {
@@ -103,6 +103,9 @@ class BombermanApp {
       onShowError: (message) => this.showError(message),
       onShowNotification: (message, type) => this.showNotification(message, type),
     });
+
+    // ✅ CONSOLIDATED: Set notification manager reference to avoid duplication
+    this.gameUIManager.setNotificationManager(this.notificationManager);
   }
 
   sendWebSocketMessage(message) {
@@ -110,27 +113,27 @@ class BombermanApp {
   }
 
   cacheElements() {
-    this.framework.cacheElement("app", document.getElementById("app"));
-    this.framework.cacheElement("game-map", document.getElementById("game-map"));
-    this.framework.cacheElement("timer-value", document.getElementById("timer-value"));
-    this.framework.cacheElement("player-lives", document.getElementById("player-lives"));
-    this.framework.cacheElement("player-bombs", document.getElementById("player-bombs"));
-    this.framework.cacheElement("game-chat-messages", document.getElementById("game-chat-messages"));
+    // ✅ FRAMEWORK: Use framework's getCachedElement which handles getElementById internally
+    this.framework.cacheElement("app", this.framework.getCachedElement("app"));
+    this.framework.cacheElement("game-map", this.framework.getCachedElement("game-map"));
+    this.framework.cacheElement("timer-value", this.framework.getCachedElement("timer-value"));
+    this.framework.cacheElement("player-lives", this.framework.getCachedElement("player-lives"));
+    this.framework.cacheElement("player-bombs", this.framework.getCachedElement("player-bombs"));
+    this.framework.cacheElement("game-chat-messages", this.framework.getCachedElement("game-chat-messages"));
     this.cachedElements = {
       app: this.framework.getCachedElement("app"),
     };
   }
 
   handleGameStateUpdate(newGameState) {
-    this.gameState = newGameState;
-    this.gameUIManager.setGameState(this.gameState, this.playerId);
-    this.playerController.setGameState(this.gameState, this.playerId); // Always update controller
+    // ✅ CONSOLIDATED: Let GameStateManager handle all state updates
     this.mapRenderer.framework = this.framework;
     return this.gameStateManager.handleGameStateUpdate(newGameState);
   }
 
   handleGameEvent(eventType, eventData) {
-    return handleGameEvent(this, eventType, eventData);
+    // ✅ CONSOLIDATED: Use AppEventHandlers method
+    return this.appEventHandlers.handleGameEvent(eventType, eventData);
   }
 
   showNotification(message, type = "success") {
@@ -163,18 +166,19 @@ class BombermanApp {
   }
 
   setupEventHandlers() {
-    const form = document.getElementById("nickname-form");
+    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
+    const form = this.framework.getCachedElement("nickname-form");
     if (form) {
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        const nicknameInput = document.getElementById("nickname-input");
+        const nicknameInput = this.framework.getCachedElement("nickname-input");
         const nickname = nicknameInput.value.trim();
-        if (nickname.length < 2) {
-          this.showError("Nickname must be at least 2 characters long");
+        if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) { // ✅ CONSOLIDATED: Use shared constant
+          this.showError(`Nickname must be at least ${PLAYER_CONFIG.NICKNAME_MIN_LENGTH} characters long`);
           return;
         }
-        if (nickname.length > 20) {
-          this.showError("Nickname must be less than 20 characters");
+        if (nickname.length > PLAYER_CONFIG.NICKNAME_MAX_LENGTH) { // ✅ CONSOLIDATED: Use shared constant
+          this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
           return;
         }
         this.joinGame(nickname);
@@ -183,7 +187,8 @@ class BombermanApp {
   }
 
   joinGame(nickname) {
-    const submitButton = document.querySelector('#nickname-form button[type="submit"]');
+    // ✅ FRAMEWORK: Use framework's find method instead of document.querySelector
+    const submitButton = this.framework.find('#nickname-form button[type="submit"]');
     if (submitButton) {
       submitButton.textContent = "Joining...";
       submitButton.disabled = true;
@@ -202,7 +207,8 @@ class BombermanApp {
   }
 
   resetJoinButton() {
-    const submitButton = document.querySelector('#nickname-form button[type="submit"]');
+    // ✅ FRAMEWORK: Use framework's find method instead of document.querySelector
+    const submitButton = this.framework.find('#nickname-form button[type="submit"]');
     if (submitButton) {
       submitButton.textContent = "Join Game";
       submitButton.disabled = false;
@@ -211,14 +217,15 @@ class BombermanApp {
 
   isInWaitingRoom() {
     if (!this.waitingScreenReady) return false;
-    const waitingScreen = document.querySelector(".waiting-screen");
+    // ✅ FRAMEWORK: Use framework's find method instead of document.querySelector
+    const waitingScreen = this.framework.find(".waiting-screen");
     if (!waitingScreen) return false;
     const computedStyle = window.getComputedStyle(waitingScreen);
     return computedStyle.display !== "none" && waitingScreen.offsetParent !== null;
   }
 
   startOptimizedGameLoop() {
-    this.framework.startGameLoop((deltaTime, currentTime) => {
+    this.framework.startGameLoop((_deltaTime, currentTime) => {
       if (this.gameState) {
         console.log('Game loop: gameTimeLeft =', this.gameState.gameTimeLeft);
       }
@@ -259,7 +266,8 @@ class BombermanApp {
     this.waitingScreenReady = true;
 
     // Remove or hide timer elements in the lobby
-    const timerDisplay = document.getElementById('timer-display');
+    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
+    const timerDisplay = this.framework.getCachedElement('timer-display');
     if (timerDisplay) timerDisplay.style.display = 'none';
     // Setup chat handlers for lobby
     this.setupChatHandlers();
@@ -278,7 +286,7 @@ class BombermanApp {
     this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.gameUIManager.showGameScreen();
     // Render the map with the latest state
-    this.mapRenderer.updateGameMap(this.gameState);
+    this.mapRenderer.renderFullGameMap(this.gameState);
     // Update chat UI
     this.updateChatDisplay();
     // Setup chat handlers for game screen
@@ -317,15 +325,13 @@ class BombermanApp {
   }
 
   handlePlayerDamaged(eventData) {
-    return handlePlayerDamaged(this, eventData);
+    // ✅ CONSOLIDATED: Use AppEventHandlers method
+    return this.appEventHandlers.handlePlayerDamaged(eventData);
   }
 
   handlePlayerEliminated(eventData) {
-    if (this.appEventHandlers.handlePlayerEliminated) {
-      return this.appEventHandlers.handlePlayerEliminated(eventData);
-    } else if (this.gameStateManager.handlePlayerEliminated) {
-      return this.gameStateManager.handlePlayerEliminated(eventData);
-    }
+    // ✅ CONSOLIDATED: Simplified - method now exists in AppEventHandlers
+    return this.appEventHandlers.handlePlayerEliminated(eventData);
   }
 
   handleBombExplosion(eventData) {
@@ -337,11 +343,8 @@ class BombermanApp {
     } else {
       console.log('❌ Missing explosions or position data in event:', eventData);
     }
-    if (this.appEventHandlers.handleBombExplosion) {
-      return this.appEventHandlers.handleBombExplosion(eventData);
-    } else if (this.gameStateManager.handleBombExplosion) {
-      return this.gameStateManager.handleBombExplosion(eventData);
-    }
+    // ✅ CONSOLIDATED: Simplified - method now exists in AppEventHandlers
+    return this.appEventHandlers.handleBombExplosion(eventData);
   }
 
   handlePowerUpSpawned(eventData) {
@@ -406,10 +409,21 @@ class BombermanApp {
     }
   }
 
-  handlePlayerJoined(eventData) {
+  handlePlayerJoined(_eventData) {
     // Add logic if needed, for now just a stub to prevent errors
     // Example: update player list, show notification, etc.
     // this.showNotification(`${eventData.nickname} joined the game!`, 'info');
+  }
+
+  // ✅ CONSOLIDATED: Add missing event handler
+  handlePlayerLeft(eventData) {
+    return this.appEventHandlers.handlePlayerLeft(eventData);
+  }
+
+  // ✅ CONSOLIDATED: Add missing sound method
+  playDamageSound() {
+    // Placeholder for damage sound - could be implemented with Web Audio API
+    console.log('🔊 Playing damage sound effect');
   }
 }
 
