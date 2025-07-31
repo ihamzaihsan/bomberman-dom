@@ -168,6 +168,15 @@ class GameServer {
     const playerCount = Object.keys(this.gameState.players).length;
     console.log(`Current player count: ${playerCount}`);
 
+    // === DUPLICATE NICKNAME CHECK ===
+    const duplicate = Object.values(this.gameState.players).some(
+      (p) => p.nickname && p.nickname.trim().toLowerCase() === nickname.trim().toLowerCase()
+    );
+    if (duplicate) {
+      console.log('Rejecting player: Duplicate nickname');
+      return { success: false, error: 'There is a player in the lobby with the same name' };
+    }
+
     if (playerCount >= PLAYER_CONFIG.MAX_PLAYERS) { // ✅ CONSOLIDATED: Use shared constant
       console.log('Rejecting player: Game is full');
       return { success: false, error: `Game is full (${PLAYER_CONFIG.MAX_PLAYERS} players maximum)` };

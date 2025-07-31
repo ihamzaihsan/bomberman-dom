@@ -578,7 +578,7 @@ export class GameUIManager {
 
     const livesStatsDiv = this.framework.selectiveRenderer.createElement('div', {
       className: 'stat',
-      innerHTML: '<span>Lives:</span><span id="player-lives">3</span>'
+      innerHTML: '<span></span><span id="player-lives">3</span>'
     });
 
     const bombsStatsDiv = this.framework.selectiveRenderer.createElement('div', {
