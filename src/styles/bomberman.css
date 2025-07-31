@@ -1092,6 +1092,48 @@ body {
   }
 }
 
+/* ✅ GHOST MODE: Styling for eliminated players */
+.player-ghost {
+  opacity: 0.4 !important;
+  filter: grayscale(100%) brightness(0.7) !important;
+  pointer-events: none !important;
+  position: relative;
+  z-index: 1; /* Lower than alive players */
+}
+
+.player-ghost::after {
+  content: '👻';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ghostFloat 2s ease-in-out infinite alternate;
+}
+
+/* Ghost floating animation */
+@keyframes ghostFloat {
+  0% {
+    transform: translateY(0px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.9;
+  }
+}
+
+/* Ensure alive players are above ghost players */
+.player:not(.player-ghost) {
+  z-index: 2;
+}
+
 .final-results {
   background: rgba(52, 73, 94, 0.8);
   padding: 15px;

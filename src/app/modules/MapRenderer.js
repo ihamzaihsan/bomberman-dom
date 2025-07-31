@@ -367,13 +367,27 @@ export class MapRenderer {
     // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
     const playerElement = this.getPooledElement('players') || this.framework.createElement('div');
 
-    playerElement.className = `player player-${index}`;
+    // ✅ GHOST MODE: Apply ghost styling for eliminated players
+    const isGhost = !playerData.alive;
+    const ghostClass = isGhost ? ' player-ghost' : '';
+    playerElement.className = `player player-${index}${ghostClass}`;
 
     // Set text content for fallback (hidden by CSS when images load)
     playerElement.textContent = playerData.nickname.charAt(0).toUpperCase();
 
     // Hardware acceleration
     playerElement.style.transform = 'translateZ(0)';
+
+    // ✅ GHOST MODE: Apply ghost visual effects
+    if (isGhost) {
+      playerElement.style.opacity = '0.4';
+      playerElement.style.filter = 'grayscale(100%) brightness(0.7)';
+      playerElement.style.pointerEvents = 'none';
+    }
+
+    // Store player data for reference
+    playerElement.setAttribute('data-player-id', playerData.id);
+    playerElement.setAttribute('data-player-alive', playerData.alive);
 
     // ✅ NEW: Handle character sprite loading with fallback
     this.loadPlayerSprite(playerElement, index, playerData);
@@ -439,14 +453,22 @@ export class MapRenderer {
     const spritePath = this.SPRITE_MAP[playerIndex];
     const playerInitial = playerData.nickname.charAt(0).toUpperCase();
 
+    // ✅ GHOST MODE: Apply ghost styling for eliminated players
+    const isGhost = !playerData.alive;
+    const ghostClass = isGhost ? ' player-ghost' : '';
+    const ghostStyle = isGhost ?
+      'opacity: 0.4; filter: grayscale(100%) brightness(0.7); pointer-events: none;' : '';
+
     // Generate HTML with both sprite and fallback styling
-    return `<div class="player player-${playerIndex}"
+    return `<div class="player player-${playerIndex}${ghostClass}"
                  style="background-image: url('${spritePath}');
                         background-size: cover;
                         background-position: center;
-                        background-repeat: no-repeat;"
+                        background-repeat: no-repeat;
+                        ${ghostStyle}"
                  data-player-id="${playerData.id}"
-                 data-player-initial="${playerInitial}">${playerInitial}</div>`;
+                 data-player-initial="${playerInitial}"
+                 data-player-alive="${playerData.alive}">${playerInitial}</div>`;
   }
 
   // ✅ NEW: Setup sprite loading for HTML-generated players

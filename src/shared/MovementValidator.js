@@ -65,14 +65,14 @@ export class MovementValidator {
       };
     }
 
-    // Check for other players at the same position
+    // Check for other ALIVE players at the same position (ignore eliminated/ghost players)
     const playerAtPosition = Object.values(gameState.players || {}).find(
       p => p.id !== player.id && p.alive && p.x === newX && p.y === newY
     );
     if (playerAtPosition) {
       return {
         isValid: false,
-        reason: 'Another player is at target position',
+        reason: 'Another alive player is at target position',
         newX,
         newY
       };

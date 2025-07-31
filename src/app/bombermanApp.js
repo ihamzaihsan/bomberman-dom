@@ -385,19 +385,55 @@ class BombermanApp {
   }
 
   returnToLobby() {
+    console.log('🔧 returnToLobby: Starting comprehensive cleanup');
+
+    // Option 1: Use location.reload() for most reliable cleanup (recommended)
+    if (true) { // Set to false to use manual cleanup instead
+      console.log('🔧 Using location.reload() for complete state reset');
+      location.reload();
+      return;
+    }
+
+    // Option 2: Manual cleanup (alternative approach)
+    this.performManualCleanup();
+  }
+
+  performManualCleanup() {
+    console.log('🔧 Performing manual cleanup');
+
+    // Stop game loop first to prevent interference
+    this.framework.stopGameLoop();
+
+    // Clear all state
     this.gameState = null;
     this.playerId = null;
     this.nickname = "";
+    this.waitingScreenReady = false;
+
     // Clear chat history for fresh start
     this.clearChatHistory();
+
     // Reset map renderer state for fresh start
     this.mapRenderer.resetRenderer();
-    // Remove existing event handlers first
+
+    // Remove ALL event handlers with comprehensive cleanup
     this.removeEventHandlers();
-    // Clear element cache before recreating DOM to prevent stale references
+    this.removeChatHandlers(); // Extra cleanup
+
+    // Clear all caches
     this.framework.clearAllCaches();
-    this.gameUIManager.showInitialScreen();
-    this.setupEventHandlers();
+    this.cachedElements = {};
+
+    // Reset UI manager state
+    this.gameUIManager.resetGame();
+
+    // Wait for cleanup to complete, then show initial screen
+    setTimeout(() => {
+      this.gameUIManager.showInitialScreen();
+      setTimeout(() => {
+        this.setupEventHandlers();
+      }, 100);
+    }, 200);
   }
 
   destroy() {

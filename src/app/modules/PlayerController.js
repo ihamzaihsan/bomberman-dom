@@ -129,6 +129,15 @@ export class PlayerController {
   }
 
   movePlayer(direction) {
+    // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
+    if (this.gameState && this.gameState.players && this.playerId) {
+      const currentPlayer = this.gameState.players[this.playerId];
+      if (currentPlayer && !currentPlayer.alive) {
+        console.log('Movement blocked: Player is eliminated (ghost mode)');
+        return;
+      }
+    }
+
     // Throttle movement to prevent spamming
     const currentTime = Date.now();
     if (this.isMoving || (currentTime - this.lastMoveTime) < this.moveThrottle) {
@@ -140,11 +149,11 @@ export class PlayerController {
     const validationResult = this.validateClientMoveWithRenderCheck(direction);
     if (!validationResult.isValid) {
       console.log('Invalid move:', validationResult.reason);
-      
+
       // Track invalid move for rendering optimization
       this.lastInvalidMoveTime = currentTime;
       this.lastInvalidMove = direction;
-      
+
       if (this.onInvalidMove) {
         this.onInvalidMove(direction, validationResult.reason);
       }
@@ -177,6 +186,12 @@ export class PlayerController {
     if (!this.gameState?.gameStarted || !this.playerId) return;
     const player = this.gameState.players[this.playerId];
     if (!player) return;
+
+    // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
+    if (!player.alive) {
+      console.log('🚫 Cannot place bomb: Player is eliminated (ghost mode)');
+      return;
+    }
 
     // ✅ NEW: Rate limiting to prevent rapid bomb placement attempts
     const now = Date.now();

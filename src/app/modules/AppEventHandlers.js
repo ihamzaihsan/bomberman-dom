@@ -98,11 +98,16 @@ export class AppEventHandlers {
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
     if (isCurrentPlayer) {
-      this.app.showNotification(`💀 ${playerName} were eliminated!`, 'error');
+      this.app.showNotification(`💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`, 'error');
       // Update UI to reflect elimination
       this.app.gameUIManager.updatePlayerStats(true);
+
+      // ✅ GHOST MODE: Show ghost mode notification
+      setTimeout(() => {
+        this.app.showNotification(`👻 Ghost Mode: You can still watch the game and chat, but cannot move or place bombs.`, 'info');
+      }, 3000);
     } else {
-      this.app.showNotification(`💀 ${playerName} was eliminated!`, 'info');
+      this.app.showNotification(`💀 ${playerName} was eliminated and is now a ghost!`, 'info');
     }
   }
 

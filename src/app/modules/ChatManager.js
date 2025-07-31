@@ -70,88 +70,104 @@ export class ChatManager {
   }
 
   setupChatHandlers() {
-    // Remove existing handlers first
+    console.log('🔧 ChatManager: Setting up chat handlers');
+    // Remove existing handlers first with extra safety
     this.removeChatHandlers();
 
-    const chatInput = document.getElementById("chat-input");
-    const chatSend = document.getElementById("chat-send");
-    if (chatInput && chatSend) {
-      // Store handlers for cleanup
-      this.chatSendHandler = () => {
-        const message = chatInput.value;
-        if (message.trim()) {
-          this.sendChatMessage(message);
-          chatInput.value = "";
-        }
-      };
-
-      this.chatKeyHandler = (e) => {
-        if (e.key === "Enter") {
+    // Add small delay to ensure cleanup is complete
+    setTimeout(() => {
+      const chatInput = document.getElementById("chat-input");
+      const chatSend = document.getElementById("chat-send");
+      if (chatInput && chatSend) {
+        console.log('🔧 ChatManager: Adding chat event listeners');
+        // Store handlers for cleanup
+        this.chatSendHandler = () => {
           const message = chatInput.value;
           if (message.trim()) {
             this.sendChatMessage(message);
             chatInput.value = "";
           }
-        }
-      };
+        };
 
-      chatSend.addEventListener("click", this.chatSendHandler);
-      chatInput.addEventListener("keypress", this.chatKeyHandler);
-    }
+        this.chatKeyHandler = (e) => {
+          if (e.key === "Enter") {
+            const message = chatInput.value;
+            if (message.trim()) {
+              this.sendChatMessage(message);
+              chatInput.value = "";
+            }
+          }
+        };
+
+        chatSend.addEventListener("click", this.chatSendHandler);
+        chatInput.addEventListener("keypress", this.chatKeyHandler);
+      }
+    }, 50);
   }
 
   removeChatHandlers() {
+    console.log('🔧 ChatManager: Removing chat handlers');
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
 
     if (chatSend && this.chatSendHandler) {
       chatSend.removeEventListener("click", this.chatSendHandler);
+      this.chatSendHandler = null;
     }
     if (chatInput && this.chatKeyHandler) {
       chatInput.removeEventListener("keypress", this.chatKeyHandler);
+      this.chatKeyHandler = null;
     }
   }
 
   setupGameChatHandlers() {
-    // Remove existing handlers first
+    console.log('🔧 ChatManager: Setting up game chat handlers');
+    // Remove existing handlers first with extra safety
     this.removeGameChatHandlers();
 
-    const gameChatInput = document.getElementById("game-chat-input");
-    const gameChatSend = document.getElementById("game-chat-send");
-    if (gameChatInput && gameChatSend) {
-      // Store handlers for cleanup
-      this.gameChatSendHandler = () => {
-        const message = gameChatInput.value;
-        if (message.trim()) {
-          this.sendChatMessage(message);
-          gameChatInput.value = "";
-        }
-      };
-
-      this.gameChatKeyHandler = (e) => {
-        if (e.key === "Enter") {
+    // Add small delay to ensure cleanup is complete
+    setTimeout(() => {
+      const gameChatInput = document.getElementById("game-chat-input");
+      const gameChatSend = document.getElementById("game-chat-send");
+      if (gameChatInput && gameChatSend) {
+        console.log('🔧 ChatManager: Adding game chat event listeners');
+        // Store handlers for cleanup
+        this.gameChatSendHandler = () => {
           const message = gameChatInput.value;
           if (message.trim()) {
             this.sendChatMessage(message);
             gameChatInput.value = "";
           }
-        }
-      };
+        };
 
-      gameChatSend.addEventListener("click", this.gameChatSendHandler);
-      gameChatInput.addEventListener("keypress", this.gameChatKeyHandler);
-    }
+        this.gameChatKeyHandler = (e) => {
+          if (e.key === "Enter") {
+            const message = gameChatInput.value;
+            if (message.trim()) {
+              this.sendChatMessage(message);
+              gameChatInput.value = "";
+            }
+          }
+        };
+
+        gameChatSend.addEventListener("click", this.gameChatSendHandler);
+        gameChatInput.addEventListener("keypress", this.gameChatKeyHandler);
+      }
+    }, 50);
   }
 
   removeGameChatHandlers() {
+    console.log('🔧 ChatManager: Removing game chat handlers');
     const gameChatInput = document.getElementById("game-chat-input");
     const gameChatSend = document.getElementById("game-chat-send");
 
     if (gameChatSend && this.gameChatSendHandler) {
       gameChatSend.removeEventListener("click", this.gameChatSendHandler);
+      this.gameChatSendHandler = null;
     }
     if (gameChatInput && this.gameChatKeyHandler) {
       gameChatInput.removeEventListener("keypress", this.gameChatKeyHandler);
+      this.gameChatKeyHandler = null;
     }
   }
 }

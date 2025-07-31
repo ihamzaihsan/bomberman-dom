@@ -806,6 +806,12 @@ class GameServer {
       const powerUp = this.gameState.powerUps[powerUpIndex];
       const player = this.gameState.players[playerId];
 
+      // ✅ GHOST MODE: Only alive players can collect power-ups
+      if (!player || !player.alive) {
+        console.log(`🚫 Ghost player ${player?.nickname || playerId} cannot collect power-ups`);
+        return;
+      }
+
       console.log(`🎁 Player ${player.nickname} collected ${powerUp.type} power-up at (${x}, ${y})`);
       console.log(`   Before: maxBombs=${player.maxBombs}, powerUps.bombs=${player.powerUps.bombs}`);
 
