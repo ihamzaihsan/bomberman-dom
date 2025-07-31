@@ -100,37 +100,62 @@ class GameServer {
     const height = MAP_CONFIG.HEIGHT; // ✅ CONSOLIDATED: Use shared constant
     const map = [];
 
+    // Initialize the map
     for (let y = 0; y < height; y++) {
       map[y] = [];
       for (let x = 0; x < width; x++) {
-        if (x % 2 === 1 && y % 2 === 1) {
-          map[y][x] = CELL_TYPES.WALL; // ✅ CONSOLIDATED: Use shared constant
-        } else if (this.isStartingPosition(x, y, width, height)) {
-          // ✅ NEW: Mark spawn areas with special cell type for visual distinction
-          map[y][x] = VALIDATION.isPlayerSpawnPoint(x, y) ? CELL_TYPES.SPAWN : CELL_TYPES.SPAWN_SAFE; // ✅ CONSOLIDATED: Use shared constants
-        } else if (Math.random() < MAP_CONFIG.BLOCK_DENSITY) { // ✅ CONSOLIDATED: Use shared constant
-          map[y][x] = CELL_TYPES.BLOCK; // ✅ CONSOLIDATED: Use shared constant
-        } else {
-          map[y][x] = CELL_TYPES.EMPTY; // ✅ CONSOLIDATED: Use shared constant
+        // ✅ UPDATED: Add soft blocks around all edges
+        if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+          map[y][x] = CELL_TYPES.BLOCK; // Soft blocks around edges
+        }
+        // Interior walls on odd coordinates (classic Bomberman pattern)
+        else if (x % 2 === 1 && y % 2 === 1) {
+          map[y][x] = CELL_TYPES.WALL; // Indestructible walls
+        }
+        // Random blocks in the interior
+        else if (Math.random() < MAP_CONFIG.BLOCK_DENSITY) {
+          map[y][x] = CELL_TYPES.BLOCK; // Destructible blocks
+        }
+        // Empty cells
+        else {
+          map[y][x] = CELL_TYPES.EMPTY;
         }
       }
     }
+
+    // ✅ FIXED: Create proper 3x3 spawn-safe areas for all starting positions
+    STARTING_POSITIONS.forEach((pos, index) => {
+      console.log(`Creating 3x3 spawn area for player ${index + 1} at (${pos.x}, ${pos.y})`);
+
+      // Create 3x3 safe area around each starting position
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = pos.x + dx;
+          const y = pos.y + dy;
+
+          // Ensure coordinates are within bounds
+          if (x >= 0 && x < width && y >= 0 && y < height) {
+            // Center cell is the spawn point
+            if (dx === 0 && dy === 0) {
+              map[y][x] = CELL_TYPES.SPAWN;
+            } else {
+              map[y][x] = CELL_TYPES.SPAWN_SAFE;
+            }
+          }
+        }
+      }
+    });
 
     console.log(`${MAP_CONFIG.WIDTH}x${MAP_CONFIG.HEIGHT} Map generated successfully`); // ✅ CONSOLIDATED: Use shared constant
     return map;
   }
 
+  // ✅ UPDATED: Simplified method for checking if position is in spawn area
   isStartingPosition(x, y, width, height) {
-    const safeZoneSize = EXPLOSION_CONFIG.SAFE_ZONE_SIZE; // ✅ CONSOLIDATED: Use shared constant
-    // Top-left corner safe area
-    if (x <= safeZoneSize - 1 && y <= safeZoneSize - 1) return true;
-    // Top-right corner safe area
-    if (x >= width - safeZoneSize && y <= safeZoneSize - 1) return true;
-    // Bottom-left corner safe area
-    if (x <= safeZoneSize - 1 && y >= height - safeZoneSize) return true;
-    // Bottom-right corner safe area
-    if (x >= width - safeZoneSize && y >= height - safeZoneSize) return true;
-    return false;
+    // Check if position is within any of the 3x3 spawn areas
+    return STARTING_POSITIONS.some(pos => {
+      return Math.abs(x - pos.x) <= 1 && Math.abs(y - pos.y) <= 1;
+    });
   }
 
   // ✅ CONSOLIDATED: Removed duplicate method - now using VALIDATION.isPlayerSpawnPoint from shared constants

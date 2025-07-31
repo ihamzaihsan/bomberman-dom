@@ -3,8 +3,8 @@
 
 // ===== MAP CONFIGURATION =====
 const MAP_CONFIG = {
-  WIDTH: 12,
-  HEIGHT: 12,
+  WIDTH: 13,
+  HEIGHT: 13,
   CELL_SIZE: 45, // CSS pixel size
   BLOCK_DENSITY: 0.6, // Probability of block generation
 };
@@ -36,12 +36,12 @@ const PLAYER_CONFIG = {
 };
 
 // ===== STARTING POSITIONS =====
-// ✅ CONSOLIDATED: Starting positions for 12x12 map (centered in 3x3 safe areas)
+// ✅ UPDATED: Starting positions for 13x13 map (corner spawning with proper spacing)
 const STARTING_POSITIONS = [
   { x: 1, y: 1 },     // Top-left (center of 3x3 area)
-  { x: 10, y: 1 },    // Top-right (center of 3x3 area)
-  { x: 1, y: 10 },    // Bottom-left (center of 3x3 area)
-  { x: 10, y: 10 }    // Bottom-right (center of 3x3 area)
+  { x: 11, y: 1 },    // Top-right (center of 3x3 area)
+  { x: 1, y: 11 },    // Bottom-left (center of 3x3 area)
+  { x: 11, y: 11 }    // Bottom-right (center of 3x3 area)
 ];
 
 // ===== CELL TYPES =====

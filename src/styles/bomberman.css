@@ -626,8 +626,8 @@ body {
 
 .game-map {
   display: grid;
-  grid-template-columns: repeat(12, 45px);
-  grid-template-rows: repeat(12, 45px);
+  grid-template-columns: repeat(13, 45px);
+  grid-template-rows: repeat(13, 45px);
   gap: 2px;
   background-color: #1a1a1a;
   padding: 15px;
@@ -783,8 +783,8 @@ body {
 /* Responsive design */
 @media (max-width: 800px) {
   .game-map {
-    grid-template-columns: repeat(12, 35px);
-    grid-template-rows: repeat(12, 35px);
+    grid-template-columns: repeat(13, 35px);
+    grid-template-rows: repeat(13, 35px);
     gap: 1px;
     padding: 10px;
   }
@@ -916,8 +916,8 @@ body {
   }
 
   .game-map {
-    grid-template-columns: repeat(12, 28px);
-    grid-template-rows: repeat(12, 28px);
+    grid-template-columns: repeat(13, 28px);
+    grid-template-rows: repeat(13, 28px);
   }
 
   .cell {
