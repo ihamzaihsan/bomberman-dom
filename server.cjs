@@ -635,10 +635,20 @@ class GameServer {
         bombOwner.lives = 0;
         bombOwner.alive = false;
         console.log(`Player ${bombOwner.nickname} eliminated by their own bomb! Lives: ${bombOwner.lives}`);
+
+        // ✅ GAME END LOGIC: Check if this elimination will end the game
+        const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+        const willGameEnd = alivePlayers.length <= 1;
+        const winner = alivePlayers.length === 1 ? alivePlayers[0] : null;
+
+        console.log(`Game end check (bomb owner): ${alivePlayers.length} alive, willGameEnd: ${willGameEnd}`);
+
         this.broadcastEvent('player_eliminated', {
           playerId: bombOwner.id,
           nickname: bombOwner.nickname,
-          finalLives: bombOwner.lives
+          finalLives: bombOwner.lives,
+          willGameEnd: willGameEnd,
+          winner: winner ? { id: winner.id, nickname: winner.nickname } : null
         });
         if (this.wsManager) {
           this.wsManager.broadcastGameState();
@@ -709,11 +719,20 @@ class GameServer {
               player.alive = false;
               console.log(`Player ${player.nickname} eliminated! Lives: ${player.lives}`);
 
-              // Broadcast player elimination event
+              // ✅ GAME END LOGIC: Check if this elimination will end the game
+              const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+              const willGameEnd = alivePlayers.length <= 1;
+              const winner = alivePlayers.length === 1 ? alivePlayers[0] : null;
+
+              console.log(`Game end check: ${alivePlayers.length} alive, willGameEnd: ${willGameEnd}`);
+
+              // Broadcast player elimination event with game end information
               this.broadcastEvent('player_eliminated', {
                 playerId: player.id,
                 nickname: player.nickname,
-                finalLives: player.lives
+                finalLives: player.lives,
+                willGameEnd: willGameEnd,
+                winner: winner ? { id: winner.id, nickname: winner.nickname } : null
               });
 
               // ✅ FIX: Broadcast updated game state BEFORE ending game

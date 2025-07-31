@@ -97,6 +97,26 @@ export class AppEventHandlers {
     const isCurrentPlayer = eventData.playerId === this.app.playerId;
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
+    // ✅ GAME END LOGIC: Check if this elimination ends the game
+    if (eventData.willGameEnd) {
+      console.log('🏁 Game will end after this elimination, skipping ghost mode notifications');
+
+      if (isCurrentPlayer) {
+        if (eventData.winner) {
+          this.app.showNotification(`💀 ${playerName} were eliminated! ${eventData.winner.nickname} wins the game!`, 'error');
+        } else {
+          this.app.showNotification(`💀 ${playerName} were eliminated! Game Over!`, 'error');
+        }
+      } else {
+        this.app.showNotification(`💀 ${playerName} was eliminated! Game ending...`, 'info');
+      }
+
+      // Update UI to reflect elimination
+      this.app.gameUIManager.updatePlayerStats(true);
+      return; // Skip ghost mode logic when game is ending
+    }
+
+    // ✅ GHOST MODE: Normal elimination handling when game continues
     if (isCurrentPlayer) {
       this.app.showNotification(`💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`, 'error');
       // Update UI to reflect elimination
