@@ -566,7 +566,7 @@ export class MapRenderer {
     });
 
     // Cleanup after animation completes
-    const cleanupDelay = 1200 + (chainDepth * 100); // Wait for animation to complete
+    const cleanupDelay = 900 + (chainDepth * 50); // Wait for shorter animation to complete
     setTimeout(() => {
       console.log(`🧹 Cleaning up explosion animations for chain depth ${chainDepth}`);
       this.cleanupExplosionAnimations();
@@ -631,8 +631,11 @@ export class MapRenderer {
       font-size: ${type === 'center' ? '3em' : '2.5em'};
       opacity: 1;
       transform: scale(1);
-      animation: bomberman-explosion-pop 0.6s cubic-bezier(.68,-0.55,.27,1.55);
-      text-shadow: 0 0 15px rgba(255, 100, 0, 0.9), 0 0 30px rgba(255, 150, 0, 0.7);
+      animation: bomberman-explosion-pop 0.8s ease-out;
+      text-shadow:
+        0 0 15px rgba(255, 107, 53, 1),
+        0 0 25px rgba(255, 69, 0, 0.8),
+        0 0 35px rgba(255, 140, 0, 0.6);
     `;
 
     // Add to cell with relative positioning
