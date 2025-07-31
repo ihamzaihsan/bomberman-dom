@@ -46,6 +46,8 @@ class GameServer {
     this.explodingBombs = new Set(); // Track bombs currently exploding
     this.explodedBombs = new Set(); // Track bombs that have already exploded
 
+    this.isPostGame = false; // <--- Add post-game flag
+
     console.log(`GameServer initialized with ${MAP_CONFIG.WIDTH}x${MAP_CONFIG.HEIGHT} map`); // ✅ CONSOLIDATED: Use shared constant
   }
 
@@ -167,6 +169,12 @@ class GameServer {
 
     const playerCount = Object.keys(this.gameState.players).length;
     console.log(`Current player count: ${playerCount}`);
+
+    // === PREVENT JOIN DURING POST-GAME ===
+    if (this.isPostGame) {
+      console.log('Rejecting player: Game is resetting, please wait for next round');
+      return { success: false, error: 'Game is resetting, please wait for next round' };
+    }
 
     // === DUPLICATE NICKNAME CHECK ===
     const duplicate = Object.values(this.gameState.players).some(
@@ -398,6 +406,7 @@ class GameServer {
     console.log(`Game ended: ${reason}`);
     this.gameState.gameEnded = true;
     this.gameState.gameStarted = false;
+    this.isPostGame = true; // <--- Set post-game flag
 
     // ✅ CRITICAL: Stop real-time game loop
     this.stopRealTimeGameLoop();
@@ -472,6 +481,8 @@ class GameServer {
       waitingTimer: null,
       waitingTimeLeft: GAME_TIMING.WAITING_DURATION // ✅ CONSOLIDATED: Use shared constant
     };
+
+    this.isPostGame = false; // <--- Clear post-game flag
 
     // ✅ NEW: Reset chain reaction tracking sets
     this.explodingBombs.clear();

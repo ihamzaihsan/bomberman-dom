@@ -288,8 +288,34 @@ export class GameUIManager {
         if (this.onReturnToLobby) {
           this.onReturnToLobby();
         }
+        // Call resetGame after returning to lobby
+        this.resetGame();
+        // Show the join screen after reset
+        this.showInitialScreen();
       }
     }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
+  }
+
+  // ===== GAME RESET FUNCTIONALITY =====
+  resetGame() {
+    // Clear UI and state for a fresh start
+    this.gameState = null;
+    this.playerId = null;
+    // Clear app container
+    const app = document.getElementById('app');
+    if (app) app.innerHTML = '';
+    // Optionally clear cached elements or overlays
+    if (this.framework && this.framework.clearCache) {
+      this.framework.clearCache();
+    }
+    // Remove any lingering overlays (e.g., damage flash)
+    const flashOverlay = document.getElementById('damage-flash-overlay');
+    if (flashOverlay) flashOverlay.remove();
+    // Remove any notification area
+    const notificationArea = document.getElementById('notification-area');
+    if (notificationArea) notificationArea.remove();
+    // Always show the join screen after reset
+    this.showInitialScreen();
   }
 
   // ===== SCREEN MANAGEMENT =====
