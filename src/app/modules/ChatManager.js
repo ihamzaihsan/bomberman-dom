@@ -6,6 +6,12 @@ export class ChatManager {
     this.maxChatMessages = 50;
   }
 
+  // Clear chat history (called when starting new games)
+  clearChatHistory() {
+    this.chatMessages = [];
+    this.updateChatDisplay();
+  }
+
   handleChatMessage(data) {
     this.chatMessages.push({
       playerId: data.playerId,
@@ -64,17 +70,22 @@ export class ChatManager {
   }
 
   setupChatHandlers() {
+    // Remove existing handlers first
+    this.removeChatHandlers();
+
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
     if (chatInput && chatSend) {
-      chatSend.addEventListener("click", () => {
+      // Store handlers for cleanup
+      this.chatSendHandler = () => {
         const message = chatInput.value;
         if (message.trim()) {
           this.sendChatMessage(message);
           chatInput.value = "";
         }
-      });
-      chatInput.addEventListener("keypress", (e) => {
+      };
+
+      this.chatKeyHandler = (e) => {
         if (e.key === "Enter") {
           const message = chatInput.value;
           if (message.trim()) {
@@ -82,22 +93,42 @@ export class ChatManager {
             chatInput.value = "";
           }
         }
-      });
+      };
+
+      chatSend.addEventListener("click", this.chatSendHandler);
+      chatInput.addEventListener("keypress", this.chatKeyHandler);
+    }
+  }
+
+  removeChatHandlers() {
+    const chatInput = document.getElementById("chat-input");
+    const chatSend = document.getElementById("chat-send");
+
+    if (chatSend && this.chatSendHandler) {
+      chatSend.removeEventListener("click", this.chatSendHandler);
+    }
+    if (chatInput && this.chatKeyHandler) {
+      chatInput.removeEventListener("keypress", this.chatKeyHandler);
     }
   }
 
   setupGameChatHandlers() {
+    // Remove existing handlers first
+    this.removeGameChatHandlers();
+
     const gameChatInput = document.getElementById("game-chat-input");
     const gameChatSend = document.getElementById("game-chat-send");
     if (gameChatInput && gameChatSend) {
-      gameChatSend.addEventListener("click", () => {
+      // Store handlers for cleanup
+      this.gameChatSendHandler = () => {
         const message = gameChatInput.value;
         if (message.trim()) {
           this.sendChatMessage(message);
           gameChatInput.value = "";
         }
-      });
-      gameChatInput.addEventListener("keypress", (e) => {
+      };
+
+      this.gameChatKeyHandler = (e) => {
         if (e.key === "Enter") {
           const message = gameChatInput.value;
           if (message.trim()) {
@@ -105,7 +136,22 @@ export class ChatManager {
             gameChatInput.value = "";
           }
         }
-      });
+      };
+
+      gameChatSend.addEventListener("click", this.gameChatSendHandler);
+      gameChatInput.addEventListener("keypress", this.gameChatKeyHandler);
+    }
+  }
+
+  removeGameChatHandlers() {
+    const gameChatInput = document.getElementById("game-chat-input");
+    const gameChatSend = document.getElementById("game-chat-send");
+
+    if (gameChatSend && this.gameChatSendHandler) {
+      gameChatSend.removeEventListener("click", this.gameChatSendHandler);
+    }
+    if (gameChatInput && this.gameChatKeyHandler) {
+      gameChatInput.removeEventListener("keypress", this.gameChatKeyHandler);
     }
   }
 }

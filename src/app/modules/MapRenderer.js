@@ -36,6 +36,23 @@ export class MapRenderer {
     this.FALLBACK_COLORS = SPRITE_CONFIG.FALLBACK_COLORS;
   }
 
+  // Reset renderer state for new games
+  resetRenderer() {
+    this.lastGameMapState = null;
+    this.dirtyMapCells = new Set();
+    this.hasRenderedMapOnce = false;
+    this.gameMapCache = new Map();
+    this.lastRenderedEntities = {
+      players: new Map(),
+      bombs: new Map(),
+      powerUps: new Map()
+    };
+    this.lastInvalidMoveTime = 0;
+    this.lastInvalidMove = null;
+    this.lastRenderStateSignature = '';
+    console.log('MapRenderer: State reset for new game');
+  }
+
   // ===== MAIN RENDERING FUNCTIONS =====
 
   renderGameMap(gameState) {
@@ -75,13 +92,27 @@ export class MapRenderer {
 
   renderFullGameMap(gameState) {
     console.log('MapRenderer: Starting full map render');
-    const gameMapElement = this.framework.getCachedElement('game-map') ||
-                          this.framework.cacheElement('game-map', document.getElementById('game-map'));
-    
-    if (!gameMapElement || !gameState) {
-      console.log('MapRenderer: No game map element or game state');
+
+    // Clear cache and get fresh reference to game map element
+    this.framework.clearAllCaches();
+    let gameMapElement = document.getElementById('game-map');
+
+    if (!gameMapElement) {
+      console.log('MapRenderer: Game map element not found, retrying...');
+      // Try again after a short delay
+      setTimeout(() => {
+        this.renderFullGameMap(gameState);
+      }, 100);
       return;
     }
+
+    if (!gameState) {
+      console.log('MapRenderer: No game state');
+      return;
+    }
+
+    // Cache the element after we confirm it exists
+    this.framework.cacheElement('game-map', gameMapElement);
 
     console.log('MapRenderer: Rendering map with', gameState.map.length, 'rows');
     gameMapElement.innerHTML = this.renderGameMap(gameState);

@@ -44,12 +44,15 @@ class BombermanApp {
   }
 
   init() {
-    this.setupEventHandlers();
+    // Don't setup event handlers here since the form doesn't exist yet
     this.cacheElements();
     this.setupWebSocket();
     this.setupGameUIManager();
     this.setupModules();
     this.setupDebugTools();
+    // Show initial screen and then setup event handlers
+    this.gameUIManager.showInitialScreen();
+    this.setupEventHandlers();
   }
 
   setupModules() {
@@ -89,6 +92,7 @@ class BombermanApp {
     this.webSocketManager.registerMessageHandler("error", (data) => this.showError(data.message));
     this.webSocketManager.registerMessageHandler("move_result", (data) => this.handleMoveResult(data));
     this.webSocketManager.registerMessageHandler("bomb_result", (data) => this.handleBombResult(data));
+    this.webSocketManager.registerMessageHandler("game_reset", (data) => this.handleGameReset(data));
     this.webSocketManager.initWebSocket();
     setTimeout(() => this.updateConnectionStatus(), 100);
   }
@@ -146,7 +150,7 @@ class BombermanApp {
 
   handleChatMessage(data) {
     this.chatManager.handleChatMessage(data);
-    this.updateChatDisplay(); // ensure UI updates after new message
+    // Don't call updateChatDisplay() here - handleChatMessage already does it
   }
 
   updateChatDisplay() {
@@ -165,25 +169,87 @@ class BombermanApp {
     return this.chatManager.setupGameChatHandlers();
   }
 
+  removeChatHandlers() {
+    this.chatManager.removeChatHandlers();
+    this.chatManager.removeGameChatHandlers();
+  }
+
+  clearChatHistory() {
+    return this.chatManager.clearChatHistory();
+  }
+
+  handleGameReset(data) {
+    console.log('🔧 Game reset event received, clearing chat and returning to lobby');
+    // Clear chat history when game resets
+    this.clearChatHistory();
+    // Let AppEventHandlers handle the reset logic
+    return this.appEventHandlers.handleGameReset(data);
+  }
+
   setupEventHandlers() {
-    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
-    const form = this.framework.getCachedElement("nickname-form");
-    if (form) {
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const nicknameInput = this.framework.getCachedElement("nickname-input");
-        const nickname = nicknameInput.value.trim();
-        if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) { // ✅ CONSOLIDATED: Use shared constant
-          this.showError(`Nickname must be at least ${PLAYER_CONFIG.NICKNAME_MIN_LENGTH} characters long`);
-          return;
+    // Remove any existing event listeners first
+    this.removeEventHandlers();
+
+    // Use event delegation on the app container to handle form submissions
+    const app = document.getElementById('app');
+    if (app) {
+      this.formSubmitHandler = (e) => {
+        if (e.target.id === 'nickname-form') {
+          e.preventDefault();
+          const nicknameInput = document.getElementById('nickname-input');
+          if (nicknameInput) {
+            const nickname = nicknameInput.value.trim();
+            if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) {
+              this.showError(`Nickname must be at least ${PLAYER_CONFIG.NICKNAME_MIN_LENGTH} characters long`);
+              return;
+            }
+            if (nickname.length > PLAYER_CONFIG.NICKNAME_MAX_LENGTH) {
+              this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
+              return;
+            }
+            this.joinGame(nickname);
+          }
         }
-        if (nickname.length > PLAYER_CONFIG.NICKNAME_MAX_LENGTH) { // ✅ CONSOLIDATED: Use shared constant
-          this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
-          return;
-        }
-        this.joinGame(nickname);
-      });
+      };
+      app.addEventListener('submit', this.formSubmitHandler);
     }
+
+    // Also try direct attachment as backup
+    const form = document.getElementById("nickname-form");
+    if (form) {
+      this.directFormHandler = (e) => {
+        e.preventDefault();
+        const nicknameInput = document.getElementById('nickname-input');
+        if (nicknameInput) {
+          const nickname = nicknameInput.value.trim();
+          if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) {
+            this.showError(`Nickname must be at least ${PLAYER_CONFIG.NICKNAME_MIN_LENGTH} characters long`);
+            return;
+          }
+          if (nickname.length > PLAYER_CONFIG.NICKNAME_MAX_LENGTH) {
+            this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
+            return;
+          }
+          this.joinGame(nickname);
+        }
+      };
+      form.addEventListener("submit", this.directFormHandler);
+    }
+  }
+
+  removeEventHandlers() {
+    const app = document.getElementById('app');
+    if (app && this.formSubmitHandler) {
+      app.removeEventListener('submit', this.formSubmitHandler);
+    }
+
+    const form = document.getElementById("nickname-form");
+    if (form && this.directFormHandler) {
+      form.removeEventListener('submit', this.directFormHandler);
+    }
+
+    // Also remove chat handlers
+    this.removeChatHandlers();
   }
 
   joinGame(nickname) {
@@ -285,14 +351,21 @@ class BombermanApp {
 
     this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.gameUIManager.showGameScreen();
-    // Render the map with the latest state
-    this.mapRenderer.renderFullGameMap(this.gameState);
-    // Update chat UI
-    this.updateChatDisplay();
-    // Setup chat handlers for game screen
-    this.setupGameChatHandlers();
-    // Setup player movement controls
-    this.setupGameControls();
+
+    // Clear caches and ensure fresh DOM references for map rendering
+    this.framework.clearAllCaches();
+
+    // Use setTimeout to ensure DOM is fully ready before rendering map
+    setTimeout(() => {
+      // Render the map with the latest state
+      this.mapRenderer.renderFullGameMap(this.gameState);
+      // Update chat UI
+      this.updateChatDisplay();
+      // Setup chat handlers for game screen
+      this.setupGameChatHandlers();
+      // Setup player movement controls
+      this.setupGameControls();
+    }, 50); // Small delay to ensure DOM is ready
   }
 
   updateGameScreen(previousState, newState) {
@@ -315,11 +388,20 @@ class BombermanApp {
     this.gameState = null;
     this.playerId = null;
     this.nickname = "";
+    // Clear chat history for fresh start
+    this.clearChatHistory();
+    // Reset map renderer state for fresh start
+    this.mapRenderer.resetRenderer();
+    // Remove existing event handlers first
+    this.removeEventHandlers();
+    // Clear element cache before recreating DOM to prevent stale references
+    this.framework.clearAllCaches();
     this.gameUIManager.showInitialScreen();
     this.setupEventHandlers();
   }
 
   destroy() {
+    this.removeEventHandlers();
     this.framework.stopGameLoop();
     this.webSocketManager.close();
   }

@@ -183,46 +183,66 @@ export class GameUIManager {
   // ===== END GAME SCREEN =====
 
   showGameEndScreen() {
+    // Clear element cache before recreating DOM to prevent stale references
+    if (this.framework && this.framework.clearAllCaches) {
+      this.framework.clearAllCaches();
+    }
+
     const app = document.getElementById('app');
     const winner = this.gameState.winner;
-    
-    let message = 'Game Over!';
-    let submessage = '';
-    
-    if (this.gameState.gameTimeLeft <= 0) {
-      message = 'Time\'s Up!';
-    }
-    
+    const isCurrentPlayerWinner = winner && winner.id === this.playerId;
+
+    // Determine personalized messages and styling
+    let personalMessage = '';
+    let personalSubMessage = '';
+    let announcementClass = 'winner-announcement';
+    let announcementStyle = '';
+
     if (winner) {
       if (winner.id === 'draw') {
-        submessage = 'It\'s a draw!';
+        personalMessage = 'It\'s a Draw!';
+        personalSubMessage = 'No one wins this time';
+        announcementStyle = 'background: linear-gradient(135deg, #f39c12, #e67e22);';
       } else if (winner.id === 'none') {
-        submessage = 'No winner this time.';
-      } else if (winner.id === this.playerId) {
-        submessage = 'Congratulations! You won!';
+        personalMessage = 'Game Over';
+        personalSubMessage = 'No winner this time';
+        announcementStyle = 'background: linear-gradient(135deg, #95a5a6, #7f8c8d);';
+      } else if (isCurrentPlayerWinner) {
+        personalMessage = 'Victory!';
+        personalSubMessage = 'You won!';
+        announcementClass += ' victory-player';
+        announcementStyle = 'background: linear-gradient(135deg, #27ae60, #2ecc71); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5);';
       } else {
-        submessage = `${winner.nickname} wins!`;
+        personalMessage = 'You Lose';
+        personalSubMessage = `${winner.nickname} wins!`;
+        announcementClass += ' defeat-player';
+        announcementStyle = 'background: linear-gradient(135deg, #e74c3c, #c0392b); box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);';
       }
+    } else {
+      personalMessage = 'Game Over';
+      personalSubMessage = 'Game ended unexpectedly';
+      announcementStyle = 'background: linear-gradient(135deg, #95a5a6, #7f8c8d);';
     }
-    
-    // ✅ ENHANCED: Professional game end screen with improved design
+
+    // Add time-based context if applicable
+    if (this.gameState.gameTimeLeft <= 0) {
+      personalMessage = isCurrentPlayerWinner ? 'Time\'s Up - You Win!' : 'Time\'s Up - You Lose';
+    }
+
+    // ✅ ENHANCED: Personalized game end screen with player-specific messaging
     app.innerHTML = `
       <div class="game-end-screen">
-        <h1>🎮 ${message} 🎮</h1>
-
-        ${winner && winner.id !== 'draw' && winner.id !== 'none' ? `
-          <div class="winner-announcement">
-            <h2>🏆 Victory! 🏆</h2>
-            <div class="winner-name">${winner.nickname}</div>
-            <p>Congratulations on your explosive victory!</p>
-          </div>
-        ` : `
-          <div class="winner-announcement" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-            <h2>⏰ ${message} ⏰</h2>
-            <div class="winner-name">${submessage}</div>
-            <p>Better luck next time!</p>
-          </div>
-        `}
+        <div class="${announcementClass}" style="${announcementStyle}">
+          <h1 class="personal-outcome">${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')} ${personalMessage} ${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')}</h1>
+          <div class="personal-submessage">${personalSubMessage}</div>
+          ${isCurrentPlayerWinner ?
+            '<p class="victory-flavor">Congratulations on your explosive victory!</p>' :
+            (winner && winner.id !== 'draw' && winner.id !== 'none' ?
+              '<p class="defeat-flavor">Better luck next time, bomber!</p>' :
+              '<p class="neutral-flavor">Thanks for playing!</p>'
+            )
+          }
+        </div>
 
         <div class="final-results">
           <h3>📊 Final Results</h3>
@@ -276,22 +296,20 @@ export class GameUIManager {
   startLobbyCountdown() {
     let countdown = GAME_TIMING.COUNTDOWN_DURATION; // ✅ CONSOLIDATED: Use shared constant
     const countdownElement = document.getElementById('lobby-countdown');
-    
+
     const countdownInterval = setInterval(() => {
       countdown--;
       if (countdownElement) {
         countdownElement.textContent = countdown;
       }
-      
+
       if (countdown <= 0) {
         clearInterval(countdownInterval);
+        // Only call the callback, don't automatically reset and show initial screen
+        // Let the callback (returnToLobby) handle the reset logic
         if (this.onReturnToLobby) {
           this.onReturnToLobby();
         }
-        // Call resetGame after returning to lobby
-        this.resetGame();
-        // Show the join screen after reset
-        this.showInitialScreen();
       }
     }, GAME_TIMING.TIMER_INTERVAL); // ✅ CONSOLIDATED: Use shared constant
   }
@@ -301,38 +319,42 @@ export class GameUIManager {
     // Clear UI and state for a fresh start
     this.gameState = null;
     this.playerId = null;
+    // Clear element cache before recreating DOM to prevent stale references
+    if (this.framework && this.framework.clearAllCaches) {
+      this.framework.clearAllCaches();
+    }
     // Clear app container
     const app = document.getElementById('app');
     if (app) app.innerHTML = '';
-    // Optionally clear cached elements or overlays
-    if (this.framework && this.framework.clearCache) {
-      this.framework.clearCache();
-    }
     // Remove any lingering overlays (e.g., damage flash)
     const flashOverlay = document.getElementById('damage-flash-overlay');
     if (flashOverlay) flashOverlay.remove();
     // Remove any notification area
     const notificationArea = document.getElementById('notification-area');
     if (notificationArea) notificationArea.remove();
-    // Always show the join screen after reset
-    this.showInitialScreen();
+    // Don't automatically show initial screen - let calling code decide what to show
   }
 
   // ===== SCREEN MANAGEMENT =====
 
   showInitialScreen() {
+    // Clear element cache before recreating DOM to prevent stale references
+    if (this.framework && this.framework.clearAllCaches) {
+      this.framework.clearAllCaches();
+    }
+
     const app = document.getElementById('app');
     app.innerHTML = `
       <div class="nickname-screen">
         <h1>Bomberman</h1>
         <div class="nickname-form-container">
-          <form id="nickname-form">
+          <form id="nickname-form" action="javascript:void(0);">
             <label for="nickname-input">Enter your nickname:</label>
-            <input 
-              id="nickname-input" 
-              type="text" 
+            <input
+              id="nickname-input"
+              type="text"
               placeholder="Your nickname"
-              required 
+              required
               maxlength="20"
               minlength="2"
             >
@@ -342,7 +364,7 @@ export class GameUIManager {
         </div>
       </div>
     `;
-    
+
     // Focus on nickname
     const nicknameInput = document.getElementById('nickname-input');
     if (nicknameInput) {
@@ -351,6 +373,11 @@ export class GameUIManager {
   }
 
   showWaitingScreen() {
+    // Clear element cache before recreating DOM to prevent stale references
+    if (this.framework && this.framework.clearAllCaches) {
+      this.framework.clearAllCaches();
+    }
+
     const app = document.getElementById('app');
 
     app.innerHTML = `
@@ -575,6 +602,11 @@ export class GameUIManager {
   }
 
   showGameScreen() {
+    // Clear element cache before recreating DOM to prevent stale references
+    if (this.framework && this.framework.clearAllCaches) {
+      this.framework.clearAllCaches();
+    }
+
     // ✅ NEW: Use framework to create the game screen structure
     const gameScreenContainer = this.framework.selectiveRenderer.createElement('div', {
       className: 'game-screen'

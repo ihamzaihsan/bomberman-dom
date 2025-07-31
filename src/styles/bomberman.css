@@ -1007,6 +1007,91 @@ body {
   margin-bottom: 8px;
 }
 
+/* ✅ ENHANCED: Personalized game end screen styling */
+.winner-announcement.victory-player {
+  animation: victoryPulse 1.5s ease-in-out infinite alternate;
+  transform: scale(1.05);
+  border: 3px solid #f1c40f;
+}
+
+.winner-announcement.defeat-player {
+  animation: defeatFade 3s ease-in-out infinite alternate;
+  transform: scale(0.95);
+  border: 2px solid rgba(231, 76, 60, 0.5);
+}
+
+.personal-outcome {
+  font-size: 2.8em !important;
+  font-weight: bold;
+  margin: 10px 0;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+  animation: textGlow 2s ease-in-out infinite alternate;
+}
+
+.personal-submessage {
+  font-size: 1.6em;
+  font-weight: bold;
+  margin: 15px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  color: #ecf0f1;
+}
+
+.victory-flavor {
+  font-size: 1.1em;
+  margin-top: 15px;
+  font-style: italic;
+  color: #f1c40f;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.defeat-flavor {
+  font-size: 1.1em;
+  margin-top: 15px;
+  font-style: italic;
+  color: #ecf0f1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.neutral-flavor {
+  font-size: 1.1em;
+  margin-top: 15px;
+  font-style: italic;
+  color: #bdc3c7;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Victory animation */
+@keyframes victoryPulse {
+  0% {
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 40px rgba(46, 204, 113, 0.8), 0 0 60px rgba(241, 196, 15, 0.4);
+  }
+}
+
+/* Defeat animation */
+@keyframes defeatFade {
+  0% {
+    opacity: 0.8;
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.3);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(231, 76, 60, 0.5);
+  }
+}
+
+/* Text glow animation */
+@keyframes textGlow {
+  0% {
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+  }
+  100% {
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 255, 255, 0.3);
+  }
+}
+
 .final-results {
   background: rgba(52, 73, 94, 0.8);
   padding: 15px;

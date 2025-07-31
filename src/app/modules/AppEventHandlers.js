@@ -8,6 +8,10 @@ export class AppEventHandlers {
     // ✅ CONSOLIDATED: Merged logic from appEvents.js
     this.app.playerId = data.playerId;
     this.app.gameState = data.gameState;
+
+    // Clear chat history when joining a new game (fresh start)
+    this.app.clearChatHistory();
+
     this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
     this.app.playerController.setGameState(this.app.gameState, this.app.playerId);
     this.app.resetJoinButton();
@@ -73,8 +77,19 @@ export class AppEventHandlers {
   }
 
   handleGameReset(eventData) {
+    console.log('🔧 AppEventHandlers: Game reset event received');
     this.app.gameState = eventData.gameState;
-    this.app.returnToLobby();
+
+    // Only return to lobby if we're not already there
+    // Check if we're currently in a game or waiting room
+    const currentScreen = document.querySelector('.game-screen, .waiting-screen, .game-end-screen');
+    if (currentScreen) {
+      console.log('🔧 Currently in game/waiting/end screen, returning to lobby');
+      this.app.returnToLobby();
+    } else {
+      console.log('🔧 Already in lobby, just updating game state');
+      // Just update the game state without changing screens
+    }
   }
 
   // ✅ CONSOLIDATED: Add missing event handlers

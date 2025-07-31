@@ -34,7 +34,8 @@ export class SelectiveRenderer {
     getCachedElement(elementId) {
         if (this.elementCache.has(elementId)) {
         const element = this.elementCache.get(elementId);
-        if (element && element.parentNode) {
+        // Check if element is still connected to the document
+        if (element && element.isConnected && document.contains(element)) {
             return element;
         } else {
             this.elementCache.delete(elementId);
