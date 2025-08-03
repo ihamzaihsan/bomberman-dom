@@ -81,9 +81,19 @@ class BombermanApp {
       onDisconnect: () => this.updateConnectionStatus(),
     });
     this.webSocketManager.registerMessageHandler("connected", () => {});
-    this.webSocketManager.registerMessageHandler("join_success", (data) => this.handleJoinSuccess(data));
+    this.webSocketManager.registerMessageHandler("join_success", (data) => {
+      console.log('🎉 CLIENT: Received join_success message for player:', data.player?.nickname || 'unknown');
+      console.log('🎉 CLIENT: Full join_success data:', data);
+      console.log('🎉 CLIENT: About to call handleJoinSuccess...');
+      this.handleJoinSuccess(data);
+      console.log('🎉 CLIENT: handleJoinSuccess completed');
+    });
     this.webSocketManager.registerMessageHandler("join_error", (data) => {
+      console.log('❌ CLIENT: Received join_error message:', data.message);
+      console.log('❌ CLIENT: Full join_error data:', data);
+      console.log('❌ CLIENT: About to show error notification...');
       this.showError(data.message);
+      console.log('❌ CLIENT: Error notification shown');
       this.resetJoinButton();
     });
     this.webSocketManager.registerMessageHandler("game_state_update", (data) => this.handleGameStateUpdate(data.gameState));
@@ -190,35 +200,13 @@ class BombermanApp {
     // Remove any existing event listeners first
     this.removeEventHandlers();
 
-    // Use event delegation on the app container to handle form submissions
-    const app = document.getElementById('app');
-    if (app) {
-      this.formSubmitHandler = (e) => {
-        if (e.target.id === 'nickname-form') {
-          e.preventDefault();
-          const nicknameInput = document.getElementById('nickname-input');
-          if (nicknameInput) {
-            const nickname = nicknameInput.value.trim();
-            if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) {
-              this.showError(`Nickname must be at least ${PLAYER_CONFIG.NICKNAME_MIN_LENGTH} characters long`);
-              return;
-            }
-            if (nickname.length > PLAYER_CONFIG.NICKNAME_MAX_LENGTH) {
-              this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
-              return;
-            }
-            this.joinGame(nickname);
-          }
-        }
-      };
-      app.addEventListener('submit', this.formSubmitHandler);
-    }
-
-    // Also try direct attachment as backup
+    // ✅ CRITICAL FIX: Use only ONE event handler to prevent duplicate join requests
     const form = document.getElementById("nickname-form");
     if (form) {
-      this.directFormHandler = (e) => {
+      this.formSubmitHandler = (e) => {
         e.preventDefault();
+        console.log('🎯 Form submission handler triggered');
+
         const nicknameInput = document.getElementById('nickname-input');
         if (nicknameInput) {
           const nickname = nicknameInput.value.trim();
@@ -230,22 +218,21 @@ class BombermanApp {
             this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
             return;
           }
+          console.log(`🎯 Calling joinGame with nickname: "${nickname}"`);
           this.joinGame(nickname);
         }
       };
-      form.addEventListener("submit", this.directFormHandler);
+      form.addEventListener("submit", this.formSubmitHandler);
+      console.log('✅ Single form submit handler attached');
     }
   }
 
   removeEventHandlers() {
-    const app = document.getElementById('app');
-    if (app && this.formSubmitHandler) {
-      app.removeEventListener('submit', this.formSubmitHandler);
-    }
-
+    // ✅ CRITICAL FIX: Remove only the single form handler
     const form = document.getElementById("nickname-form");
-    if (form && this.directFormHandler) {
-      form.removeEventListener('submit', this.directFormHandler);
+    if (form && this.formSubmitHandler) {
+      form.removeEventListener('submit', this.formSubmitHandler);
+      console.log('✅ Form submit handler removed');
     }
 
     // Also remove chat handlers

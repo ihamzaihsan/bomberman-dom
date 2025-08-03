@@ -6,8 +6,15 @@ export class AppEventHandlers {
 
   handleJoinSuccess(data) {
     // ✅ CONSOLIDATED: Merged logic from appEvents.js
+    console.log('🎉 CLIENT: handleJoinSuccess called with data:', data);
+
     this.app.playerId = data.playerId;
     this.app.gameState = data.gameState;
+
+    // ✅ BUG FIX: Extract nickname from server data to ensure it's available
+    const playerNickname = data.player?.nickname || this.app.nickname || 'Player';
+    console.log('🎉 Join success - showing welcome notification for:', playerNickname);
+    console.log('🎉 Available nicknames - data.player.nickname:', data.player?.nickname, 'this.app.nickname:', this.app.nickname);
 
     // Clear chat history when joining a new game (fresh start)
     this.app.clearChatHistory();
@@ -22,7 +29,10 @@ export class AppEventHandlers {
       this.app.updateChatDisplay();
     }, 100);
     this.app.startOptimizedGameLoop();
-    this.app.showNotification(`Welcome, ${this.app.nickname}!`);
+
+    // ✅ BUG FIX: Use nickname from server data instead of this.app.nickname
+    // ✅ DEBUG: Make welcome message more distinctive to track if it's being shown
+    this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
   }
 
   handleGameStarted(eventData) {

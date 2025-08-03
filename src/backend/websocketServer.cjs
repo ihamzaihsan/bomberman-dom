@@ -5,17 +5,36 @@ class WebSocketManager {
     this.gameServer = gameServer;
     this.clients = new Map(); // Map of playerId -> WebSocket connection
     this.wss = null; // WebSocket server instance
-    
-    console.log('WebSocketManager initialized');
+
+    // ✅ ROOT CAUSE FIX: Add connection tracking to prevent duplicate connections
+    this.connectionAttempts = new Map(); // Map of IP -> { count, lastAttempt }
+    this.pendingJoins = new Map(); // Map of nickname -> { timestamp, playerId }
+    this.joinRateLimit = 500; // Minimum time between join attempts for same nickname (ms)
+    this.ipRateLimit = 2000; // Minimum time between rapid join attempts from same IP (ms) - more lenient
+    this.maxConnectionsPerIP = 5; // Maximum connections per IP address - increased for development
+
+    console.log('WebSocketManager initialized with connection deduplication');
   }
 
   // Initialize WebSocket server
   initWebSocketServer(server) {
     this.wss = new WebSocket.Server({ server });
-    
+
     this.wss.on('connection', (ws, req) => {
-      console.log('New WebSocket connection established');
-      
+      // ✅ ROOT CAUSE FIX: Extract client IP for connection tracking
+      const clientIP = req.socket.remoteAddress || req.connection.remoteAddress || 'unknown';
+      console.log(`New WebSocket connection established from ${clientIP}`);
+
+      // ✅ ROOT CAUSE FIX: Check connection limits per IP
+      if (!this.validateConnectionLimit(clientIP)) {
+        console.log(`🚨 Connection rejected: Too many connections from ${clientIP}`);
+        ws.close(1008, 'Too many connections from this IP address');
+        return;
+      }
+
+      // Store client IP on WebSocket for tracking
+      ws.clientIP = clientIP;
+
       // Handle incoming messages
       ws.on('message', (message) => {
         try {
@@ -51,6 +70,11 @@ class WebSocketManager {
     });
     
     console.log('WebSocket server initialized');
+
+    // ✅ ROOT CAUSE FIX: Start periodic cleanup of stale pending joins
+    setInterval(() => {
+      this.cleanupPendingJoins();
+    }, 30000); // Clean up every 30 seconds
   }
 
   // Handle WebSocket messages from clients
@@ -99,20 +123,57 @@ class WebSocketManager {
       return;
     }
 
+    // ✅ ROOT CAUSE FIX: Check for rapid join attempts and pending joins
+    const normalizedNickname = nickname.trim().toLowerCase();
+    const now = Date.now();
+
+    // Check if there's already a pending join for this nickname
+    if (this.pendingJoins.has(normalizedNickname)) {
+      const pending = this.pendingJoins.get(normalizedNickname);
+      if (now - pending.timestamp < this.joinRateLimit) {
+        console.log(`🚨 Rejecting join: Rapid join attempt for "${nickname}" (${now - pending.timestamp}ms ago)`);
+        this.sendToClient(ws, {
+          type: 'join_error',
+          message: 'Please wait before attempting to join again'
+        });
+        return;
+      }
+    }
+
+    // Check connection rate limiting per IP
+    if (!this.validateJoinRateLimit(ws.clientIP)) {
+      console.log(`🚨 Rejecting join: Rate limit exceeded for IP ${ws.clientIP}`);
+      this.sendToClient(ws, {
+        type: 'join_error',
+        message: 'Too many join attempts. Please wait and try again.'
+      });
+      return;
+    }
+
     const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     console.log('Generated player ID:', playerId);
+
+    // ✅ ROOT CAUSE FIX: Mark this nickname as pending to prevent race conditions
+    this.pendingJoins.set(normalizedNickname, { timestamp: now, playerId: playerId });
+    console.log(`🔒 Marked "${nickname}" as pending join (Player ID: ${playerId})`);
 
     console.log('Calling gameServer.addPlayer...');
     const result = this.gameServer.addPlayer(playerId, nickname);
     console.log('addPlayer result:', result);
-    
+
     if (result.success) {
       console.log('Join successful, processing...');
+
+      // ✅ ROOT CAUSE FIX: Clear pending join on success
+      this.pendingJoins.delete(normalizedNickname);
+      console.log(`✅ Cleared pending join for "${nickname}"`);
 
       // Store the WebSocket connection for this player
       this.clients.set(playerId, ws);
       ws.playerId = playerId; // Store playerId on the WebSocket for easy access
-      console.log('Stored WebSocket connection for player:', playerId);
+      ws.playerNickname = nickname; // Store nickname for debugging
+      console.log(`✅ Stored WebSocket connection for player: ${playerId} (${nickname})`);
+      console.log(`📊 Total active connections: ${this.clients.size}`);
 
       // Send success response to the joining player
       const joinSuccessMessage = {
@@ -122,34 +183,72 @@ class WebSocketManager {
         gameState: this.gameServer.getCleanGameState()
       };
 
-      console.log('Sending join_success to player:', playerId);
+      console.log(`🎉 Sending join_success to player: ${playerId} (${nickname})`);
       console.log('Join success message:', joinSuccessMessage);
       this.sendToClient(ws, joinSuccessMessage);
+      console.log(`✅ join_success message sent successfully to ${nickname}`);
 
-      // ✅ FIX: Sequence WebSocket messages with proper timing to prevent race conditions
+      // ✅ CRITICAL FIX: Prevent race conditions by ensuring broadcasts only happen for successful joins
+      // Store the current join context to prevent stale closures
+      const joinContext = {
+        playerId: playerId,
+        nickname: nickname,
+        ws: ws,
+        timestamp: Date.now()
+      };
+
       setTimeout(() => {
+        // ✅ SAFETY CHECK: Verify this player still exists before broadcasting
+        const currentPlayers = this.gameServer.getGameState().players;
+        if (!currentPlayers[joinContext.playerId]) {
+          console.log(`⚠️ Skipping broadcast for ${joinContext.nickname} - player no longer exists`);
+          return;
+        }
+
+        // ✅ SAFETY CHECK: Verify WebSocket is still connected
+        if (joinContext.ws.readyState !== joinContext.ws.OPEN) {
+          console.log(`⚠️ Skipping broadcast for ${joinContext.nickname} - WebSocket closed`);
+          return;
+        }
+
         // Broadcast player join event to OTHER players (not the joining player)
-        console.log('Broadcasting player_joined event to other players...');
-        this.broadcastEventExcept(ws, 'player_joined', {
-          playerId: playerId,
-          nickname: nickname,
-          playerCount: Object.keys(this.gameServer.getGameState().players).length
+        console.log(`Broadcasting player_joined event for ${joinContext.nickname} to other players...`);
+        this.broadcastEventExcept(joinContext.ws, 'player_joined', {
+          playerId: joinContext.playerId,
+          nickname: joinContext.nickname,
+          playerCount: Object.keys(currentPlayers).length
         });
 
         // Broadcast updated game state to all players after a small delay
         setTimeout(() => {
-          console.log('Broadcasting game state update...');
+          // ✅ DOUBLE SAFETY CHECK: Verify player still exists before final broadcast
+          const latestPlayers = this.gameServer.getGameState().players;
+          if (!latestPlayers[joinContext.playerId]) {
+            console.log(`⚠️ Skipping game state broadcast for ${joinContext.nickname} - player no longer exists`);
+            return;
+          }
+
+          console.log(`Broadcasting game state update for ${joinContext.nickname}...`);
           this.broadcastGameState();
         }, 50); // Small delay to ensure proper message sequencing
       }, 100); // Allow join_success to be processed first
 
       console.log(`Player ${nickname} joined via WebSocket with ID: ${playerId}`);
     } else {
-      console.log('Join failed:', result.error);
-      this.sendToClient(ws, {
+      console.log(`❌ Join failed for "${nickname}":`, result.error);
+
+      // ✅ ROOT CAUSE FIX: Clear pending join on failure
+      this.pendingJoins.delete(normalizedNickname);
+      console.log(`🧹 Cleared pending join for "${nickname}" due to failure`);
+
+      const errorMessage = {
         type: 'join_error',
         message: result.error
-      });
+      };
+
+      console.log(`🚨 Sending join_error to "${nickname}":`, errorMessage);
+      this.sendToClient(ws, errorMessage);
+      console.log(`❌ join_error message sent to ${nickname}`);
     }
   }
 
@@ -273,11 +372,21 @@ class WebSocketManager {
     const playerId = ws.playerId;
     if (playerId) {
       console.log(`Player ${playerId} disconnected`);
-      
+
       // Remove player from game
       const gameState = this.gameServer.getGameState();
       if (gameState.players[playerId]) {
         const playerNickname = gameState.players[playerId].nickname;
+
+        // ✅ ROOT CAUSE FIX: Clean up any pending joins for this player
+        if (playerNickname) {
+          const normalizedNickname = playerNickname.trim().toLowerCase();
+          if (this.pendingJoins.has(normalizedNickname)) {
+            this.pendingJoins.delete(normalizedNickname);
+            console.log(`🧹 Cleaned up pending join for disconnected player "${playerNickname}"`);
+          }
+        }
+
         this.gameServer.removePlayer(playerId);
         console.log(`Removed player ${playerId} from game`);
 
@@ -382,6 +491,90 @@ class WebSocketManager {
   // Get all connected player IDs
   getConnectedPlayerIds() {
     return Array.from(this.clients.keys());
+  }
+
+  // ✅ ROOT CAUSE FIX: Validate connection limits per IP
+  validateConnectionLimit(clientIP) {
+    if (clientIP === 'unknown') return true; // Allow unknown IPs (fallback)
+
+    // Count current connections from this IP
+    let connectionsFromIP = 0;
+    this.clients.forEach((ws) => {
+      if (ws.clientIP === clientIP) {
+        connectionsFromIP++;
+      }
+    });
+
+    console.log(`🔍 IP ${clientIP} has ${connectionsFromIP} active connections (max: ${this.maxConnectionsPerIP})`);
+    return connectionsFromIP < this.maxConnectionsPerIP;
+  }
+
+  // ✅ FIXED: Intelligent join rate limiting per IP
+  validateJoinRateLimit(clientIP) {
+    if (clientIP === 'unknown') return true; // Allow unknown IPs (fallback)
+
+    const now = Date.now();
+    const connectionData = this.connectionAttempts.get(clientIP);
+
+    if (!connectionData) {
+      // First connection from this IP - always allow
+      this.connectionAttempts.set(clientIP, { count: 1, lastAttempt: now, firstAttempt: now });
+      console.log(`✅ First join attempt from IP ${clientIP} - allowed`);
+      return true;
+    }
+
+    const timeSinceLastAttempt = now - connectionData.lastAttempt;
+    const timeSinceFirstAttempt = now - connectionData.firstAttempt;
+
+    // Allow if enough time has passed since last attempt (normal reconnection)
+    if (timeSinceLastAttempt >= this.ipRateLimit) {
+      // Reset counter if it's been a while since first attempt (> 30 seconds)
+      if (timeSinceFirstAttempt > 30000) {
+        this.connectionAttempts.set(clientIP, { count: 1, lastAttempt: now, firstAttempt: now });
+        console.log(`✅ IP ${clientIP} rate limit reset after ${timeSinceFirstAttempt}ms - allowed`);
+      } else {
+        // Update existing data
+        connectionData.count++;
+        connectionData.lastAttempt = now;
+        console.log(`✅ IP ${clientIP} join allowed (${timeSinceLastAttempt}ms since last, attempt #${connectionData.count})`);
+      }
+      return true;
+    }
+
+    // Block if too many rapid attempts (more than 3 attempts in quick succession)
+    if (connectionData.count >= 3 && timeSinceFirstAttempt < 10000) {
+      console.log(`🚨 Rate limit: IP ${clientIP} made ${connectionData.count} attempts in ${timeSinceFirstAttempt}ms (blocked)`);
+      return false;
+    }
+
+    // Allow occasional quick attempts (up to 3 within 10 seconds)
+    connectionData.count++;
+    connectionData.lastAttempt = now;
+    console.log(`⚠️  IP ${clientIP} quick join attempt #${connectionData.count} (${timeSinceLastAttempt}ms ago) - allowed with warning`);
+    return true;
+  }
+
+  // ✅ FIXED: Clean up stale data periodically
+  cleanupPendingJoins() {
+    const now = Date.now();
+    const pendingTimeout = 30000; // 30 seconds timeout for pending joins
+    const connectionTimeout = 300000; // 5 minutes timeout for connection attempts
+
+    // Clean up stale pending joins
+    for (const [nickname, data] of this.pendingJoins.entries()) {
+      if (now - data.timestamp > pendingTimeout) {
+        console.log(`🧹 Cleaning up stale pending join for "${nickname}"`);
+        this.pendingJoins.delete(nickname);
+      }
+    }
+
+    // Clean up old connection attempt data
+    for (const [ip, data] of this.connectionAttempts.entries()) {
+      if (now - data.firstAttempt > connectionTimeout) {
+        console.log(`🧹 Cleaning up old connection data for IP ${ip}`);
+        this.connectionAttempts.delete(ip);
+      }
+    }
   }
 }
 

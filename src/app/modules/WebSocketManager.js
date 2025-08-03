@@ -9,11 +9,14 @@ export class WebSocketManager {
 
     // Message handlers
     this.messageHandlers = new Map();
-    
+
     // Event callbacks
     this.onConnectionSuccess = null;
     this.onConnectionError = null;
     this.onDisconnect = null;
+
+    // ✅ DEBUG: Message sequence tracking
+    this.messageSequence = 0;
   }
 
   // Initialize WebSocket connection
@@ -126,14 +129,29 @@ export class WebSocketManager {
 
   // Handle incoming WebSocket messages
   handleWebSocketMessage(data) {
-    console.log('=== CLIENT WEBSOCKET MESSAGE RECEIVED ===');
+    const timestamp = new Date().toISOString();
+    console.log(`=== CLIENT WEBSOCKET MESSAGE RECEIVED [${timestamp}] ===`);
     console.log('Message type:', data.type);
+    console.log('Message sequence number:', this.messageSequence++);
+
+    // Special logging for join-related messages
+    if (data.type === 'join_success' || data.type === 'join_error') {
+      console.log(`🔥 CRITICAL MESSAGE: ${data.type}`);
+      if (data.type === 'join_success') {
+        console.log('🎉 Player nickname from server:', data.player?.nickname);
+      } else if (data.type === 'join_error') {
+        console.log('❌ Error message from server:', data.message);
+      }
+    }
+
     console.log('Full message data:', data);
 
     // Look for registered message handler
     const handler = this.messageHandlers.get(data.type);
     if (handler) {
+      console.log(`📞 Calling handler for ${data.type}...`);
       handler(data);
+      console.log(`✅ Handler for ${data.type} completed`);
     } else {
       console.warn('No handler registered for message type:', data.type);
     }

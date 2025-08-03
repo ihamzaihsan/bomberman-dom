@@ -201,14 +201,27 @@ class GameServer {
       return { success: false, error: 'Game is resetting, please wait for next round' };
     }
 
-    // === DUPLICATE NICKNAME CHECK ===
-    const duplicate = Object.values(this.gameState.players).some(
-      (p) => p.nickname && p.nickname.trim().toLowerCase() === nickname.trim().toLowerCase()
+    // === ENHANCED DUPLICATE NICKNAME CHECK ===
+    // ✅ ROOT CAUSE FIX: Comprehensive duplicate prevention with detailed logging
+    const normalizedNickname = nickname.trim().toLowerCase();
+    console.log(`🔍 Checking for duplicate nickname: "${normalizedNickname}"`);
+
+    const existingPlayers = Object.values(this.gameState.players);
+    console.log(`📋 Current players in lobby: ${JSON.stringify(existingPlayers.map(p => ({ id: p.id, nickname: p.nickname })))}`);
+
+    const duplicate = existingPlayers.some(
+      (p) => p.nickname && p.nickname.trim().toLowerCase() === normalizedNickname
     );
+
     if (duplicate) {
-      console.log('Rejecting player: Duplicate nickname');
+      const conflictingPlayer = existingPlayers.find(
+        (p) => p.nickname && p.nickname.trim().toLowerCase() === normalizedNickname
+      );
+      console.log(`🚨 Rejecting player: Duplicate nickname "${nickname}" (conflicts with player ${conflictingPlayer.id})`);
       return { success: false, error: 'There is a player in the lobby with the same name' };
     }
+
+    console.log(`✅ Nickname "${nickname}" is unique - proceeding with player creation`);
 
     if (playerCount >= PLAYER_CONFIG.MAX_PLAYERS) { // ✅ CONSOLIDATED: Use shared constant
       console.log('Rejecting player: Game is full');
@@ -220,8 +233,8 @@ class GameServer {
       return { success: false, error: 'Game has already started' };
     }
 
-    if (this.gameState.countdown > 0 && this.gameState.countdown <= EXPLOSION_CONFIG.FINAL_COUNTDOWN_THRESHOLD) { // ✅ CONSOLIDATED: Use shared constant
-      console.log('Rejecting player: Game is starting (final countdown active)');
+    if (this.gameState.countdown > 0) { // Block players during entire 10-second countdown
+      console.log('Rejecting player: Game is starting (countdown active)');
       return { success: false, error: 'Game is starting - please wait for next round' };
     }
     const player = {
