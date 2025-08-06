@@ -197,15 +197,13 @@ class BombermanApp {
   }
 
   setupEventHandlers() {
-    // Remove any existing event listeners first
     this.removeEventHandlers();
 
-    // ✅ CRITICAL FIX: Use only ONE event handler to prevent duplicate join requests
     const form = document.getElementById("nickname-form");
     if (form) {
       this.formSubmitHandler = (e) => {
         e.preventDefault();
-        console.log('🎯 Form submission handler triggered');
+        console.log('Form submission handler triggered');
 
         const nicknameInput = document.getElementById('nickname-input');
         if (nicknameInput) {
@@ -218,29 +216,26 @@ class BombermanApp {
             this.showError(`Nickname must be less than ${PLAYER_CONFIG.NICKNAME_MAX_LENGTH} characters`);
             return;
           }
-          console.log(`🎯 Calling joinGame with nickname: "${nickname}"`);
+          console.log(`Calling joinGame with nickname: "${nickname}"`);
           this.joinGame(nickname);
         }
       };
       form.addEventListener("submit", this.formSubmitHandler);
-      console.log('✅ Single form submit handler attached');
+      console.log('Single form submit handler attached');
     }
   }
 
   removeEventHandlers() {
-    // ✅ CRITICAL FIX: Remove only the single form handler
     const form = document.getElementById("nickname-form");
     if (form && this.formSubmitHandler) {
       form.removeEventListener('submit', this.formSubmitHandler);
-      console.log('✅ Form submit handler removed');
+      console.log('Form submit handler removed');
     }
 
-    // Also remove chat handlers
     this.removeChatHandlers();
   }
 
   joinGame(nickname) {
-    // ✅ FRAMEWORK: Use framework's find method instead of document.querySelector
     const submitButton = this.framework.find('#nickname-form button[type="submit"]');
     if (submitButton) {
       submitButton.textContent = "Joining...";

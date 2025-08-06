@@ -83,7 +83,7 @@ body {
   display: none;
 }
 
-/* ✅ ENHANCED: Modern lobby design with better visual hierarchy */
+
 .waiting-screen {
   text-align: center;
   background: linear-gradient(135deg, #2c3e50, #34495e, #2c3e50);
@@ -99,7 +99,7 @@ body {
   overflow: hidden;
 }
 
-/* ✅ NEW: Animated background pattern */
+
 .waiting-screen::before {
   content: '';
   position: absolute;
@@ -120,7 +120,7 @@ body {
   50% { opacity: 0.6; }
 }
 
-/* ✅ ENHANCED: Better layout with improved spacing and visual hierarchy */
+
 .waiting-content {
   display: flex;
   gap: 50px;
@@ -131,7 +131,7 @@ body {
   z-index: 1;
 }
 
-/* ✅ ENHANCED: Modern title with gradient and animation */
+
 .waiting-screen h1 {
   background: linear-gradient(135deg, #3498db, #9b59b6, #e74c3c);
   background-size: 300% 300%;
@@ -152,7 +152,7 @@ body {
   50% { background-position: 100% 50%; }
 }
 
-/* ✅ ENHANCED: Better player info section with modern styling */
+
 .player-info {
   flex: 1;
   min-width: 250px;
@@ -172,7 +172,7 @@ body {
   font-weight: 500;
 }
 
-/* ✅ ENHANCED: Modern player list with better visual feedback */
+
 .players-list {
   display: flex;
   flex-direction: column;
@@ -214,7 +214,7 @@ body {
   left: 100%;
 }
 
-/* ✅ NEW: Current player highlighting */
+
 .player-item.current-player {
   border: 2px solid #3498db;
   background: linear-gradient(135deg, #3498db, #2980b9);
@@ -236,7 +236,7 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* ✅ ENHANCED: Modern timer with pulsing animation and better visibility */
+
 .waiting-timer {
   background: linear-gradient(135deg, #f39c12, #e67e22);
   padding: 25px 30px;
@@ -274,7 +274,7 @@ body {
   margin: 0;
 }
 
-/* ✅ ENHANCED: Dramatic countdown with modern styling */
+
 .countdown {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   padding: 35px;
@@ -747,7 +747,7 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* ✅ NEW: Character sprite backgrounds */
+
 .player.player-0 {
   background-image: url('../../assets/chara_aka.png');
   /* Fallback for image loading issues */
@@ -1092,7 +1092,7 @@ body {
   }
 }
 
-/* ✅ GHOST MODE: Styling for eliminated players */
+
 .player-ghost {
   opacity: 0.4 !important;
   filter: grayscale(100%) brightness(0.7) !important;
@@ -1615,7 +1615,7 @@ body {
   }
 }
 
-/* ✅ FIXED: Missing bomb explosion animation keyframes */
+
 @keyframes bomberman-explosion-pop {
   0% {
     transform: scale(0) rotate(0deg);

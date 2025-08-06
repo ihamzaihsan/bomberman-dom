@@ -1,22 +1,21 @@
-// AppEventHandlers: Handles app-level events (join, start, end, reset, etc.)
+/**
+ * AppEventHandlers: Handles app-level events (join, start, end, reset, etc.)
+ */
 export class AppEventHandlers {
   constructor(app) {
     this.app = app;
   }
 
   handleJoinSuccess(data) {
-    // ✅ CONSOLIDATED: Merged logic from appEvents.js
-    console.log('🎉 CLIENT: handleJoinSuccess called with data:', data);
+    console.log('CLIENT: handleJoinSuccess called with data:', data);
 
     this.app.playerId = data.playerId;
     this.app.gameState = data.gameState;
 
-    // ✅ BUG FIX: Extract nickname from server data to ensure it's available
     const playerNickname = data.player?.nickname || this.app.nickname || 'Player';
-    console.log('🎉 Join success - showing welcome notification for:', playerNickname);
-    console.log('🎉 Available nicknames - data.player.nickname:', data.player?.nickname, 'this.app.nickname:', this.app.nickname);
+    console.log('Join success - showing welcome notification for:', playerNickname);
+    console.log('Available nicknames - data.player.nickname:', data.player?.nickname, 'this.app.nickname:', this.app.nickname);
 
-    // Clear chat history when joining a new game (fresh start)
     this.app.clearChatHistory();
 
     this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
@@ -30,13 +29,10 @@ export class AppEventHandlers {
     }, 100);
     this.app.startOptimizedGameLoop();
 
-    // ✅ BUG FIX: Use nickname from server data instead of this.app.nickname
-    // ✅ DEBUG: Make welcome message more distinctive to track if it's being shown
     this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
   }
 
   handleGameStarted(eventData) {
-    // ✅ CONSOLIDATED: Merged logic from playerEvents.js
     if (eventData.gameState) {
       this.app.gameState = eventData.gameState;
       if (!this.app.playerId || !this.app.gameState.players[this.app.playerId]) {
@@ -102,14 +98,13 @@ export class AppEventHandlers {
     }
   }
 
-  // ✅ CONSOLIDATED: Add missing event handlers
   handlePlayerEliminated(eventData) {
     const isCurrentPlayer = eventData.playerId === this.app.playerId;
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
-    // ✅ GAME END LOGIC: Check if this elimination ends the game
+    // Check if this elimination ends the game
     if (eventData.willGameEnd) {
-      console.log('🏁 Game will end after this elimination, skipping ghost mode notifications');
+      console.log('Game will end after this elimination, skipping ghost mode notifications');
 
       if (isCurrentPlayer) {
         if (eventData.winner) {
@@ -121,18 +116,15 @@ export class AppEventHandlers {
         this.app.showNotification(`💀 ${playerName} was eliminated! Game ending...`, 'info');
       }
 
-      // Update UI to reflect elimination
       this.app.gameUIManager.updatePlayerStats(true);
-      return; // Skip ghost mode logic when game is ending
+      return;
     }
 
-    // ✅ GHOST MODE: Normal elimination handling when game continues
+    // Normal elimination handling when game continues
     if (isCurrentPlayer) {
       this.app.showNotification(`💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`, 'error');
-      // Update UI to reflect elimination
       this.app.gameUIManager.updatePlayerStats(true);
 
-      // ✅ GHOST MODE: Show ghost mode notification
       setTimeout(() => {
         this.app.showNotification(`👻 Ghost Mode: You can still watch the game and chat, but cannot move or place bombs.`, 'info');
       }, 3000);
@@ -157,7 +149,6 @@ export class AppEventHandlers {
     }
   }
 
-  // ✅ CONSOLIDATED: Merged handlePlayerDamaged from playerEvents.js
   handlePlayerDamaged(eventData) {
     if (eventData.playerId === this.app.playerId) {
       if (this.app.gameState && this.app.gameState.players[this.app.playerId]) {
@@ -170,7 +161,6 @@ export class AppEventHandlers {
     }
   }
 
-  // ✅ CONSOLIDATED: Merged handleGameEvent from appEvents.js
   handleGameEvent(eventType, eventData) {
     switch (eventType) {
       case "countdown_update":

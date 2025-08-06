@@ -1,16 +1,17 @@
-// NotificationManager: Handles notifications and error messages for the app
+/**
+ * NotificationManager: Handles notifications and error messages for the app
+ * Implements a priority-based queue system to prevent race conditions
+ */
 export class NotificationManager {
   constructor(framework) {
     this.framework = framework;
-    // ✅ CRITICAL FIX: Add notification queue to prevent race conditions
     this.notificationQueue = [];
     this.isProcessingQueue = false;
     this.currentNotificationTimeout = null;
   }
 
   showNotification(message, type = "success") {
-    // ✅ CRITICAL FIX: Queue notifications to prevent race conditions
-    console.log(`🔔 QUEUING NOTIFICATION: "${message}" (type: ${type})`);
+    console.log(`Queuing notification: "${message}" (type: ${type})`);
 
     // Add to queue with priority (welcome messages get higher priority)
     const isWelcomeMessage = message.includes('WELCOME') || message.includes('Welcome');
@@ -26,9 +27,8 @@ export class NotificationManager {
     // Sort queue by priority (higher priority first)
     this.notificationQueue.sort((a, b) => b.priority - a.priority);
 
-    console.log(`📋 Notification queue length: ${this.notificationQueue.length}`);
+    console.log(`Notification queue length: ${this.notificationQueue.length}`);
 
-    // Process queue if not already processing
     if (!this.isProcessingQueue) {
       this.processNotificationQueue();
     }
@@ -43,23 +43,21 @@ export class NotificationManager {
     this.isProcessingQueue = true;
     const notification = this.notificationQueue.shift();
 
-    console.log(`🎯 DISPLAYING NOTIFICATION: "${notification.message}" (type: ${notification.type})`);
+    console.log(`Displaying notification: "${notification.message}" (type: ${notification.type})`);
 
     this.displayNotification(notification.message, notification.type);
 
     // Process next notification after current one finishes
     this.currentNotificationTimeout = setTimeout(() => {
       this.processNotificationQueue();
-    }, 3000); // Slightly longer than display time to prevent overlap
+    }, 3000);
   }
 
   displayNotification(message, type) {
-    // Clear any existing timeout
     if (this.currentNotificationTimeout) {
       clearTimeout(this.currentNotificationTimeout);
     }
 
-    // Example: Show notification in a dedicated UI area
     let notificationArea = document.getElementById("notification-area");
     if (!notificationArea) {
       notificationArea = document.createElement("div");
@@ -75,15 +73,12 @@ export class NotificationManager {
       document.body.appendChild(notificationArea);
     }
 
-    // ✅ BUG FIX: Update background color for each notification
     notificationArea.style.background = type === "error" ? "#e74c3c" : "#27ae60";
     notificationArea.textContent = message;
     notificationArea.style.display = "block";
 
-    // Hide notification after display time
     setTimeout(() => {
       if (notificationArea.textContent === message) {
-        // Only hide if this is still the current message
         notificationArea.style.display = "none";
       }
     }, 2500);

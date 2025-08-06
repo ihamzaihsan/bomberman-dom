@@ -194,7 +194,7 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
       // Check for rapid DOM changes that could indicate layout thrashing
       const now = Date.now();
       if (mutations.length > 10 && (now - this.lastLayoutThrashingWarning) > 5000) {
-        console.warn('⚠️ Potential layout thrashing detected:', mutations.length, 'DOM changes');
+        console.warn('Potential layout thrashing detected:', mutations.length, 'DOM changes');
         this.lastLayoutThrashingWarning = now;
       }
     });
