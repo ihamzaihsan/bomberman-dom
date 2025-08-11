@@ -12,9 +12,9 @@ const {
   EXPLOSION_CONFIG,
   SERVER_CONFIG,
   MIME_TYPES
-} = require('./src/shared/GameConstants.cjs');
+} = require('./src/shared/GameConstants.js');
 
-const { MovementValidator } = require('./src/shared/MovementValidator.cjs');
+const { MovementValidator } = require('./src/shared/MovementValidator.js');
 
 class GameServer {
   constructor() {
@@ -76,6 +76,14 @@ class GameServer {
         this.gameState.waitingTimer = null;
         this.gameState.waitingTimeLeft = GAME_TIMING.WAITING_DURATION;
         console.log('Waiting timer cancelled - insufficient players');
+      }
+
+      // FIX: End the game if only one player remains and the game has started
+      if (remainingPlayers === 1 && this.gameState.gameStarted) {
+        const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
+        if (alivePlayers.length === 1) {
+          this.endGame('Last player remaining after disconnect');
+        }
       }
 
       if (remainingPlayers < 1 && this.gameState.gameStarted) {
