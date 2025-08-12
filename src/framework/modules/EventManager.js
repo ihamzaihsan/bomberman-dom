@@ -4,6 +4,7 @@ export class EventManager {
         this.eventEmitter = new Map();
     }
 
+    // used to Calls all listeners registered for the given custom event, passing any arguments.
     emit(eventName, ...args) {
         const listeners = this.eventEmitter.get(eventName) || [];
         listeners.forEach(listener => {

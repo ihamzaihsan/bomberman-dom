@@ -271,7 +271,6 @@ export class GameUIManager {
 
         <div class="game-end-actions">
           <button id="play-again-btn" class="primary-button">🎮 Play Again</button>
-          <button class="secondary-button" onclick="window.bombermanApp.returnToLobby()">🏠 Return to Lobby</button>
           <div class="countdown-to-lobby">
             <p>Auto-returning to lobby in <span id="lobby-countdown">10</span> seconds...</p>
           </div>

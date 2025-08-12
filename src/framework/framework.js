@@ -7,6 +7,7 @@ import {
   Router,
   VirtualDOM
 } from './modules/index.js';
+import { NotFound404 } from './components/index.js';
 
 export class Framework {
   constructor() {
@@ -26,7 +27,16 @@ export class Framework {
     );
 
     // Set up cross-module connections
-    this.router.setRenderCallback(() => this.render());
+    this.router.setRenderCallback((component, params, query, matched) => {
+      this.currentComponent = component;
+      this.currentParams = params;
+      this.currentQuery = query;
+      this.routeMatched = matched;
+      this.render();
+    });
+
+    // Set default 404 component
+    this.router.setErrorPage(NotFound404);
 
     // Legacy compatibility properties - delegate to modules
     // These maintain the existing API for BombermanApp
@@ -68,13 +78,27 @@ export class Framework {
 
   // ===== ROUTER DELEGATION =====
   route(path, component) { return this.router.route(path, component); }
-  routes(routeMap) { return this.router.routes(routeMap); }
+  routes(routeMap) {
+    this.router.routes(routeMap);
+    // Auto-initialize router after routes are defined
+    if (!this.router.initialized) {
+      this.router.init();
+    }
+    return this;
+  }
   setErrorPage(component) { return this.router.setErrorPage(component); }
   navigate(path, state) { return this.router.navigate(path, state); }
+  replace(path, state) { return this.router.replace(path, state); }
   back() { return this.router.back(); }
   forward() { return this.router.forward(); }
   getCurrentRoute() { return this.router.getCurrentRoute(); }
+  getParams() { return this.router.getParams(); }
+  getQuery() { return this.router.getQuery(); }
+  getParam(name) { return this.router.getParam(name); }
+  getQueryParam(name) { return this.router.getQueryParam(name); }
   isRoute(pattern) { return this.router.isRoute(pattern); }
+  initRouter() { return this.router.init(); }
+  checkCurrentRoute() { return this.router.checkCurrentRoute(); }
 
   // ===== SELECTIVE RENDERER DELEGATION =====
   markElementDirty(elementId, data) { return this.selectiveRenderer.markElementDirty(elementId, data); }

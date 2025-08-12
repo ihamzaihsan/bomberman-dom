@@ -888,22 +888,39 @@ const server = http.createServer((req, res) => {
   const ext = path.extname(filePath);
   const contentType = MIME_TYPES[ext] || 'text/plain';
 
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        console.log(`File not found: ${filePath}`);
-        res.writeHead(404);
-        res.end('File not found');
+  // Check if this is a request for a static file (has extension)
+  if (ext) {
+    // Handle static files
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          console.log(`Static file not found: ${filePath}`);
+          res.writeHead(404);
+          res.end('Static file not found');
+        } else {
+          console.log(`Server error: ${err.code}`);
+          res.writeHead(500);
+          res.end('Server error: ' + err.code);
+        }
       } else {
-        console.log(`Server error: ${err.code}`);
-        res.writeHead(500);
-        res.end('Server error: ' + err.code);
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(content);
       }
-    } else {
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content);
-    }
-  });
+    });
+  } else {
+    // For routes without extensions, serve index.html to enable client-side routing
+    console.log(`Serving index.html for route: ${req.url}`);
+    fs.readFile('./index.html', (err, content) => {
+      if (err) {
+        console.log(`Index file not found: ./index.html`);
+        res.writeHead(500);
+        res.end('Server configuration error: Index file not found');
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(content);
+      }
+    });
+  }
 });
 
 function handleApiRequest(req, res) {
