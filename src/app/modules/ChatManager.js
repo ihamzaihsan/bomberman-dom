@@ -38,7 +38,7 @@ export class ChatManager {
     const chatMessages = this.app.framework.get('chatHistory') || [];
     
     // Waiting room chat
-    const chatContainer = document.getElementById("chat-messages");
+    const chatContainer = this.app.framework.find('#chat-messages');
     if (chatContainer) {
       chatContainer.innerHTML = chatMessages
         .map(
@@ -53,7 +53,7 @@ export class ChatManager {
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     // Game screen chat
-    const gameChatContainer = document.getElementById("game-chat-messages");
+    const gameChatContainer = this.app.framework.find('#game-chat-messages');
     if (gameChatContainer) {
       gameChatContainer.innerHTML = chatMessages
         .map(
@@ -87,8 +87,8 @@ export class ChatManager {
 
     // Add small delay to ensure cleanup is complete
     setTimeout(() => {
-      const chatInput = document.getElementById("chat-input");
-      const chatSend = document.getElementById("chat-send");
+      const chatInput = this.app.framework.find('#chat-input');
+      const chatSend = this.app.framework.find('#chat-send');
       if (chatInput && chatSend) {
         console.log('🔧 ChatManager: Adding chat event listeners');
         // Store handlers for cleanup
@@ -118,8 +118,8 @@ export class ChatManager {
 
   removeChatHandlers() {
     console.log('🔧 ChatManager: Removing chat handlers');
-    const chatInput = document.getElementById("chat-input");
-    const chatSend = document.getElementById("chat-send");
+    const chatInput = this.app.framework.find('#chat-input');
+    const chatSend = this.app.framework.find('#chat-send');
 
     if (chatSend && this.chatSendHandler) {
       chatSend.removeEventListener("click", this.chatSendHandler);
@@ -138,8 +138,8 @@ export class ChatManager {
 
     // Add small delay to ensure cleanup is complete
     setTimeout(() => {
-      const gameChatInput = document.getElementById("game-chat-input");
-      const gameChatSend = document.getElementById("game-chat-send");
+      const gameChatInput = this.app.framework.find('#game-chat-input');
+      const gameChatSend = this.app.framework.find('#game-chat-send');
       if (gameChatInput && gameChatSend) {
         console.log('🔧 ChatManager: Adding game chat event listeners');
         // Store handlers for cleanup
@@ -169,8 +169,8 @@ export class ChatManager {
 
   removeGameChatHandlers() {
     console.log('🔧 ChatManager: Removing game chat handlers');
-    const gameChatInput = document.getElementById("game-chat-input");
-    const gameChatSend = document.getElementById("game-chat-send");
+    const gameChatInput = this.app.framework.find('#game-chat-input');
+    const gameChatSend = this.app.framework.find('#game-chat-send');
 
     if (gameChatSend && this.gameChatSendHandler) {
       gameChatSend.removeEventListener("click", this.gameChatSendHandler);

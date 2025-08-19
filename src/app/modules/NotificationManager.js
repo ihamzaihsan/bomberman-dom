@@ -70,18 +70,19 @@ export class NotificationManager {
       clearTimeout(this.currentNotificationTimeout);
     }
 
-    let notificationArea = document.getElementById("notification-area");
+    let notificationArea = this.framework.find('#notification-area');
     if (!notificationArea) {
-      notificationArea = document.createElement("div");
-      notificationArea.id = "notification-area";
-      notificationArea.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 9999;
-        min-width: 200px; padding: 12px 20px; border-radius: 6px;
-        font-size: 15px; font-family: inherit; color: #fff;
-        background: ${type === "error" ? "#e74c3c" : "#27ae60"};
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15); opacity: 0.95;
-        transition: opacity 0.3s;
-      `;
+      notificationArea = this.framework.createElement('div', {
+        id: 'notification-area',
+        style: `
+          position: fixed; top: 20px; right: 20px; z-index: 9999;
+          min-width: 200px; padding: 12px 20px; border-radius: 6px;
+          font-size: 15px; font-family: inherit; color: #fff;
+          background: ${type === "error" ? "#e74c3c" : "#27ae60"};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15); opacity: 0.95;
+          transition: opacity 0.3s;
+        `
+      });
       document.body.appendChild(notificationArea);
     }
 

@@ -16,7 +16,7 @@ import { PLAYER_CONFIG } from "../shared/GameConstants.js";
 class BombermanApp {
   constructor() {
     this.framework = new Framework();
-    this.webSocketManager = new WebSocketManager();
+    this.webSocketManager = new WebSocketManager(this.framework);
     this.gameUIManager = new GameUIManager(this.framework);
     this.mapRenderer = new MapRenderer(this.framework);
     this.playerController = new PlayerController(
@@ -77,8 +77,6 @@ class BombermanApp {
       if (this.mapRenderer) {
         this.mapRenderer.updateGameMapOptimized(state.gameState, Date.now());
       }
-      // Update UI managers that depend on game state
-      this.gameUIManager.setGameState(state.gameState, state.playerId);
       // Recalculate movement speed after significant game state changes
       this.playerController.updateMovementSpeed();
     }
@@ -150,7 +148,6 @@ class BombermanApp {
       window.bombermanDebug.getPlayerId = () => this.framework.get('playerId');
       window.bombermanDebug.getNickname = () => this.framework.get('nickname');
       window.bombermanDebug.getChatHistory = () => this.framework.get('chatHistory');
-      window.bombermanDebug.setGameState = (state) => this.framework.set('gameState', state);
     }
   }
 
@@ -281,13 +278,13 @@ class BombermanApp {
   setupEventHandlers() {
     this.removeEventHandlers();
 
-    const form = document.getElementById("nickname-form");
+    const form = this.framework.find('#nickname-form');
     if (form) {
       this.formSubmitHandler = (e) => {
         e.preventDefault();
         console.log('Form submission handler triggered');
 
-        const nicknameInput = document.getElementById('nickname-input');
+        const nicknameInput = this.framework.find('#nickname-input');
         if (nicknameInput) {
           const nickname = nicknameInput.value.trim();
           if (nickname.length < PLAYER_CONFIG.NICKNAME_MIN_LENGTH) {
@@ -308,7 +305,7 @@ class BombermanApp {
   }
 
   removeEventHandlers() {
-    const form = document.getElementById("nickname-form");
+    const form = this.framework.find('#nickname-form');
     if (form && this.formSubmitHandler) {
       form.removeEventListener('submit', this.formSubmitHandler);
       console.log('Form submit handler removed');
@@ -357,13 +354,15 @@ class BombermanApp {
 
   startOptimizedGameLoop() {
     this.framework.startGameLoop((_deltaTime, currentTime) => {
-      if (this.gameState) {
-        console.log('Game loop: gameTimeLeft =', this.gameState.gameTimeLeft);
+      const gs = this.framework.get('gameState');
+      if (gs) {
+        console.log('Game loop: gameTimeLeft =', gs.gameTimeLeft);
       }
       this.gameUIManager.updateTimer(); // Always update timer
       this.gameUIManager.updatePlayerStats();
-      if (this.gameState && this.gameState.map && document.getElementById("game-map")) {
-        this.mapRenderer.updateGameMapOptimized(this.gameState, currentTime);
+      const gameMapEl = this.framework.getCachedElement('game-map');
+      if (gs && gs.map && gameMapEl) {
+        this.mapRenderer.updateGameMapOptimized(gs, currentTime);
       }
       if (this.isInWaitingRoom()) {
         this.updateWaitingScreen();
@@ -393,7 +392,6 @@ class BombermanApp {
   }
 
   showWaitingScreen() {
-    this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.playerController.updateMovementSpeed();
     this.gameUIManager.showWaitingScreen();
 
@@ -418,7 +416,6 @@ class BombermanApp {
     // ✅ CRITICAL FIX: Reset waitingScreenReady flag when leaving waiting screen
     this.waitingScreenReady = false;
 
-    this.gameUIManager.setGameState(this.gameState, this.playerId);
     this.playerController.updateMovementSpeed();
     this.gameUIManager.showGameScreen();
 
@@ -428,7 +425,8 @@ class BombermanApp {
     // Use setTimeout to ensure DOM is fully ready before rendering map
     setTimeout(() => {
       // Render the map with the latest state
-      this.mapRenderer.renderFullGameMap(this.gameState);
+      const gs = this.framework.get('gameState');
+      this.mapRenderer.renderFullGameMap(gs);
       // Update chat UI
       this.updateChatDisplay();
       // Setup chat handlers for game screen
@@ -441,7 +439,7 @@ class BombermanApp {
   updateGameScreen(previousState, newState) {
     this.gameUIManager.updateGameScreen(previousState, newState);
     // ✅ SPEED POWER-UP: Update movement speed when game state changes
-    if (this.playerController && this.playerId) {
+    if (this.playerController && this.framework.get('playerId')) {
       this.playerController.updateMovementSpeed();
     }
   }
@@ -545,7 +543,7 @@ class BombermanApp {
   }
 
   handlePowerUpCollected(eventData) {
-    const isCurrentPlayer = eventData.playerId === this.playerId;
+    const isCurrentPlayer = eventData.playerId === this.framework.get('playerId');
     const playerName = isCurrentPlayer ? "You" : eventData.playerNickname || "Player";
     this.showNotification(
       `🎉 ${playerName} collected ${eventData.powerUpType?.toUpperCase() || 'POWER-UP'}!`
@@ -584,7 +582,7 @@ class BombermanApp {
       console.log('✅ Bomb placement successful');
 
       // ✅ CRITICAL FIX: Update client state immediately with server state
-      if (data.playerBombState && this.playerId && this.gameState?.players[this.playerId]) {
+      if (data.playerBombState && this.framework.get('playerId') && this.framework.get('gameState')?.players[this.framework.get('playerId')]) {
           // Clone game state, update nested player safely, and set via framework
           const gs = this.framework.get('gameState') || {};
           const newGs = JSON.parse(JSON.stringify(gs));

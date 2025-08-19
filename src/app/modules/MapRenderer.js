@@ -95,7 +95,7 @@ export class MapRenderer {
 
     // Clear cache and get fresh reference to game map element
     this.framework.clearAllCaches();
-    let gameMapElement = document.getElementById('game-map');
+    let gameMapElement = this.framework.getCachedElement('game-map') || this.framework.find('#game-map');
 
     if (!gameMapElement) {
       console.log('MapRenderer: Game map element not found, retrying...');
@@ -138,8 +138,7 @@ export class MapRenderer {
       return;
     }
 
-    const gameMapElement = this.framework.getCachedElement('game-map') ||
-                          this.framework.cacheElement('game-map', document.getElementById('game-map'));
+    const gameMapElement = this.framework.getCachedElement('game-map') || this.framework.find('#game-map');
 
     if (!gameMapElement) {
       console.log('MapRenderer: No game map element found');
@@ -289,11 +288,12 @@ export class MapRenderer {
     if (gameMapElement.children.length === 0) {
       const mapHTML = map.map((row, y) =>
         row.map((cell, x) => {
-          const cellElement = document.createElement('div');
-          cellElement.className = `cell ${cell}`;
+          const cellElement = this.framework.createElement('div', {
+            className: `cell ${cell}`,
+            id: `cell-${x}-${y}`
+          });
           cellElement.setAttribute('data-x', x);
           cellElement.setAttribute('data-y', y);
-          cellElement.id = `cell-${x}-${y}`;
 
           // Cache the element in framework
           this.framework.cacheElement(`cell-${x}-${y}`, cellElement);

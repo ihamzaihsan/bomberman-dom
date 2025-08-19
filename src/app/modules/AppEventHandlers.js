@@ -13,13 +13,12 @@ export class AppEventHandlers {
     this.app.framework.set('playerId', data.playerId);
     this.app.framework.set('gameState', data.gameState);
 
-    const playerNickname = data.player?.nickname || this.app.nickname || 'Player';
+    const playerNickname = data.player?.nickname || this.app.framework.get('nickname') || 'Player';
     console.log('Join success - showing welcome notification for:', playerNickname);
-    console.log('Available nicknames - data.player.nickname:', data.player?.nickname, 'this.app.nickname:', this.app.nickname);
+    console.log('Available nicknames - data.player.nickname:', data.player?.nickname, 'framework.nickname:', this.app.framework.get('nickname'));
 
     this.app.clearChatHistory();
 
-    this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
     this.app.playerController.updateMovementSpeed();
     this.app.resetJoinButton();
     this.app.gameUIManager.showWaitingScreen();
@@ -37,14 +36,13 @@ export class AppEventHandlers {
     if (eventData.gameState) {
       // ✅ NEW: Use framework state management
       this.app.framework.set('gameState', eventData.gameState);
-      if (!this.app.playerId || !this.app.gameState.players[this.app.playerId]) {
-        const playerByNickname = Object.values(this.app.gameState.players).find(
-          (p) => p.nickname === this.app.nickname
+      if (!this.app.framework.get('playerId') || !this.app.framework.get('gameState').players[this.app.framework.get('playerId')]) {
+        const playerByNickname = Object.values(this.app.framework.get('gameState').players).find(
+          (p) => p.nickname === this.app.framework.get('nickname')
         );
         if (playerByNickname) {
           // ✅ NEW: Use framework state management
           this.app.framework.set('playerId', playerByNickname.id);
-          this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
           this.app.playerController.updateMovementSpeed();
           this.app.gameUIManager.showGameScreen();
           this.app.setupGameControls();
@@ -59,7 +57,6 @@ export class AppEventHandlers {
           this.app.returnToLobby();
         }
       } else {
-        this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
         this.app.playerController.updateMovementSpeed();
         this.app.gameUIManager.showGameScreen();
         this.app.setupGameControls();
@@ -77,7 +74,6 @@ export class AppEventHandlers {
     if (eventData.gameState) {
       // ✅ NEW: Use framework state management
       this.app.framework.set('gameState', eventData.gameState);
-      this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
       this.app.playerController.updateMovementSpeed();
     }
     // ✅ NEW: Update game state through framework
@@ -105,7 +101,7 @@ export class AppEventHandlers {
   }
 
   handlePlayerEliminated(eventData) {
-    const isCurrentPlayer = eventData.playerId === this.app.playerId;
+    const isCurrentPlayer = eventData.playerId === this.app.framework.get('playerId');
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
     // Check if this elimination ends the game
@@ -156,14 +152,13 @@ export class AppEventHandlers {
   }
 
   handlePlayerDamaged(eventData) {
-    if (eventData.playerId === this.app.playerId) {
+    if (eventData.playerId === this.app.framework.get('playerId')) {
       // Update nested player lives via framework state to ensure reactivity
       const gs = this.app.framework.get('gameState') || {};
       if (gs.players && gs.players[this.app.framework.get('playerId')]) {
         const newGs = JSON.parse(JSON.stringify(gs));
         newGs.players[this.app.framework.get('playerId')].lives = eventData.livesRemaining;
         this.app.framework.set('gameState', newGs);
-        this.app.gameUIManager.setGameState(newGs, this.app.framework.get('playerId'));
         this.app.playerController.updateMovementSpeed();
       }
       this.app.gameUIManager.updatePlayerStats(true);

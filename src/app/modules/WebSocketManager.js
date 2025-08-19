@@ -1,5 +1,6 @@
 export class WebSocketManager {
-  constructor() {
+  constructor(framework) {
+    this.framework = framework;
     // WebSocket connection
     this.ws = null;
     this.wsConnected = false;

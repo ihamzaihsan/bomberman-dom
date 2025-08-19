@@ -14,11 +14,7 @@ export class GameUIManager {
     this.notificationManager = null;
   }
 
-  // Set game state reference (kept for backward compatibility)
-  // No local copies are stored; modules should read from framework state directly
-  setGameState(_gameState, _playerId) {
-    // No-op: rely on this.framework.get('gameState') / this.framework.get('playerId')
-  }
+
 
   // Set callback functions
   setCallbacks(callbacks) {
@@ -42,8 +38,8 @@ export class GameUIManager {
       timeLeft = gs.gameTimeLeft;
     }
     // Only update if timer elements exist (we're in game screen)
-    const timerValue = document.getElementById('timer-value');
-    const timerDisplay = document.getElementById('timer-display');
+    const timerValue = this.framework.getCachedElement('timer-value') || this.framework.find('#timer-value');
+    const timerDisplay = this.framework.getCachedElement('timer-display') || this.framework.find('#timer-display');
     if (timerValue && timerDisplay) {
       timerValue.textContent = this.formatTime(timeLeft);
       // Optionally, add warning/caution classes
@@ -65,7 +61,7 @@ export class GameUIManager {
   // Update waiting room timer
   updateWaitingTimer(waitingTimeLeft) {
     console.log('GameUIManager: updateWaitingTimer called with:', waitingTimeLeft);
-    const timerElement = document.getElementById('waiting-timer');
+    const timerElement = this.framework.getCachedElement('waiting-timer') || this.framework.find('#waiting-timer');
     if (timerElement) {
       const formattedTime = this.formatTime(waitingTimeLeft);
       console.log('GameUIManager: updating timer to:', formattedTime);
@@ -78,9 +74,9 @@ export class GameUIManager {
   // Update countdown display
   updateCountdown(countdown) {
     console.log('GameUIManager: updateCountdown called with:', countdown);
-    const countdownText = document.getElementById('countdown-text');
-    const countdownContainer = document.getElementById('countdown-container');
-    const waitingTimerContainer = document.querySelector('.waiting-timer-container');
+    const countdownText = this.framework.getCachedElement('countdown-text') || this.framework.find('#countdown-text');
+    const countdownContainer = this.framework.getCachedElement('countdown-container') || this.framework.find('#countdown-container');
+    const waitingTimerContainer = this.framework.find('.waiting-timer-container');
 
     if (countdownText && countdownContainer) {
       countdownText.textContent = `Game starting in: ${countdown}`;
@@ -113,8 +109,8 @@ export class GameUIManager {
     const currentPlayer = gs.players[pid];
     if (!currentPlayer) return;
 
-    const livesElement = document.getElementById('player-lives');
-    const bombsElement = document.getElementById('player-bombs');
+    const livesElement = this.framework.getCachedElement('player-lives') || this.framework.find('#player-lives');
+    const bombsElement = this.framework.getCachedElement('player-bombs') || this.framework.find('#player-bombs');
 
     if (livesElement) {
       livesElement.textContent = `Lives: ${currentPlayer.lives ?? 1}`;
@@ -156,7 +152,7 @@ export class GameUIManager {
   // ✅ NEW: Highlight lives counter when taking damage
   highlightLivesCounter() {
     const livesElement = this.framework.getCachedElement('player-lives') ||
-                        document.getElementById('player-lives');
+                        this.framework.find('#player-lives');
 
     if (livesElement) {
       // Add highlight effect
@@ -184,7 +180,7 @@ export class GameUIManager {
       this.framework.clearAllCaches();
     }
 
-    const app = document.getElementById('app');
+    const app = this.framework.find('#app');
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
     const winner = gs?.winner;
