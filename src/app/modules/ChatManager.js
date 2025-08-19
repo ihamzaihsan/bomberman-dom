@@ -2,34 +2,45 @@
 export class ChatManager {
   constructor(app) {
     this.app = app;
-    this.chatMessages = [];
+    // ✅ NEW: Remove local chat storage - use framework state instead
     this.maxChatMessages = 50;
   }
 
   // Clear chat history (called when starting new games)
   clearChatHistory() {
-    this.chatMessages = [];
+    // ✅ NEW: Use framework state management for chat
+    this.app.framework.set('chatHistory', []);
     this.updateChatDisplay();
   }
 
   handleChatMessage(data) {
-    this.chatMessages.push({
+    const chatMessage = {
       playerId: data.playerId,
       nickname: data.nickname,
       message: data.message,
       timestamp: data.timestamp,
-    });
-    if (this.chatMessages.length > this.maxChatMessages) {
-      this.chatMessages = this.chatMessages.slice(-this.maxChatMessages);
+    };
+
+    // ✅ NEW: Use framework state management to add chat message
+    this.app.framework.push('chatHistory', chatMessage);
+    
+    // Limit chat history size
+    const chatHistory = this.app.framework.get('chatHistory') || [];
+    if (chatHistory.length > this.maxChatMessages) {
+      this.app.framework.set('chatHistory', chatHistory.slice(-this.maxChatMessages));
     }
+    
     this.updateChatDisplay();
   }
 
   updateChatDisplay() {
+    // ✅ NEW: Get chat messages from framework state
+    const chatMessages = this.app.framework.get('chatHistory') || [];
+    
     // Waiting room chat
     const chatContainer = document.getElementById("chat-messages");
     if (chatContainer) {
-      chatContainer.innerHTML = this.chatMessages
+      chatContainer.innerHTML = chatMessages
         .map(
           (msg) => `
         <div class="chat-message">
@@ -44,7 +55,7 @@ export class ChatManager {
     // Game screen chat
     const gameChatContainer = document.getElementById("game-chat-messages");
     if (gameChatContainer) {
-      gameChatContainer.innerHTML = this.chatMessages
+      gameChatContainer.innerHTML = chatMessages
         .map(
           (msg) => `
         <div class="chat-message">

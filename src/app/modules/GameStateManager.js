@@ -8,8 +8,8 @@ export class GameStateManager {
     // ✅ CONSOLIDATED: Merged logic from gameState.js
     const previousState = this.app.gameState;
 
-    // Update the app's game state and trigger UI updates
-    this.app.gameState = newGameState;
+    // ✅ NEW: Update the app's game state through framework state management
+    this.app.framework.set('gameState', newGameState);
     this.app.gameUIManager.setGameState(newGameState, this.app.playerId);
     this.app.playerController.setGameState(newGameState, this.app.playerId);
 

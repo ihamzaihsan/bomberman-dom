@@ -57,10 +57,16 @@ export class GameUIManager {
   updateGameTimer(timeLeft) {
     console.log('GameUIManager: updateGameTimer called with timeLeft:', timeLeft);
     // ✅ FIX: Update game state with server-provided time
-    if (this.gameState) {
+    if (this.framework) {
+      // Use merge to avoid replacing the whole gameState object
+      const gs = this.framework.get('gameState') || {};
+      const newGs = { ...gs, gameTimeLeft: timeLeft };
+      this.framework.set('gameState', newGs);
+      console.log('GameUIManager: framework gameState.gameTimeLeft set to:', timeLeft);
+    } else if (this.gameState) {
+      // Fallback for legacy usage
       this.gameState.gameTimeLeft = timeLeft;
-      console.log('GameUIManager: updated gameState.gameTimeLeft to:', timeLeft);
-      // This ensures the UI shows the correct value even before the server sends game_state_update
+      console.log('GameUIManager: updated local gameState.gameTimeLeft to:', timeLeft);
     }
 
     // Update timer display

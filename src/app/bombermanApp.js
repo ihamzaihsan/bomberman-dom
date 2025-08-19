@@ -28,9 +28,10 @@ class BombermanApp {
     this.chatManager = new ChatManager(this);
     this.gameStateManager = new GameStateManager(this);
     this.appEventHandlers = new AppEventHandlers(this);
-    this.gameState = null;
-    this.playerId = null;
-    this.nickname = "";
+    
+    // ✅ NEW: Initialize framework state management for game
+    this.initializeFrameworkState();
+    
     this.waitingScreenReady = false;
     this.animationSettings = {
       explosionDuration: 1.2,
@@ -41,6 +42,65 @@ class BombermanApp {
     };
     this.cachedElements = {};
     this.init();
+  }
+
+  // ✅ NEW: Initialize framework state management for Bomberman
+  initializeFrameworkState() {
+    // Initialize the game state structure in the framework
+    this.framework.setState({
+      gameState: null,
+      playerId: null,
+      nickname: "",
+      isConnected: false,
+      chatHistory: [],
+      notifications: []
+    });
+
+    // Subscribe to state changes for automatic UI updates
+    this.framework.subscribe((state) => {
+      this.onFrameworkStateChange(state);
+    });
+  }
+
+  // ✅ NEW: Handle framework state changes
+  onFrameworkStateChange(state) {
+    // Only react to gameState changes for rendering; avoid writing back to framework
+    const prevGameState = this._lastFrameworkGameState;
+    if (state.gameState !== prevGameState) {
+      this._lastFrameworkGameState = state.gameState;
+      if (this.mapRenderer) {
+        this.mapRenderer.updateGameMapOptimized(state.gameState, Date.now());
+      }
+      // Update UI managers that depend on game state
+      this.gameUIManager.setGameState(state.gameState, state.playerId);
+      this.playerController.setGameState(state.gameState, state.playerId);
+    }
+    // No need to re-set playerId/nickname here; getters read from framework directly
+  }
+
+  // ✅ NEW: Framework state getters
+  get gameState() {
+    return this.framework.get('gameState');
+  }
+
+  set gameState(value) {
+    this.framework.set('gameState', value);
+  }
+
+  get playerId() {
+    return this.framework.get('playerId');
+  }
+
+  set playerId(value) {
+    this.framework.set('playerId', value);
+  }
+
+  get nickname() {
+    return this.framework.get('nickname');
+  }
+
+  set nickname(value) {
+    this.framework.set('nickname', value);
   }
 
   init() {
@@ -71,6 +131,13 @@ class BombermanApp {
   setupDebugTools() {
     if (typeof window !== "undefined") {
       window.bombermanDebug = this.performanceMonitor.getDebugInterface();
+      // ✅ NEW: Add framework state debugging
+      window.bombermanDebug.getFrameworkState = () => this.framework.getState();
+      window.bombermanDebug.getGameState = () => this.framework.get('gameState');
+      window.bombermanDebug.getPlayerId = () => this.framework.get('playerId');
+      window.bombermanDebug.getNickname = () => this.framework.get('nickname');
+      window.bombermanDebug.getChatHistory = () => this.framework.get('chatHistory');
+      window.bombermanDebug.setGameState = (state) => this.framework.set('gameState', state);
     }
   }
 
@@ -108,7 +175,9 @@ class BombermanApp {
   }
 
   updateConnectionStatus() {
-    // Optionally update UI connection status
+    // ✅ NEW: Update connection status in framework state
+    const isConnected = this.webSocketManager.isConnected();
+    this.framework.set('isConnected', isConnected);
   }
 
   setupGameUIManager() {
@@ -241,7 +310,8 @@ class BombermanApp {
       submitButton.textContent = "Joining...";
       submitButton.disabled = true;
     }
-    this.nickname = nickname;
+    // ✅ NEW: Use framework state management
+    this.framework.set('nickname', nickname);
     if (!this.webSocketManager.isConnected()) {
       this.showError("Not connected to server. Please wait...");
       this.resetJoinButton();
@@ -289,9 +359,12 @@ class BombermanApp {
   }
 
   handleJoinSuccess(data) {
-    this.playerId = data.playerId;
-    this.playerController.setGameState(this.gameState, this.playerId); // Ensure controller is updated after join
-    return this.appEventHandlers.handleJoinSuccess(data);
+  // Use framework-backed state
+  this.framework.set('playerId', data.playerId);
+  this.framework.set('gameState', data.gameState);
+  // Ensure controller is updated after join
+  this.playerController.setGameState(this.framework.get('gameState'), this.framework.get('playerId'));
+  return this.appEventHandlers.handleJoinSuccess(data);
   }
 
   handleGameStarted(eventData) {
@@ -387,9 +460,9 @@ class BombermanApp {
     this.framework.stopGameLoop();
 
     // Clear all state
-    this.gameState = null;
-    this.playerId = null;
-    this.nickname = "";
+  this.framework.set('gameState', null);
+  this.framework.set('playerId', null);
+  this.framework.set('nickname', "");
     this.waitingScreenReady = false;
 
     // Clear chat history for fresh start
@@ -497,14 +570,18 @@ class BombermanApp {
 
       // ✅ CRITICAL FIX: Update client state immediately with server state
       if (data.playerBombState && this.playerId && this.gameState?.players[this.playerId]) {
-        const clientPlayer = this.gameState.players[this.playerId];
-        console.log(`🔄 Updating client state: ${clientPlayer.currentBombs}/${clientPlayer.maxBombs} → ${data.playerBombState.currentBombs}/${data.playerBombState.maxBombs}`);
-
-        clientPlayer.maxBombs = data.playerBombState.maxBombs;
-        clientPlayer.currentBombs = data.playerBombState.currentBombs;
-
-        // Force immediate UI update
-        this.gameUIManager.updatePlayerStats(true);
+          // Clone game state, update nested player safely, and set via framework
+          const gs = this.framework.get('gameState') || {};
+          const newGs = JSON.parse(JSON.stringify(gs));
+          const clientPlayer = newGs.players && newGs.players[this.framework.get('playerId')];
+          if (clientPlayer) {
+            console.log(`🔄 Updating client state: ${clientPlayer.currentBombs}/${clientPlayer.maxBombs} → ${data.playerBombState.currentBombs}/${data.playerBombState.maxBombs}`);
+            clientPlayer.maxBombs = data.playerBombState.maxBombs;
+            clientPlayer.currentBombs = data.playerBombState.currentBombs;
+            this.framework.set('gameState', newGs);
+            // Force immediate UI update
+            this.gameUIManager.updatePlayerStats(true);
+          }
       }
     }
   }

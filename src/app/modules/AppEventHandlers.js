@@ -9,8 +9,9 @@ export class AppEventHandlers {
   handleJoinSuccess(data) {
     console.log('CLIENT: handleJoinSuccess called with data:', data);
 
-    this.app.playerId = data.playerId;
-    this.app.gameState = data.gameState;
+    // ✅ NEW: Use framework state management
+    this.app.framework.set('playerId', data.playerId);
+    this.app.framework.set('gameState', data.gameState);
 
     const playerNickname = data.player?.nickname || this.app.nickname || 'Player';
     console.log('Join success - showing welcome notification for:', playerNickname);
@@ -34,13 +35,15 @@ export class AppEventHandlers {
 
   handleGameStarted(eventData) {
     if (eventData.gameState) {
-      this.app.gameState = eventData.gameState;
+      // ✅ NEW: Use framework state management
+      this.app.framework.set('gameState', eventData.gameState);
       if (!this.app.playerId || !this.app.gameState.players[this.app.playerId]) {
         const playerByNickname = Object.values(this.app.gameState.players).find(
           (p) => p.nickname === this.app.nickname
         );
         if (playerByNickname) {
-          this.app.playerId = playerByNickname.id;
+          // ✅ NEW: Use framework state management
+          this.app.framework.set('playerId', playerByNickname.id);
           this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
           this.app.playerController.setGameState(this.app.gameState, this.app.playerId);
           this.app.gameUIManager.showGameScreen();
@@ -72,11 +75,12 @@ export class AppEventHandlers {
 
   handleGameEnded(eventData) {
     if (eventData.gameState) {
-      this.app.gameState = eventData.gameState;
+      // ✅ NEW: Use framework state management
+      this.app.framework.set('gameState', eventData.gameState);
       this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
     }
-    this.app.gameState.gameEnded = true;
-    this.app.gameState.winner = eventData.winner;
+    // ✅ NEW: Update game state through framework
+    this.app.framework.merge('gameState', { gameEnded: true, winner: eventData.winner });
     setTimeout(() => {
       this.app.gameUIManager.showGameEndScreen();
     }, 50);
@@ -84,7 +88,8 @@ export class AppEventHandlers {
 
   handleGameReset(eventData) {
     console.log('🔧 AppEventHandlers: Game reset event received');
-    this.app.gameState = eventData.gameState;
+    // ✅ NEW: Use framework state management
+    this.app.framework.set('gameState', eventData.gameState);
 
     // Only return to lobby if we're not already there
     // Check if we're currently in a game or waiting room
@@ -151,9 +156,13 @@ export class AppEventHandlers {
 
   handlePlayerDamaged(eventData) {
     if (eventData.playerId === this.app.playerId) {
-      if (this.app.gameState && this.app.gameState.players[this.app.playerId]) {
-        this.app.gameState.players[this.app.playerId].lives = eventData.livesRemaining;
-        this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
+      // Update nested player lives via framework state to ensure reactivity
+      const gs = this.app.framework.get('gameState') || {};
+      if (gs.players && gs.players[this.app.framework.get('playerId')]) {
+        const newGs = JSON.parse(JSON.stringify(gs));
+        newGs.players[this.app.framework.get('playerId')].lives = eventData.livesRemaining;
+        this.app.framework.set('gameState', newGs);
+        this.app.gameUIManager.setGameState(newGs, this.app.framework.get('playerId'));
       }
       this.app.gameUIManager.updatePlayerStats(true);
       this.app.gameUIManager.handlePlayerDamage();
