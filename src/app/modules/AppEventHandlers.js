@@ -20,7 +20,7 @@ export class AppEventHandlers {
     this.app.clearChatHistory();
 
     this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
-    this.app.playerController.setGameState(this.app.gameState, this.app.playerId);
+    this.app.playerController.updateMovementSpeed();
     this.app.resetJoinButton();
     this.app.gameUIManager.showWaitingScreen();
     setTimeout(() => {
@@ -45,7 +45,7 @@ export class AppEventHandlers {
           // ✅ NEW: Use framework state management
           this.app.framework.set('playerId', playerByNickname.id);
           this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
-          this.app.playerController.setGameState(this.app.gameState, this.app.playerId);
+          this.app.playerController.updateMovementSpeed();
           this.app.gameUIManager.showGameScreen();
           this.app.setupGameControls();
           setTimeout(() => {
@@ -60,7 +60,7 @@ export class AppEventHandlers {
         }
       } else {
         this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
-        this.app.playerController.setGameState(this.app.gameState, this.app.playerId);
+        this.app.playerController.updateMovementSpeed();
         this.app.gameUIManager.showGameScreen();
         this.app.setupGameControls();
         setTimeout(() => {
@@ -78,6 +78,7 @@ export class AppEventHandlers {
       // ✅ NEW: Use framework state management
       this.app.framework.set('gameState', eventData.gameState);
       this.app.gameUIManager.setGameState(this.app.gameState, this.app.playerId);
+      this.app.playerController.updateMovementSpeed();
     }
     // ✅ NEW: Update game state through framework
     this.app.framework.merge('gameState', { gameEnded: true, winner: eventData.winner });
@@ -163,6 +164,7 @@ export class AppEventHandlers {
         newGs.players[this.app.framework.get('playerId')].lives = eventData.livesRemaining;
         this.app.framework.set('gameState', newGs);
         this.app.gameUIManager.setGameState(newGs, this.app.framework.get('playerId'));
+        this.app.playerController.updateMovementSpeed();
       }
       this.app.gameUIManager.updatePlayerStats(true);
       this.app.gameUIManager.handlePlayerDamage();

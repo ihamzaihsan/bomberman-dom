@@ -29,12 +29,6 @@ export class PlayerController {
     this.setupEventHandlers();
   }
 
-  // Set game state reference (kept for backward compatibility)
-  // No local state is stored; rely on framework getters
-  setGameState(_gameState, _playerId) {
-    // Update movement speed based on current framework state
-    this.updateMovementSpeed();
-  }
 
   // Set callback functions
   setCallbacks(callbacks) {

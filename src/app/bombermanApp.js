@@ -73,7 +73,8 @@ class BombermanApp {
       }
       // Update UI managers that depend on game state
       this.gameUIManager.setGameState(state.gameState, state.playerId);
-      this.playerController.setGameState(state.gameState, state.playerId);
+      // Recalculate movement speed after significant game state changes
+      this.playerController.updateMovementSpeed();
     }
     // No need to re-set playerId/nickname here; getters read from framework directly
   }
@@ -362,8 +363,8 @@ class BombermanApp {
   // Use framework-backed state
   this.framework.set('playerId', data.playerId);
   this.framework.set('gameState', data.gameState);
-  // Ensure controller is updated after join
-  this.playerController.setGameState(this.framework.get('gameState'), this.framework.get('playerId'));
+  // Ensure controller movement speed is updated after join
+  this.playerController.updateMovementSpeed();
   return this.appEventHandlers.handleJoinSuccess(data);
   }
 
@@ -381,6 +382,7 @@ class BombermanApp {
 
   showWaitingScreen() {
     this.gameUIManager.setGameState(this.gameState, this.playerId);
+    this.playerController.updateMovementSpeed();
     this.gameUIManager.showWaitingScreen();
 
     // ✅ CRITICAL FIX: Set waitingScreenReady flag so isInWaitingRoom() works
@@ -405,6 +407,7 @@ class BombermanApp {
     this.waitingScreenReady = false;
 
     this.gameUIManager.setGameState(this.gameState, this.playerId);
+    this.playerController.updateMovementSpeed();
     this.gameUIManager.showGameScreen();
 
     // Clear caches and ensure fresh DOM references for map rendering
