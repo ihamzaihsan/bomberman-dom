@@ -139,7 +139,8 @@ export class Framework {
 
   // ===== LEGACY COMPATIBILITY PROPERTIES =====
   // These properties maintain backward compatibility with existing code
-  get routes() { return this.router.routes; }
+  // Renamed to avoid conflict with the routes(routeMap) method
+  get routeTable() { return this.router.routeTable; }
   get currentRoute() { return this.router.currentRoute; }
   get subscribers() { return this.stateManager.subscribers; }
   get eventHandlers() { return this.eventManager.eventHandlers; }
@@ -172,9 +173,20 @@ export class Framework {
   // Add any additional methods that don't fit into the modules
   // For now, we'll add a render method placeholder
   render() {
-    // This method would typically trigger the rendering process
-    // For now, it's a placeholder that could be implemented based on specific needs
-    console.log('Framework render called');
+    const container = document.getElementById('app');
+    if (!container) return;
+
+    // Only render when the router did NOT match a route (i.e., show error component)
+    if (this.routeMatched === false && this.currentComponent) {
+      try {
+        const output = typeof this.currentComponent === 'function'
+          ? this.currentComponent(this)
+          : '';
+        this.virtualDOM.render(output, container);
+      } catch (err) {
+        console.error('Framework render error:', err);
+      }
+    }
   }
 
 

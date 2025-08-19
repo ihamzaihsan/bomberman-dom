@@ -30,86 +30,15 @@
     <script type="module">
         import BombermanApp from './src/app/bombermanApp.js';
 
-        // Enhanced app initialization with routing support
-        class RoutingAwareBombermanApp {
-            constructor() {
-                this.checkForInvalidRoute();
-            }
-
-            checkForInvalidRoute() {
-                const currentPath = window.location.pathname;
-                const hasHash = window.location.hash && window.location.hash !== '#';
-
-                // Check if we're on an invalid route
-                if (currentPath !== '/' || hasHash) {
-                    console.warn('⚠️ Invalid route detected:', window.location.href);
-                    this.showRouteError(window.location.href);
-                    return;
-                }
-
-                // Valid route, proceed normally
-                this.initializeBombermanApp();
-            }
-
-            showRouteError(requestedUrl) {
-                const appElement = document.getElementById('app');
-                if (appElement) {
-                    appElement.innerHTML = `
-                        <div class="not-found-container">
-                            <div class="not-found-content">
-                                <div class="error-code">404</div>
-                                <h1 class="error-title">Page Not Found</h1>
-                                <p class="error-message">
-                                    This Bomberman game only supports the main game route.
-                                </p>
-                                <div class="error-details">
-                                    <p>Requested URL: <code>${requestedUrl}</code></p>
-                                    <p>Valid URL: <code>${window.location.origin}/</code></p>
-                                </div>
-                                <div class="error-actions">
-                                    <button class="btn-primary" onclick="window.history.back()">
-                                         Go Back
-                                    </button>
-                                    <button class="btn-secondary" onclick="window.location.href = '/'">
-                                         Play Bomberman
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Set up hash change listener to catch future hash navigation
-                window.addEventListener('hashchange', () => {
-                    if (window.location.hash && window.location.hash !== '#') {
-                        console.warn('⚠️ Hash fragment navigation detected:', window.location.hash);
-                        // Remove hash and show error
-                        const cleanUrl = window.location.origin + window.location.pathname + window.location.search;
-                        window.history.replaceState(null, '', cleanUrl);
-                        this.showRouteError(window.location.href + window.location.hash);
-                    }
-                });
-            }
-
-            initializeBombermanApp() {
-                // Only initialize Bomberman if we're on the correct route
-                if (window.location.pathname === '/' && (!window.location.hash || window.location.hash === '#')) {
-                    new BombermanApp();
-                }
-            }
-        }
-
-        // Initialize the routing-aware app
+        // Initialize BombermanApp; Framework router will handle invalid routes and show 404
+        const start = () => new BombermanApp();
         if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", () => {
-                new RoutingAwareBombermanApp();
-            });
+            document.addEventListener("DOMContentLoaded", start);
         } else {
-            new RoutingAwareBombermanApp();
+            start();
         }
 
-        console.log('🎮 Bomberman app with routing support initialized!');
-        console.log('🧭 Hash fragments and invalid routes will show 404 error page');
+        console.log('🎮 Bomberman app initialized. Framework Router manages 404 error pages.');
     </script>
 </body>
 </html>

@@ -24,14 +24,20 @@ class BombermanApp {
       this.webSocketManager
     );
     this.performanceMonitor = new PerformanceMonitor(this.framework);
+    // Initialize Framework routing: map root route and let framework handle 404s
+    // The root route component returns an empty string so the framework does not overwrite app content
+    this.framework.routes({
+      '/': () => ''
+    });
+
     this.notificationManager = new NotificationManager(this.framework);
     this.chatManager = new ChatManager(this);
     this.gameStateManager = new GameStateManager(this);
     this.appEventHandlers = new AppEventHandlers(this);
-    
+
     // ✅ NEW: Initialize framework state management for game
     this.initializeFrameworkState();
-    
+
     this.waitingScreenReady = false;
     this.animationSettings = {
       explosionDuration: 1.2,
@@ -105,6 +111,12 @@ class BombermanApp {
   }
 
   init() {
+    // If router is in error state (invalid route), skip Bomberman initialization
+    if (this.framework && this.framework.routeMatched === false) {
+      console.warn('Framework router detected invalid route. Skipping BombermanApp initialization; 404 page will be shown.');
+      return;
+    }
+
     // Don't setup event handlers here since the form doesn't exist yet
     this.cacheElements();
     this.setupWebSocket();

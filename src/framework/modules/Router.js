@@ -1,6 +1,7 @@
 export class Router {
     constructor() {
-        this.routes = {};
+        // Internal route table; avoid naming collision with routes(routeMap) method
+        this.routeTable = {};
         this.currentRoute = '';
         this.errorComponent = null;
         this.renderCallback = null;
@@ -102,9 +103,9 @@ export class Router {
         const { pathname, query } = this.parseUrl(path);
 
         // Try exact match first
-        if (this.routes[pathname]) {
+        if (this.routeTable[pathname]) {
             return {
-                component: this.routes[pathname],
+                component: this.routeTable[pathname],
                 params: {},
                 query,
                 matched: true
@@ -112,7 +113,7 @@ export class Router {
         }
 
         // Try pattern matching for parameterized routes
-        for (const [pattern, component] of Object.entries(this.routes)) {
+        for (const [pattern, component] of Object.entries(this.routeTable)) {
             const match = this.matchPattern(pathname, pattern);
             if (match.matched) {
                 return {
@@ -199,7 +200,7 @@ export class Router {
     }
 
     route(path, component) {
-        this.routes[path] = component;
+        this.routeTable[path] = component;
         return this;
     }
 
