@@ -24,6 +24,18 @@ export class NotificationManager {
 
     this.notificationQueue.push(notification);
 
+    // Mirror into framework state with size limiting
+    try {
+      this.framework.push('notifications', { message, type, timestamp: notification.timestamp });
+      const notifications = this.framework.get('notifications') || [];
+      const max = 50;
+      if (notifications.length > max) {
+        this.framework.set('notifications', notifications.slice(-max));
+      }
+    } catch (e) {
+      console.warn('Failed to mirror notification to framework state:', e);
+    }
+
     // Sort queue by priority (higher priority first)
     this.notificationQueue.sort((a, b) => b.priority - a.priority);
 

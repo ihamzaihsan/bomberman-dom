@@ -17,9 +17,7 @@ export class PlayerController {
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
     
-    // Game state reference (will be set by parent)
-    this.gameState = null;
-    this.playerId = null;
+    // Game state is sourced from framework; no local copies are kept
 
     // ✅ NEW: Bomb placement rate limiting
     this.lastBombPlacementTime = 0;
@@ -31,26 +29,10 @@ export class PlayerController {
     this.setupEventHandlers();
   }
 
-  // Set game state reference
-  setGameState(gameState, playerId) {
-    console.log('PlayerController: setGameState called with:', {
-      gameState: !!gameState,
-      gameStarted: gameState?.gameStarted,
-      playerId: playerId,
-      players: gameState?.players ? Object.keys(gameState.players) : 'none'
-    });
-    this.gameState = gameState;
-    this.playerId = playerId;
-
-    // ✅ UPDATED: Ensure player has proper bomb attributes from server
-    if (gameState && gameState.players && playerId && gameState.players[playerId]) {
-      const player = gameState.players[playerId];
-      // Initialize bomb attributes if missing (for backward compatibility)
-      if (typeof player.maxBombs !== 'number') player.maxBombs = 1;
-      if (typeof player.currentBombs !== 'number') player.currentBombs = 0;
-    }
-
-    // ✅ SPEED POWER-UP: Update movement speed when game state changes
+  // Set game state reference (kept for backward compatibility)
+  // No local state is stored; rely on framework getters
+  setGameState(_gameState, _playerId) {
+    // Update movement speed based on current framework state
     this.updateMovementSpeed();
   }
 
@@ -70,17 +52,19 @@ export class PlayerController {
   }
 
   handleGameInput(e) {
-    console.log('Key pressed:', e.key, 'GameState exists:', !!this.gameState, 'Game started:', this.gameState?.gameStarted, 'Player ID:', this.playerId);
-    
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    console.log('Key pressed:', e.key, 'GameState exists:', !!gs, 'Game started:', gs?.gameStarted, 'Player ID:', pid);
+
     // Don't handle input if a chat input has focus
     const activeElement = document.activeElement;
     if (activeElement && (activeElement.id === 'chat-input' || activeElement.id === 'game-chat-input')) {
       console.log('Input blocked - Chat input has focus');
       return;
     }
-    
+
     // Only handle input when game has started and we have a player
-    if (!this.gameState?.gameStarted || !this.playerId) {
+    if (!gs?.gameStarted || !pid) {
       console.log('Input blocked - Game not started or no player ID');
       return;
     }
@@ -130,8 +114,10 @@ export class PlayerController {
 
   movePlayer(direction) {
     // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
-    if (this.gameState && this.gameState.players && this.playerId) {
-      const currentPlayer = this.gameState.players[this.playerId];
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (gs && gs.players && pid) {
+      const currentPlayer = gs.players[pid];
       if (currentPlayer && !currentPlayer.alive) {
         console.log('Movement blocked: Player is eliminated (ghost mode)');
         return;
@@ -183,8 +169,10 @@ export class PlayerController {
   }
 
   placeBomb() {
-    if (!this.gameState?.gameStarted || !this.playerId) return;
-    const player = this.gameState.players[this.playerId];
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!gs?.gameStarted || !pid) return;
+    const player = gs.players[pid];
     if (!player) return;
 
     // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
@@ -212,7 +200,7 @@ export class PlayerController {
     }
 
     // Check if there's already a bomb at player's position
-    const existingBomb = this.gameState.bombs?.find(bomb => bomb.x === player.x && bomb.y === player.y);
+    const existingBomb = gs.bombs?.find(bomb => bomb.x === player.x && bomb.y === player.y);
     if (existingBomb) {
       console.log('🚫 CLIENT VALIDATION FAILED: Bomb already exists at position');
       return;
@@ -234,17 +222,19 @@ export class PlayerController {
 
 
   validateClientMoveWithRenderCheck(direction) {
-    if (!this.gameState || !this.gameState.players || !this.playerId) {
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!gs || !gs.players || !pid) {
       return { isValid: false, reason: 'No game state or player' };
     }
 
-    const player = this.gameState.players[this.playerId];
+    const player = gs.players[pid];
     if (!player) {
       return { isValid: false, reason: 'Player not found' };
     }
 
     // ✅ CONSOLIDATED: Use shared movement validator
-    const result = MovementValidator.validateMove(player, direction, this.gameState);
+    const result = MovementValidator.validateMove(player, direction, gs);
 
     // Update framework counters based on result
     if (result.isValid) {
@@ -298,19 +288,21 @@ export class PlayerController {
 
   // ✅ SPEED POWER-UP: Calculate movement throttle based on speed level
   updateMovementSpeed() {
-    if (!this.gameState || !this.gameState.players || !this.playerId) {
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!gs || !gs.players || !pid) {
       this.moveThrottle = this.baseMoveThrottle;
       return;
     }
 
-    const player = this.gameState.players[this.playerId];
+    const player = gs.players[pid];
     if (!player || !player.powerUps) {
       this.moveThrottle = this.baseMoveThrottle;
       return;
     }
 
     const speedLevel = player.powerUps.speed || 1;
-    
+
     // Speed level 1: 150ms (slow), level 2: 100ms (medium), level 3: 50ms (fast)
     const speedMultipliers = {
       1: 1.0,    // 150ms - base speed
@@ -320,7 +312,7 @@ export class PlayerController {
 
     const multiplier = speedMultipliers[speedLevel] || 1.0;
     this.moveThrottle = Math.round(this.baseMoveThrottle * multiplier);
-    
+
     console.log(`PlayerController: Speed level ${speedLevel}, movement throttle: ${this.moveThrottle}ms`);
   }
 

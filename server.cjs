@@ -2,19 +2,38 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocketManager = require('./src/backend/websocketServer.cjs');
-const {
-  MAP_CONFIG,
-  GAME_TIMING,
-  PLAYER_CONFIG,
-  STARTING_POSITIONS,
-  CELL_TYPES,
-  POWER_UP_CONFIG,
-  EXPLOSION_CONFIG,
-  SERVER_CONFIG,
-  MIME_TYPES
-} = require('./src/shared/GameConstants.js');
+let MAP_CONFIG, GAME_TIMING, PLAYER_CONFIG, STARTING_POSITIONS, CELL_TYPES, POWER_UP_CONFIG, EXPLOSION_CONFIG, SERVER_CONFIG, MIME_TYPES;
+// Dynamically import ESM shared modules before bootstrapping server
+(async () => {
+  try {
+    const constants = await import('./src/shared/GameConstants.js');
+    MAP_CONFIG = constants.MAP_CONFIG;
+    GAME_TIMING = constants.GAME_TIMING;
+    PLAYER_CONFIG = constants.PLAYER_CONFIG;
+    STARTING_POSITIONS = constants.STARTING_POSITIONS;
+    CELL_TYPES = constants.CELL_TYPES;
+    POWER_UP_CONFIG = constants.POWER_UP_CONFIG;
+    EXPLOSION_CONFIG = constants.EXPLOSION_CONFIG;
+    SERVER_CONFIG = constants.SERVER_CONFIG;
+    MIME_TYPES = constants.MIME_TYPES;
 
-const { MovementValidator } = require('./src/shared/MovementValidator.js');
+    const movement = await import('./src/shared/MovementValidator.js');
+    MovementValidator = movement.MovementValidator;
+
+    // Start the server after ESM modules are available
+    PORT = SERVER_CONFIG.PORT;
+
+    bootstrap();
+  } catch (err) {
+    console.error('Failed to load ESM modules:', err);
+    process.exit(1);
+  }
+})();
+
+
+let MovementValidator;
+
+let gameServer, wsManager, server;
 
 class GameServer {
   constructor() {
@@ -23,6 +42,7 @@ class GameServer {
       players: {},
       bombs: [],
       powerUps: [],
+
       gameStarted: false,
       gameTimer: null,
       countdown: 0,
@@ -871,20 +891,25 @@ class GameServer {
   }
 }
 
-const PORT = SERVER_CONFIG.PORT;
-const gameServer = new GameServer();
-const wsManager = new WebSocketManager(gameServer);
-gameServer.setWebSocketManager(wsManager);
+// Delay reading PORT until after dynamic import has populated SERVER_CONFIG
+let PORT;
 
-const server = http.createServer((req, res) => {
-  console.log(`${req.method} ${req.url}`);
 
-  if (req.url.startsWith('/api/')) {
-    handleApiRequest(req, res);
-    return;
-  }
 
-  let filePath = req.url === '/' ? './index.html' : '.' + req.url;
+function bootstrap() {
+  gameServer = new GameServer();
+  wsManager = new WebSocketManager(gameServer);
+  gameServer.setWebSocketManager(wsManager);
+
+  server = http.createServer((req, res) => {
+    console.log(`${req.method} ${req.url}`);
+
+    if (req.url.startsWith('/api/')) {
+      handleApiRequest(req, res);
+      return;
+    }
+
+    let filePath = req.url === '/' ? './index.html' : '.' + req.url;
   const ext = path.extname(filePath);
   const contentType = MIME_TYPES[ext] || 'text/plain';
 
@@ -925,7 +950,7 @@ const server = http.createServer((req, res) => {
 
 function handleApiRequest(req, res) {
   console.log(`API Request: ${req.method} ${req.url}`);
-  
+
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
@@ -957,19 +982,19 @@ function handleApiRequest(req, res) {
         console.log('Received join request body:', body);
         const { nickname } = JSON.parse(body);
         console.log('Parsed nickname:', nickname);
-        
+
         const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
         console.log('Generated player ID:', playerId);
-        
+
         const result = gameServer.addPlayer(playerId, nickname);
         console.log('Add player result:', result);
-        
+
         if (result.success) {
-          const response = { 
-            success: true, 
+          const response = {
+            success: true,
             playerId: playerId,
-            player: result.player, 
-            gameState: gameServer.getGameState() 
+            player: result.player,
+            gameState: gameServer.getGameState()
           };
           res.writeHead(200);
           res.end(JSON.stringify(response));
@@ -995,7 +1020,7 @@ function handleApiRequest(req, res) {
         const { playerId, direction } = JSON.parse(body);
         console.log(`Move request: ${playerId} -> ${direction}`);
         const result = gameServer.movePlayer(playerId, direction);
-        
+
         res.writeHead(200);
         res.end(JSON.stringify({ success: result, gameState: gameServer.getGameState() }));
       } catch (error) {
@@ -1013,7 +1038,7 @@ function handleApiRequest(req, res) {
       try {
         const { playerId } = JSON.parse(body);
         const result = gameServer.placeBomb(playerId);
-        
+
         res.writeHead(200);
         res.end(JSON.stringify({ success: result, gameState: gameServer.getGameState() }));
       } catch (error) {
@@ -1034,3 +1059,4 @@ server.listen(PORT, () => {
   wsManager.initWebSocketServer(server);
   console.log(`WebSocket server initialized on port ${PORT}`);
 });
+}

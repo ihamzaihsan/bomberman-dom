@@ -5,10 +5,6 @@ export class GameUIManager {
   constructor(framework) {
     this.framework = framework;
 
-    // UI state
-    this.gameState = null;
-    this.playerId = null;
-
     // Event callbacks
     this.onReturnToLobby = null;
     this.onShowError = null;
@@ -18,10 +14,10 @@ export class GameUIManager {
     this.notificationManager = null;
   }
 
-  // Set game state reference
-  setGameState(gameState, playerId) {
-    this.gameState = gameState;
-    this.playerId = playerId;
+  // Set game state reference (kept for backward compatibility)
+  // No local copies are stored; modules should read from framework state directly
+  setGameState(_gameState, _playerId) {
+    // No-op: rely on this.framework.get('gameState') / this.framework.get('playerId')
   }
 
   // Set callback functions
@@ -41,8 +37,9 @@ export class GameUIManager {
   // ✅ OPTIMIZED: Use cached elements for timer updates
   updateTimer() {
     let timeLeft = 180; // default to 3 minutes
-    if (this.gameState && this.gameState.gameTimeLeft !== undefined) {
-      timeLeft = this.gameState.gameTimeLeft;
+    const gs = this.framework.get('gameState');
+    if (gs && gs.gameTimeLeft !== undefined) {
+      timeLeft = gs.gameTimeLeft;
     }
     // Only update if timer elements exist (we're in game screen)
     const timerValue = document.getElementById('timer-value');
@@ -56,18 +53,9 @@ export class GameUIManager {
   // Update game timer from server events
   updateGameTimer(timeLeft) {
     console.log('GameUIManager: updateGameTimer called with timeLeft:', timeLeft);
-    // ✅ FIX: Update game state with server-provided time
-    if (this.framework) {
-      // Use merge to avoid replacing the whole gameState object
-      const gs = this.framework.get('gameState') || {};
-      const newGs = { ...gs, gameTimeLeft: timeLeft };
-      this.framework.set('gameState', newGs);
-      console.log('GameUIManager: framework gameState.gameTimeLeft set to:', timeLeft);
-    } else if (this.gameState) {
-      // Fallback for legacy usage
-      this.gameState.gameTimeLeft = timeLeft;
-      console.log('GameUIManager: updated local gameState.gameTimeLeft to:', timeLeft);
-    }
+    // ✅ FIX: Update game state with server-provided time via framework
+    this.framework.merge('gameState', { gameTimeLeft: timeLeft });
+    console.log('GameUIManager: framework gameState.gameTimeLeft set to:', timeLeft);
 
     // Update timer display
     console.log('GameUIManager: calling updateTimer()');
@@ -119,8 +107,10 @@ export class GameUIManager {
 
   // ✅ ENHANCED: Update player stats with selective updating
   updatePlayerStats(forceUpdate = false) {
-    if (!this.gameState || !this.gameState.players || !this.playerId) return;
-    const currentPlayer = this.gameState.players[this.playerId];
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!gs || !gs.players || !pid) return;
+    const currentPlayer = gs.players[pid];
     if (!currentPlayer) return;
 
     const livesElement = document.getElementById('player-lives');
@@ -195,8 +185,10 @@ export class GameUIManager {
     }
 
     const app = document.getElementById('app');
-    const winner = this.gameState.winner;
-    const isCurrentPlayerWinner = winner && winner.id === this.playerId;
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    const winner = gs?.winner;
+    const isCurrentPlayerWinner = winner && winner.id === pid;
 
     // Determine personalized messages and styling
     let personalMessage = '';
@@ -231,7 +223,7 @@ export class GameUIManager {
     }
 
     // Add time-based context if applicable
-    if (this.gameState.gameTimeLeft <= 0) {
+    if ((gs?.gameTimeLeft ?? 0) <= 0) {
       personalMessage = isCurrentPlayerWinner ? 'Time\'s Up - You Win!' : 'Time\'s Up - You Lose';
     }
 
@@ -253,9 +245,9 @@ export class GameUIManager {
         <div class="final-results">
           <h3>📊 Final Results</h3>
           <div class="players-final-stats">
-            ${Object.values(this.gameState.players).map(player => {
+            ${Object.values(gs.players).map(player => {
               const isWinner = winner && player.id === winner.id;
-              const isCurrentPlayer = player.id === this.playerId;
+              const isCurrentPlayer = player.id === pid;
               let cssClass = 'player-final-stat';
               if (isCurrentPlayer) cssClass += ' current-player';
               if (isWinner) cssClass += ' winner';
@@ -321,9 +313,7 @@ export class GameUIManager {
 
   // ===== GAME RESET FUNCTIONALITY =====
   resetGame() {
-    // Clear UI and state for a fresh start
-    this.gameState = null;
-    this.playerId = null;
+    // Clear UI-related elements/state for a fresh start (no local app state kept)
     // Clear element cache before recreating DOM to prevent stale references
     if (this.framework && this.framework.clearAllCaches) {
       this.framework.clearAllCaches();
@@ -423,7 +413,8 @@ export class GameUIManager {
 
   // ✅ NEW: Implement missing updateWaitingScreen method
   updateWaitingScreen() {
-    if (!this.gameState) return;
+    const gs = this.framework.get('gameState');
+    if (!gs) return;
 
     // Update player list
     this.updatePlayerList();
@@ -432,22 +423,24 @@ export class GameUIManager {
     this.updatePlayerCountInfo();
 
     // Update waiting timer if it exists
-    if (this.gameState.waitingTimeLeft !== undefined) {
-      this.updateWaitingTimer(this.gameState.waitingTimeLeft);
+    if (gs.waitingTimeLeft !== undefined) {
+      this.updateWaitingTimer(gs.waitingTimeLeft);
     }
 
     // Update countdown if it exists
-    if (this.gameState.countdown > 0) {
-      this.updateCountdown(this.gameState.countdown);
+    if ((gs.countdown || 0) > 0) {
+      this.updateCountdown(gs.countdown);
     }
   }
 
   // ✅ NEW: Update player list in lobby
   updatePlayerList() {
     const playersListElement = document.getElementById('players-list');
-    if (!playersListElement || !this.gameState) return;
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!playersListElement || !gs) return;
 
-    const players = Object.values(this.gameState.players);
+    const players = Object.values(gs.players);
 
     if (players.length === 0) {
       playersListElement.innerHTML = '<div class="player-item">No players in lobby</div>';
@@ -455,7 +448,7 @@ export class GameUIManager {
     }
 
     playersListElement.innerHTML = players.map((player) => {
-      const isCurrentPlayer = player.id === this.playerId;
+      const isCurrentPlayer = player.id === pid;
       return `
         <div class="player-item ${isCurrentPlayer ? 'current-player' : ''}">
           <span class="player-name">
@@ -481,9 +474,10 @@ export class GameUIManager {
   // ✅ NEW: Update player count information
   updatePlayerCountInfo() {
     const playerCountElement = document.getElementById('player-count-info');
-    if (!playerCountElement || !this.gameState) return;
+    const gs = this.framework.get('gameState');
+    if (!playerCountElement || !gs) return;
 
-    const playerCount = Object.keys(this.gameState.players).length;
+    const playerCount = Object.keys(gs.players).length;
     const maxPlayers = 4;
 
     let message = '';
@@ -503,13 +497,15 @@ export class GameUIManager {
   // ✅ NEW: Update player list in game screen with lives and crown identifier
   updateGamePlayersList() {
     const playersListElement = document.getElementById('players-list-game');
-    if (!playersListElement || !this.gameState || !this.gameState.players) return;
+    const gs = this.framework.get('gameState');
+    const pid = this.framework.get('playerId');
+    if (!playersListElement || !gs || !gs.players) return;
 
     // Clear existing content
     playersListElement.innerHTML = '';
 
-    const players = Object.values(this.gameState.players);
-    
+    const players = Object.values(gs.players);
+
     if (players.length === 0) {
       const emptyMessage = this.framework.selectiveRenderer.createElement('div', {
         className: 'no-players-message',
@@ -522,8 +518,8 @@ export class GameUIManager {
 
     // Create player list items
     players.forEach((player, index) => {
-      const isCurrentPlayer = player.id === this.playerId;
-      
+      const isCurrentPlayer = player.id === pid;
+
       // Create player item container
       const playerItem = this.framework.selectiveRenderer.createElement('div', {
         className: `game-player-item ${isCurrentPlayer ? 'current-player' : ''}`,
@@ -740,9 +736,10 @@ export class GameUIManager {
   updateGameScreen(previousState, newState) {
     // Update player stats (which also updates the player list)
     this.updatePlayerStats();
-    
+
     // Update timer if it has changed
-    if (newState && newState.gameTimeLeft !== undefined) {
+    const gs = this.framework.get('gameState');
+    if (gs && gs.gameTimeLeft !== undefined) {
       this.updateTimer();
     }
   }

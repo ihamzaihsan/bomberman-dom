@@ -4,7 +4,7 @@
 // ===== MAP CONFIGURATION =====
 export const MAP_CONFIG = {
   WIDTH: 13,
-  HEIGHT: 13,
+  HEIGHT: 13, 
   CELL_SIZE: 45, // CSS pixel size
   BLOCK_DENSITY: 0.6, // Probability of block generation
 };
