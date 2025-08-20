@@ -4,6 +4,25 @@
 export class AppEventHandlers {
   constructor(app) {
     this.app = app;
+    this.registerEventHandlers();
+  }
+
+  registerEventHandlers() {
+    const eventManager = this.app.framework.eventManager;
+
+    eventManager.addEventListener("countdown_update", (eventData) => this.app.gameUIManager.updateCountdown(eventData.countdown));
+    eventManager.addEventListener("waiting_timer_update", (eventData) => this.app.gameUIManager.updateWaitingTimer(eventData.waitingTimeLeft));
+    eventManager.addEventListener("player_joined", (eventData) => this.app.handlePlayerJoined(eventData));
+    eventManager.addEventListener("player_left", (eventData) => this.app.handlePlayerLeft(eventData));
+    eventManager.addEventListener("bomb_exploded", (eventData) => this.app.handleBombExplosion(eventData));
+    eventManager.addEventListener("powerup_spawned", (eventData) => this.app.handlePowerUpSpawned(eventData));
+    eventManager.addEventListener("powerup_collected", (eventData) => this.app.handlePowerUpCollected(eventData));
+    eventManager.addEventListener("game_started", (eventData) => this.app.handleGameStarted(eventData));
+    eventManager.addEventListener("timer_update", (eventData) => this.app.gameUIManager.updateGameTimer(eventData.timeLeft));
+    eventManager.addEventListener("player_damaged", this.handlePlayerDamaged.bind(this));
+    eventManager.addEventListener("player_eliminated", (eventData) => this.app.handlePlayerEliminated(eventData));
+    eventManager.addEventListener("game_ended", (eventData) => this.app.handleGameEnded(eventData));
+    eventManager.addEventListener("game_reset", (eventData) => this.app.handleGameReset(eventData));
   }
 
   handleJoinSuccess(data) {
@@ -167,49 +186,5 @@ export class AppEventHandlers {
     }
   }
 
-  handleGameEvent(eventType, eventData) {
-    switch (eventType) {
-      case "countdown_update":
-        this.app.gameUIManager.updateCountdown(eventData.countdown);
-        break;
-      case "waiting_timer_update":
-        this.app.gameUIManager.updateWaitingTimer(eventData.waitingTimeLeft);
-        break;
-      case "player_joined":
-        this.app.handlePlayerJoined(eventData);
-        break;
-      case "player_left":
-        this.app.handlePlayerLeft(eventData);
-        break;
-      case "bomb_exploded":
-        this.app.handleBombExplosion(eventData);
-        break;
-      case "powerup_spawned":
-        this.app.handlePowerUpSpawned(eventData);
-        break;
-      case "powerup_collected":
-        this.app.handlePowerUpCollected(eventData);
-        break;
-      case "game_started":
-        this.app.handleGameStarted(eventData);
-        break;
-      case "timer_update":
-        this.app.gameUIManager.updateGameTimer(eventData.timeLeft);
-        break;
-      case "player_damaged":
-        this.handlePlayerDamaged(eventData);
-        break;
-      case "player_eliminated":
-        this.app.handlePlayerEliminated(eventData);
-        break;
-      case "game_ended":
-        this.app.handleGameEnded(eventData);
-        break;
-      case "game_reset":
-        this.app.handleGameReset(eventData);
-        break;
-      default:
-        break;
-    }
-  }
+  
 }

@@ -37,35 +37,27 @@ export class ChatManager {
     // ✅ NEW: Get chat messages from framework state
     const chatMessages = this.app.framework.get('chatHistory') || [];
     
-    // Waiting room chat
+    const renderMessages = (container) => {
+      container.innerHTML = ''; // Clear previous messages
+      chatMessages.forEach(msg => {
+        const messageContainer = this.app.framework.selectiveRenderer.createElement('div', { className: 'chat-message' });
+        const nickname = this.app.framework.selectiveRenderer.createElement('span', { className: 'chat-nickname', textContent: `${msg.nickname}:` });
+        const message = this.app.framework.selectiveRenderer.createElement('span', { className: 'chat-text', textContent: msg.message });
+        messageContainer.appendChild(nickname);
+        messageContainer.appendChild(message);
+        container.appendChild(messageContainer);
+      });
+      container.scrollTop = container.scrollHeight;
+    };
+
     const chatContainer = this.app.framework.find('#chat-messages');
     if (chatContainer) {
-      chatContainer.innerHTML = chatMessages
-        .map(
-          (msg) => `
-        <div class="chat-message">
-          <span class="chat-nickname">${msg.nickname}:</span>
-          <span class="chat-text">${msg.message}</span>
-        </div>
-      `
-        )
-        .join("");
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      renderMessages(chatContainer);
     }
-    // Game screen chat
+    
     const gameChatContainer = this.app.framework.find('#game-chat-messages');
     if (gameChatContainer) {
-      gameChatContainer.innerHTML = chatMessages
-        .map(
-          (msg) => `
-        <div class="chat-message">
-          <span class="chat-nickname">${msg.nickname}:</span>
-          <span class="chat-text">${msg.message}</span>
-        </div>
-      `
-        )
-        .join("");
-      gameChatContainer.scrollTop = gameChatContainer.scrollHeight;
+      renderMessages(gameChatContainer);
     }
   }
 
@@ -110,23 +102,20 @@ export class ChatManager {
           }
         };
 
-        chatSend.addEventListener("click", this.chatSendHandler);
-        chatInput.addEventListener("keypress", this.chatKeyHandler);
+        this.app.framework.eventManager.click('#chat-send', this.chatSendHandler);
+        this.app.framework.eventManager.keypress('#chat-input', this.chatKeyHandler);
       }
     }, 50);
   }
 
   removeChatHandlers() {
     console.log('🔧 ChatManager: Removing chat handlers');
-    const chatInput = this.app.framework.find('#chat-input');
-    const chatSend = this.app.framework.find('#chat-send');
-
-    if (chatSend && this.chatSendHandler) {
-      chatSend.removeEventListener("click", this.chatSendHandler);
+    if (this.chatSendHandler) {
+      this.app.framework.eventManager.off('click', '#chat-send', this.chatSendHandler);
       this.chatSendHandler = null;
     }
-    if (chatInput && this.chatKeyHandler) {
-      chatInput.removeEventListener("keypress", this.chatKeyHandler);
+    if (this.chatKeyHandler) {
+      this.app.framework.eventManager.off('keypress', '#chat-input', this.chatKeyHandler);
       this.chatKeyHandler = null;
     }
   }
@@ -161,23 +150,20 @@ export class ChatManager {
           }
         };
 
-        gameChatSend.addEventListener("click", this.gameChatSendHandler);
-        gameChatInput.addEventListener("keypress", this.gameChatKeyHandler);
+        this.app.framework.eventManager.click('#game-chat-send', this.gameChatSendHandler);
+        this.app.framework.eventManager.keypress('#game-chat-input', this.gameChatKeyHandler);
       }
     }, 50);
   }
 
   removeGameChatHandlers() {
     console.log('🔧 ChatManager: Removing game chat handlers');
-    const gameChatInput = this.app.framework.find('#game-chat-input');
-    const gameChatSend = this.app.framework.find('#game-chat-send');
-
-    if (gameChatSend && this.gameChatSendHandler) {
-      gameChatSend.removeEventListener("click", this.gameChatSendHandler);
+    if (this.gameChatSendHandler) {
+      this.app.framework.eventManager.off('click', '#game-chat-send', this.gameChatSendHandler);
       this.gameChatSendHandler = null;
     }
-    if (gameChatInput && this.gameChatKeyHandler) {
-      gameChatInput.removeEventListener("keypress", this.gameChatKeyHandler);
+    if (this.gameChatKeyHandler) {
+      this.app.framework.eventManager.off('keypress', '#game-chat-input', this.gameChatKeyHandler);
       this.gameChatKeyHandler = null;
     }
   }

@@ -181,6 +181,8 @@ export class GameUIManager {
     }
 
     const app = this.framework.find('#app');
+    app.innerHTML = ''; // Clear previous content
+
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
     const winner = gs?.winner;
@@ -223,64 +225,74 @@ export class GameUIManager {
       personalMessage = isCurrentPlayerWinner ? 'Time\'s Up - You Win!' : 'Time\'s Up - You Lose';
     }
 
-    // ✅ ENHANCED: Personalized game end screen with player-specific messaging
-    app.innerHTML = `
-      <div class="game-end-screen">
-        <div class="${announcementClass}" style="${announcementStyle}">
-          <h1 class="personal-outcome">${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')} ${personalMessage} ${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')}</h1>
-          <div class="personal-submessage">${personalSubMessage}</div>
-          ${isCurrentPlayerWinner ?
-            '<p class="victory-flavor">Congratulations on your explosive victory!</p>' :
-            (winner && winner.id !== 'draw' && winner.id !== 'none' ?
-              '<p class="defeat-flavor">Better luck next time, bomber!</p>' :
-              '<p class="neutral-flavor">Thanks for playing!</p>'
-            )
-          }
-        </div>
+    const gameEndScreen = this.framework.selectiveRenderer.createElement('div', { className: 'game-end-screen' });
 
-        <div class="final-results">
-          <h3>📊 Final Results</h3>
-          <div class="players-final-stats">
-            ${Object.values(gs.players).map(player => {
-              const isWinner = winner && player.id === winner.id;
-              const isCurrentPlayer = player.id === pid;
-              let cssClass = 'player-final-stat';
-              if (isCurrentPlayer) cssClass += ' current-player';
-              if (isWinner) cssClass += ' winner';
+    // Announcement
+    const announcement = this.framework.selectiveRenderer.createElement('div', { className: announcementClass, style: announcementStyle });
+    const outcome = this.framework.selectiveRenderer.createElement('h1', { className: 'personal-outcome', innerHTML: `${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')} ${personalMessage} ${isCurrentPlayerWinner ? '🏆' : (winner && winner.id !== 'draw' && winner.id !== 'none' ? '💀' : '🎮')}` });
+    const subMessage = this.framework.selectiveRenderer.createElement('div', { className: 'personal-submessage', textContent: personalSubMessage });
+    announcement.appendChild(outcome);
+    announcement.appendChild(subMessage);
 
-              return `
-                <div class="${cssClass}">
-                  <span class="player-name">
-                    ${isWinner ? '👑 ' : ''}${player.nickname}${isCurrentPlayer ? ' (You)' : ''}
-                  </span>
-                  <span class="player-lives">❤️ Lives: ${player.alive ? player.lives : 0}</span>
-                  <span class="player-status ${player.alive ? 'alive' : 'eliminated'}">
-                    ${player.alive ? '✅ Alive' : '💀 Eliminated'}
-                  </span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
+    let flavorText;
+    if (isCurrentPlayerWinner) {
+      flavorText = this.framework.selectiveRenderer.createElement('p', { className: 'victory-flavor', textContent: 'Congratulations on your explosive victory!' });
+    } else if (winner && winner.id !== 'draw' && winner.id !== 'none') {
+      flavorText = this.framework.selectiveRenderer.createElement('p', { className: 'defeat-flavor', textContent: 'Better luck next time, bomber!' });
+    } else {
+      flavorText = this.framework.selectiveRenderer.createElement('p', { className: 'neutral-flavor', textContent: 'Thanks for playing!' });
+    }
+    announcement.appendChild(flavorText);
 
-        <div class="game-end-actions">
-          <button id="play-again-btn" class="primary-button">🎮 Play Again</button>
-          <div class="countdown-to-lobby">
-            <p>Auto-returning to lobby in <span id="lobby-countdown">10</span> seconds...</p>
-          </div>
-        </div>
-      </div>
-    `;
+    // Final Results
+    const finalResults = this.framework.selectiveRenderer.createElement('div', { className: 'final-results' });
+    const resultsTitle = this.framework.selectiveRenderer.createElement('h3', { innerHTML: '📊 Final Results' });
+    const playersFinalStats = this.framework.selectiveRenderer.createElement('div', { className: 'players-final-stats' });
+
+    Object.values(gs.players).forEach(player => {
+      const isWinner = winner && player.id === winner.id;
+      const isCurrentPlayer = player.id === pid;
+      let cssClass = 'player-final-stat';
+      if (isCurrentPlayer) cssClass += ' current-player';
+      if (isWinner) cssClass += ' winner';
+
+      const playerStat = this.framework.selectiveRenderer.createElement('div', { className: cssClass });
+      const playerName = this.framework.selectiveRenderer.createElement('span', { className: 'player-name', innerHTML: `${isWinner ? '👑 ' : ''}${player.nickname}${isCurrentPlayer ? ' (You)' : ''}` });
+      const playerLives = this.framework.selectiveRenderer.createElement('span', { className: 'player-lives', innerHTML: `❤️ Lives: ${player.alive ? player.lives : 0}` });
+      const playerStatus = this.framework.selectiveRenderer.createElement('span', { className: `player-status ${player.alive ? 'alive' : 'eliminated'}`,
+        innerHTML: `${player.alive ? '✅ Alive' : '💀 Eliminated'}`
+      });
+
+      playerStat.appendChild(playerName);
+      playerStat.appendChild(playerLives);
+      playerStat.appendChild(playerStatus);
+      playersFinalStats.appendChild(playerStat);
+    });
+
+    finalResults.appendChild(resultsTitle);
+    finalResults.appendChild(playersFinalStats);
+
+    // Game End Actions
+    const gameEndActions = this.framework.selectiveRenderer.createElement('div', { className: 'game-end-actions' });
+    const playAgainBtn = this.framework.selectiveRenderer.createElement('button', { id: 'play-again-btn', className: 'primary-button', innerHTML: '🎮 Play Again' });
+    const countdownToLobby = this.framework.selectiveRenderer.createElement('div', { className: 'countdown-to-lobby' });
+    const countdownP = this.framework.selectiveRenderer.createElement('p', { innerHTML: 'Auto-returning to lobby in <span id="lobby-countdown">10</span> seconds...' });
+    countdownToLobby.appendChild(countdownP);
+    gameEndActions.appendChild(playAgainBtn);
+    gameEndActions.appendChild(countdownToLobby);
+
+    gameEndScreen.appendChild(announcement);
+    gameEndScreen.appendChild(finalResults);
+    gameEndScreen.appendChild(gameEndActions);
+
+    app.appendChild(gameEndScreen);
 
     // Set up play again button
-    const playAgainBtn = document.getElementById('play-again-btn');
-    if (playAgainBtn) {
-      playAgainBtn.addEventListener('click', () => {
-        if (this.onReturnToLobby) {
-          this.onReturnToLobby();
-        }
-      });
-    }
+    this.framework.eventManager.click('#play-again-btn', () => {
+      if (this.onReturnToLobby) {
+        this.onReturnToLobby();
+      }
+    });
 
     // Start countdown to return to lobby
     this.startLobbyCountdown();
@@ -288,7 +300,7 @@ export class GameUIManager {
 
   startLobbyCountdown() {
     let countdown = GAME_TIMING.COUNTDOWN_DURATION; // ✅ CONSOLIDATED: Use shared constant
-    const countdownElement = document.getElementById('lobby-countdown');
+    const countdownElement = this.framework.find('#lobby-countdown');
 
     const countdownInterval = setInterval(() => {
       countdown--;
@@ -315,13 +327,13 @@ export class GameUIManager {
       this.framework.clearAllCaches();
     }
     // Clear app container
-    const app = document.getElementById('app');
+    const app = this.framework.find('#app');
     if (app) app.innerHTML = '';
     // Remove any lingering overlays (e.g., damage flash)
-    const flashOverlay = document.getElementById('damage-flash-overlay');
+    const flashOverlay = this.framework.find('#damage-flash-overlay');
     if (flashOverlay) flashOverlay.remove();
     // Remove any notification area
-    const notificationArea = document.getElementById('notification-area');
+    const notificationArea = this.framework.find('#notification-area');
     if (notificationArea) notificationArea.remove();
     // Don't automatically show initial screen - let calling code decide what to show
   }
@@ -334,30 +346,39 @@ export class GameUIManager {
       this.framework.clearAllCaches();
     }
 
-    const app = document.getElementById('app');
-    app.innerHTML = `
-      <div class="nickname-screen">
-        <h1>Bomberman</h1>
-        <div class="nickname-form-container">
-          <form id="nickname-form" action="javascript:void(0);">
-            <label for="nickname-input">Enter your nickname:</label>
-            <input
-              id="nickname-input"
-              type="text"
-              placeholder="Your nickname"
-              required
-              maxlength="20"
-              minlength="2"
-            >
-            <button type="submit">Join Game</button>
-          </form>
-          <div id="error-message" class="error" style="display: none;"></div>
-        </div>
-      </div>
-    `;
+    const app = this.framework.find('#app');
+    app.innerHTML = ''; // Clear previous content
+
+    const nicknameScreen = this.framework.selectiveRenderer.createElement('div', { className: 'nickname-screen' });
+    const title = this.framework.selectiveRenderer.createElement('h1', { textContent: 'Bomberman' });
+    const formContainer = this.framework.selectiveRenderer.createElement('div', { className: 'nickname-form-container' });
+    const form = this.framework.selectiveRenderer.createElement('form', { id: 'nickname-form', action: 'javascript:void(0);' });
+    const label = this.framework.selectiveRenderer.createElement('label', { htmlFor: 'nickname-input', textContent: 'Enter your nickname:' });
+    const input = this.framework.selectiveRenderer.createElement('input', {
+      id: 'nickname-input',
+      type: 'text',
+      placeholder: 'Your nickname',
+      required: true,
+      maxlength: '20',
+      minlength: '2'
+    });
+    const button = this.framework.selectiveRenderer.createElement('button', { type: 'submit', textContent: 'Join Game' });
+    const errorDiv = this.framework.selectiveRenderer.createElement('div', { id: 'error-message', className: 'error', style: 'display: none;' });
+
+    form.appendChild(label);
+    form.appendChild(input);
+    form.appendChild(button);
+
+    formContainer.appendChild(form);
+    formContainer.appendChild(errorDiv);
+
+    nicknameScreen.appendChild(title);
+    nicknameScreen.appendChild(formContainer);
+
+    app.appendChild(nicknameScreen);
 
     // Focus on nickname
-    const nicknameInput = document.getElementById('nickname-input');
+    const nicknameInput = this.framework.find('#nickname-input');
     if (nicknameInput) {
       nicknameInput.focus();
     }
@@ -369,39 +390,52 @@ export class GameUIManager {
       this.framework.clearAllCaches();
     }
 
-    const app = document.getElementById('app');
+    const app = this.framework.find('#app');
+    app.innerHTML = ''; // Clear previous content
 
-    app.innerHTML = `
-      <div class="waiting-screen">
-        <h1>Waiting for Game to Start</h1>
+    const waitingScreen = this.framework.selectiveRenderer.createElement('div', { className: 'waiting-screen' });
+    const title = this.framework.selectiveRenderer.createElement('h1', { textContent: 'Waiting for Game to Start' });
+    const waitingContent = this.framework.selectiveRenderer.createElement('div', { className: 'waiting-content' });
 
-        <div class="waiting-content">
-          <div class="player-info">
-            <h3>Players in Lobby:</h3>
-            <div id="players-list" class="players-list"></div>
-            <p id="player-count-info">Waiting for players...</p>
-          </div>
+    const playerInfo = this.framework.selectiveRenderer.createElement('div', { className: 'player-info' });
+    const playerInfoTitle = this.framework.selectiveRenderer.createElement('h3', { textContent: 'Players in Lobby:' });
+    const playersList = this.framework.selectiveRenderer.createElement('div', { id: 'players-list', className: 'players-list' });
+    const playerCountInfo = this.framework.selectiveRenderer.createElement('p', { id: 'player-count-info', textContent: 'Waiting for players...' });
+    playerInfo.appendChild(playerInfoTitle);
+    playerInfo.appendChild(playersList);
+    playerInfo.appendChild(playerCountInfo);
 
-          <div class="chat-container">
-            <h3>Chat:</h3>
-            <div id="chat-messages" class="chat-messages"></div>
-            <div class="chat-input-container">
-              <input id="chat-input" type="text" placeholder="Type a message..." maxlength="100">
-              <button id="chat-send">Send</button>
-            </div>
-          </div>
-        </div>
+    const chatContainer = this.framework.selectiveRenderer.createElement('div', { className: 'chat-container' });
+    const chatTitle = this.framework.selectiveRenderer.createElement('h3', { textContent: 'Chat:' });
+    const chatMessages = this.framework.selectiveRenderer.createElement('div', { id: 'chat-messages', className: 'chat-messages' });
+    const chatInputContainer = this.framework.selectiveRenderer.createElement('div', { className: 'chat-input-container' });
+    const chatInput = this.framework.selectiveRenderer.createElement('input', { id: 'chat-input', type: 'text', placeholder: 'Type a message...', maxlength: '100' });
+    const chatButton = this.framework.selectiveRenderer.createElement('button', { id: 'chat-send', textContent: 'Send' });
+    chatInputContainer.appendChild(chatInput);
+    chatInputContainer.appendChild(chatButton);
+    chatContainer.appendChild(chatTitle);
+    chatContainer.appendChild(chatMessages);
+    chatContainer.appendChild(chatInputContainer);
 
-        <div class="waiting-timer-container">
-          <p>Game starts in: <span id="waiting-timer">--:--</span></p>
-          <p>Game will start automatically when timer expires or 4 players join</p>
-        </div>
+    waitingContent.appendChild(playerInfo);
+    waitingContent.appendChild(chatContainer);
 
-        <div id="countdown-container" class="countdown" style="display: none;">
-          <h2 id="countdown-text">Game starting in: 10</h2>
-        </div>
-      </div>
-    `;
+    const waitingTimerContainer = this.framework.selectiveRenderer.createElement('div', { className: 'waiting-timer-container' });
+    const waitingTimerText = this.framework.selectiveRenderer.createElement('p', { innerHTML: 'Game starts in: <span id="waiting-timer">--:--</span>' });
+    const waitingTimerSubtext = this.framework.selectiveRenderer.createElement('p', { textContent: 'Game will start automatically when timer expires or 4 players join' });
+    waitingTimerContainer.appendChild(waitingTimerText);
+    waitingTimerContainer.appendChild(waitingTimerSubtext);
+
+    const countdownContainer = this.framework.selectiveRenderer.createElement('div', { id: 'countdown-container', className: 'countdown', style: 'display: none;' });
+    const countdownText = this.framework.selectiveRenderer.createElement('h2', { id: 'countdown-text', textContent: 'Game starting in: 10' });
+    countdownContainer.appendChild(countdownText);
+
+    waitingScreen.appendChild(title);
+    waitingScreen.appendChild(waitingContent);
+    waitingScreen.appendChild(waitingTimerContainer);
+    waitingScreen.appendChild(countdownContainer);
+
+    app.appendChild(waitingScreen);
 
     // ✅ CRITICAL FIX: Update player list immediately after showing waiting screen
     this.updateWaitingScreen();
@@ -431,32 +465,33 @@ export class GameUIManager {
 
   // ✅ NEW: Update player list in lobby
   updatePlayerList() {
-    const playersListElement = document.getElementById('players-list');
+    const playersListElement = this.framework.find('#players-list');
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
     if (!playersListElement || !gs) return;
 
+    playersListElement.innerHTML = ''; // Clear previous content
+
     const players = Object.values(gs.players);
 
     if (players.length === 0) {
-      playersListElement.innerHTML = '<div class="player-item">No players in lobby</div>';
+      const playerItem = this.framework.selectiveRenderer.createElement('div', { className: 'player-item', textContent: 'No players in lobby' });
+      playersListElement.appendChild(playerItem);
       return;
     }
 
-    playersListElement.innerHTML = players.map((player) => {
+    players.forEach((player) => {
       const isCurrentPlayer = player.id === pid;
-      return `
-        <div class="player-item ${isCurrentPlayer ? 'current-player' : ''}">
-          <span class="player-name">
-            ${player.nickname}${isCurrentPlayer ? ' (You)' : ''}
-          </span>
-          <span class="player-status">Ready</span>
-        </div>
-      `;
-    }).join('');
+      const playerItem = this.framework.selectiveRenderer.createElement('div', { className: `player-item ${isCurrentPlayer ? 'current-player' : ''}` });
+      const playerName = this.framework.selectiveRenderer.createElement('span', { className: 'player-name', textContent: `${player.nickname}${isCurrentPlayer ? ' (You)' : ''}` });
+      const playerStatus = this.framework.selectiveRenderer.createElement('span', { className: 'player-status', textContent: 'Ready' });
+      playerItem.appendChild(playerName);
+      playerItem.appendChild(playerStatus);
+      playersListElement.appendChild(playerItem);
+    });
 
     // Remove "Waiting for players..." if at least two players are in the lobby
-    const playerCountElement = document.getElementById('player-count-info');
+    const playerCountElement = this.framework.find('#player-count-info');
     if (playerCountElement) {
       const playerCount = players.length;
       if (playerCount >= 2) {
@@ -469,7 +504,7 @@ export class GameUIManager {
 
   // ✅ NEW: Update player count information
   updatePlayerCountInfo() {
-    const playerCountElement = document.getElementById('player-count-info');
+    const playerCountElement = this.framework.find('#player-count-info');
     const gs = this.framework.get('gameState');
     if (!playerCountElement || !gs) return;
 
@@ -492,7 +527,7 @@ export class GameUIManager {
 
   // ✅ NEW: Update player list in game screen with lives and crown identifier
   updateGamePlayersList() {
-    const playersListElement = document.getElementById('players-list-game');
+    const playersListElement = this.framework.find('#players-list-game');
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
     if (!playersListElement || !gs || !gs.players) return;
@@ -605,57 +640,30 @@ export class GameUIManager {
     }
 
     // ✅ NEW: Use framework to create the game screen structure
-    const gameScreenContainer = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-screen'
-    });
+    const gameScreenContainer = this.framework.selectiveRenderer.createElement('div', { className: 'game-screen' });
 
     // Create game UI section
-    const gameUI = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-ui'
-    });
+    const gameUI = this.framework.selectiveRenderer.createElement('div', { className: 'game-ui' });
 
     // Game info section (timer and current player stats)
-    const gameInfo = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-info'
-    });
+    const gameInfo = this.framework.selectiveRenderer.createElement('div', { className: 'game-info' });
 
     // Timer display
-    const timerDisplay = this.framework.selectiveRenderer.createElement('div', {
-      className: 'timer-display',
-      id: 'timer-display',
-      innerHTML: 'Time: <span id="timer-value">0:00</span>'
-    });
+    const timerDisplay = this.framework.selectiveRenderer.createElement('div', { className: 'timer-display', id: 'timer-display', innerHTML: 'Time: <span id="timer-value">0:00</span>' });
 
     // Current player stats
-    const playerStats = this.framework.selectiveRenderer.createElement('div', {
-      className: 'player-stats'
-    });
+    const playerStats = this.framework.selectiveRenderer.createElement('div', { className: 'player-stats' });
 
-    const livesStatsDiv = this.framework.selectiveRenderer.createElement('div', {
-      className: 'stat',
-      innerHTML: '<span></span><span id="player-lives">3</span>'
-    });
+    const livesStatsDiv = this.framework.selectiveRenderer.createElement('div', { className: 'stat', innerHTML: '<span></span><span id="player-lives">3</span>' });
 
-    const bombsStatsDiv = this.framework.selectiveRenderer.createElement('div', {
-      className: 'stat',
-      innerHTML: '<span>Bombs:</span><span id="player-bombs">1</span>'
-    });
+    const bombsStatsDiv = this.framework.selectiveRenderer.createElement('div', { className: 'stat', innerHTML: '<span>Bombs:</span><span id="player-bombs">1</span>' });
 
     // ✅ NEW: Players list with lives (moved to game-info)
-    const playersListContainer = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-players-list',
-      id: 'game-players-list'
-    });
+    const playersListContainer = this.framework.selectiveRenderer.createElement('div', { className: 'game-players-list', id: 'game-players-list' });
 
-    const playersListTitle = this.framework.selectiveRenderer.createElement('h4', {
-      innerHTML: 'Players',
-      style: 'margin: 10px 0 5px 0; color: #ecf0f1; font-size: 0.9em;'
-    });
+    const playersListTitle = this.framework.selectiveRenderer.createElement('h4', { innerHTML: 'Players', style: 'margin: 10px 0 5px 0; color: #ecf0f1; font-size: 0.9em;' });
 
-    const playersListDiv = this.framework.selectiveRenderer.createElement('div', {
-      id: 'players-list-game',
-      className: 'players-list-game'
-    });
+    const playersListDiv = this.framework.selectiveRenderer.createElement('div', { id: 'players-list-game', className: 'players-list-game' });
 
     // Assemble game info section
     playerStats.appendChild(livesStatsDiv);
@@ -669,34 +677,21 @@ export class GameUIManager {
     gameInfo.appendChild(playersListContainer);
 
     // Game map container
-    const gameMapContainer = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-map-container'
-    });
+    const gameMapContainer = this.framework.selectiveRenderer.createElement('div', { className: 'game-map-container' });
 
-    const gameMap = this.framework.selectiveRenderer.createElement('div', {
-      id: 'game-map',
-      className: 'game-map'
-    });
+    const gameMap = this.framework.selectiveRenderer.createElement('div', { id: 'game-map', className: 'game-map' });
 
     gameMapContainer.appendChild(gameMap);
 
     // Game chat container
-    const gameChatContainer = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-chat-container'
-    });
+    const gameChatContainer = this.framework.selectiveRenderer.createElement('div', { className: 'game-chat-container' });
 
-    const gameChatMessages = this.framework.selectiveRenderer.createElement('div', {
-      id: 'game-chat-messages',
-      className: 'game-chat-messages'
-    });
+    const gameChatMessages = this.framework.selectiveRenderer.createElement('div', { id: 'game-chat-messages', className: 'game-chat-messages' });
 
-    const gameChatInputContainer = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-chat-input-container',
-      innerHTML: `
+    const gameChatInputContainer = this.framework.selectiveRenderer.createElement('div', { className: 'game-chat-input-container', innerHTML: `
         <input id="game-chat-input" type="text" placeholder="Chat..." maxlength="100">
         <button id="game-chat-send">Send</button>
-      `
-    });
+      ` });
 
     gameChatContainer.appendChild(gameChatMessages);
     gameChatContainer.appendChild(gameChatInputContainer);
@@ -707,20 +702,17 @@ export class GameUIManager {
     gameUI.appendChild(gameChatContainer);
 
     // Controls info
-    const controlsInfo = this.framework.selectiveRenderer.createElement('div', {
-      className: 'game-controls-info',
-      innerHTML: `
+    const controlsInfo = this.framework.selectiveRenderer.createElement('div', { className: 'game-controls-info', innerHTML: `
         <p>Controls: Arrow keys or WASD to move, Space/Enter to place bomb</p>
         <p>Press F12 to toggle performance monitor</p>
-      `
-    });
+      ` });
 
     // Assemble final structure
     gameScreenContainer.appendChild(gameUI);
     gameScreenContainer.appendChild(controlsInfo);
 
     // Add to DOM
-    const app = document.getElementById('app');
+    const app = this.framework.find('#app');
     app.innerHTML = '';
     app.appendChild(gameScreenContainer);
 
@@ -802,10 +794,10 @@ export class GameUIManager {
     gameScreen.classList.add('damage-shake');
 
     // Add CSS for shake animation if not present
-    if (!document.getElementById('damage-shake-styles')) {
-      const style = document.createElement('style');
-      style.id = 'damage-shake-styles';
-      style.textContent = `
+    if (!this.framework.find('#damage-shake-styles')) {
+      const style = this.framework.selectiveRenderer.createElement('style', {
+        id: 'damage-shake-styles',
+        textContent: `
         @keyframes damageShake {
           0%, 100% { transform: translateX(0); }
           10% { transform: translateX(-5px); }
@@ -821,7 +813,8 @@ export class GameUIManager {
         .damage-shake {
           animation: damageShake 0.5s ease-in-out;
         }
-      `;
+      `
+      });
       document.head.appendChild(style);
     }
 

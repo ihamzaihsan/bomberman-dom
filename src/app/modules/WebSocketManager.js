@@ -170,11 +170,11 @@ export class WebSocketManager {
 
   // Show/hide connection error
   showConnectionError(message) {
-    let errorDiv = document.getElementById('connection-error');
+    let errorDiv = this.framework.find('#connection-error');
     if (!errorDiv) {
-      errorDiv = document.createElement('div');
-      errorDiv.id = 'connection-error';
-      errorDiv.style.cssText = `
+      errorDiv = this.framework.selectiveRenderer.createElement('div', {
+        id: 'connection-error',
+        style: `
         position: fixed;
         top: 10px;
         left: 50%;
@@ -185,7 +185,8 @@ export class WebSocketManager {
         border-radius: 5px;
         z-index: 10001;
         font-weight: bold;
-      `;
+      `
+      });
       document.body.appendChild(errorDiv);
     }
     errorDiv.textContent = message;
@@ -193,7 +194,7 @@ export class WebSocketManager {
   }
 
   hideConnectionError() {
-    const errorDiv = document.getElementById('connection-error');
+    const errorDiv = this.framework.find('#connection-error');
     if (errorDiv) {
       errorDiv.style.display = 'none';
     }

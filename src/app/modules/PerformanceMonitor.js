@@ -56,22 +56,23 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
 
   createPerformanceDisplay() {
     // Create performance overlay container
-    this.performanceDisplay = document.createElement('div');
-    this.performanceDisplay.id = 'performance-monitor';
-    this.performanceDisplay.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 10000;
-      display: ${this.showPerformanceStats ? 'block' : 'none'};
-      min-width: 250px;
-    `;
+    this.performanceDisplay = this.framework.selectiveRenderer.createElement('div', {
+        id: 'performance-monitor',
+        style: `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        display: ${this.showPerformanceStats ? 'block' : 'none'};
+        min-width: 250px;
+      `
+    });
     
     document.body.appendChild(this.performanceDisplay);
     
@@ -80,22 +81,23 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   createMovementStatsDisplay() {
-    const movementStatsDisplay = document.createElement('div');
-    movementStatsDisplay.id = 'movement-performance-stats';
-    movementStatsDisplay.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 10000;
-      display: ${this.showPerformanceStats ? 'block' : 'none'};
-      min-width: 280px;
-    `;
+    const movementStatsDisplay = this.framework.selectiveRenderer.createElement('div', {
+        id: 'movement-performance-stats',
+        style: `
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        display: ${this.showPerformanceStats ? 'block' : 'none'};
+        min-width: 280px;
+      `
+    });
     
     document.body.appendChild(movementStatsDisplay);
     this.movementStatsDisplay = movementStatsDisplay;
@@ -118,20 +120,31 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     const fpsColor = fps >= 55 ? '#4CAF50' : fps >= 30 ? '#FF9800' : '#F44336';
     const frameTimeColor = frameTime <= 16.7 ? '#4CAF50' : frameTime <= 33.3 ? '#FF9800' : '#F44336';
     
-    this.performanceDisplay.innerHTML = `
-      <div style="border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;">
-        <strong>🔍 Performance Monitor</strong>
-      </div>
-      <div style="color: ${fpsColor}">FPS: ${fps.toFixed(1)}</div>
-      <div style="color: ${frameTimeColor}">Frame Time: ${frameTime.toFixed(1)}ms</div>
-      <div>Render Time: ${renderTime.toFixed(1)}ms</div>
-      <div>Update Time: ${updateTime.toFixed(1)}ms</div>
-      <div>Dropped Frames: ${droppedFrames} (${dropPercentage}%)</div>
-      <div>DOM Mutations: ${this.domMutationCount}</div>
-      <div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #444;">
-        <small>F12: Toggle | Framework v${this.framework.version || '1.0'}</small>
-      </div>
-    `;
+    this.performanceDisplay.innerHTML = ''; // Clear previous content
+
+    const title = this.framework.selectiveRenderer.createElement('div', { style: 'border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;' });
+    const titleStrong = this.framework.selectiveRenderer.createElement('strong', { textContent: '🔍 Performance Monitor' });
+    title.appendChild(titleStrong);
+
+    const fpsDiv = this.framework.selectiveRenderer.createElement('div', { style: `color: ${fpsColor}`, textContent: `FPS: ${fps.toFixed(1)}` });
+    const frameTimeDiv = this.framework.selectiveRenderer.createElement('div', { style: `color: ${frameTimeColor}`, textContent: `Frame Time: ${frameTime.toFixed(1)}ms` });
+    const renderTimeDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `Render Time: ${renderTime.toFixed(1)}ms` });
+    const updateTimeDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `Update Time: ${updateTime.toFixed(1)}ms` });
+    const droppedFramesDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `Dropped Frames: ${droppedFrames} (${dropPercentage}%)` });
+    const domMutationsDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `DOM Mutations: ${this.domMutationCount}` });
+
+    const footer = this.framework.selectiveRenderer.createElement('div', { style: 'margin-top: 8px; padding-top: 4px; border-top: 1px solid #444;' });
+    const footerSmall = this.framework.selectiveRenderer.createElement('small', { textContent: `F12: Toggle | Framework v${this.framework.version || '1.0'}` });
+    footer.appendChild(footerSmall);
+
+    this.performanceDisplay.appendChild(title);
+    this.performanceDisplay.appendChild(fpsDiv);
+    this.performanceDisplay.appendChild(frameTimeDiv);
+    this.performanceDisplay.appendChild(renderTimeDiv);
+    this.performanceDisplay.appendChild(updateTimeDiv);
+    this.performanceDisplay.appendChild(droppedFramesDiv);
+    this.performanceDisplay.appendChild(domMutationsDiv);
+    this.performanceDisplay.appendChild(footer);
     
     // Update movement stats
     this.updateMovementStatsDisplay();
@@ -149,26 +162,40 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     const totalSkipped = skippedInvalidMove + skippedNoChanges + skippedRepeated;
     const timeSinceInvalidMove = this.lastInvalidMoveTime ? Date.now() - this.lastInvalidMoveTime : 0;
     
-    this.movementStatsDisplay.innerHTML = `
-      <div style="border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;">
-        <strong>🎮 Movement Performance</strong>
-      </div>
-      <div>Valid Moves: <span style="color: #4CAF50">${validMoves}</span></div>
-      <div>Invalid Moves: <span style="color: #F44336">${invalidMoves}</span></div>
-      <div style="margin-top: 4px; font-size: 11px;">
-        <div>Skipped Renders:</div>
-        <div style="margin-left: 8px;">
-          • Invalid Move: ${skippedInvalidMove}
-          • No Changes: ${skippedNoChanges}
-          • Repeated: ${skippedRepeated}
-          • Total: <strong>${totalSkipped}</strong>
-        </div>
-      </div>
-      <div style="margin-top: 4px; font-size: 11px;">
-        <div>Last Invalid: ${this.lastInvalidMove || 'None'}</div>
-        <div>Time Since: ${timeSinceInvalidMove}ms ago</div>
-      </div>
-    `;
+    this.movementStatsDisplay.innerHTML = ''; // Clear previous content
+
+    const title = this.framework.selectiveRenderer.createElement('div', { style: 'border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;' });
+    const titleStrong = this.framework.selectiveRenderer.createElement('strong', { textContent: '🎮 Movement Performance' });
+    title.appendChild(titleStrong);
+
+    const validMovesDiv = this.framework.selectiveRenderer.createElement('div', { innerHTML: `Valid Moves: <span style="color: #4CAF50">${validMoves}</span>` });
+    const invalidMovesDiv = this.framework.selectiveRenderer.createElement('div', { innerHTML: `Invalid Moves: <span style="color: #F44336">${invalidMoves}</span>` });
+
+    const skippedRendersContainer = this.framework.selectiveRenderer.createElement('div', { style: 'margin-top: 4px; font-size: 11px;' });
+    const skippedRendersTitle = this.framework.selectiveRenderer.createElement('div', { textContent: 'Skipped Renders:' });
+    const skippedRendersList = this.framework.selectiveRenderer.createElement('div', { style: 'margin-left: 8px;' });
+    const skippedInvalidMoveDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `• Invalid Move: ${skippedInvalidMove}` });
+    const skippedNoChangesDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `• No Changes: ${skippedNoChanges}` });
+    const skippedRepeatedDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `• Repeated: ${skippedRepeated}` });
+    const totalSkippedDiv = this.framework.selectiveRenderer.createElement('div', { innerHTML: `• Total: <strong>${totalSkipped}</strong>` });
+    skippedRendersList.appendChild(skippedInvalidMoveDiv);
+    skippedRendersList.appendChild(skippedNoChangesDiv);
+    skippedRendersList.appendChild(skippedRepeatedDiv);
+    skippedRendersList.appendChild(totalSkippedDiv);
+    skippedRendersContainer.appendChild(skippedRendersTitle);
+    skippedRendersContainer.appendChild(skippedRendersList);
+
+    const lastInvalidContainer = this.framework.selectiveRenderer.createElement('div', { style: 'margin-top: 4px; font-size: 11px;' });
+    const lastInvalidMoveDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `Last Invalid: ${this.lastInvalidMove || 'None'}` });
+    const timeSinceInvalidMoveDiv = this.framework.selectiveRenderer.createElement('div', { textContent: `Time Since: ${timeSinceInvalidMove}ms ago` });
+    lastInvalidContainer.appendChild(lastInvalidMoveDiv);
+    lastInvalidContainer.appendChild(timeSinceInvalidMoveDiv);
+
+    this.movementStatsDisplay.appendChild(title);
+    this.movementStatsDisplay.appendChild(validMovesDiv);
+    this.movementStatsDisplay.appendChild(invalidMovesDiv);
+    this.movementStatsDisplay.appendChild(skippedRendersContainer);
+    this.movementStatsDisplay.appendChild(lastInvalidContainer);
   }
 
   triggerPerformanceWarnings(metrics) {
@@ -208,7 +235,7 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
+    this.framework.eventManager.on('keydown', 'body', (e) => {
       if (e.key === 'F12') {
         e.preventDefault();
         this.togglePerformanceStats();

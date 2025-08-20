@@ -61,31 +61,40 @@ export class MapRenderer {
     const bombs = gameState.bombs || [];
     const powerUps = gameState.powerUps || [];
 
-    return map.map((row, y) =>
-      row.map((cell, x) => {
+    const mapFragment = document.createDocumentFragment();
+
+    map.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        const cellElement = this.framework.selectiveRenderer.createElement('div', { className: `cell ${cell}`, id: `cell-${x}-${y}` });
+        cellElement.setAttribute('data-x', x);
+        cellElement.setAttribute('data-y', y);
+
         const playersAtPosition = Object.values(players).filter(p => p.x === x && p.y === y);
         const bombsAtPosition = bombs.filter(b => b.x === x && b.y === y);
         const powerUpsAtPosition = powerUps.filter(p => p.x === x && p.y === y);
 
-        return `
-          <div class="cell ${cell}" id="cell-${x}-${y}" data-x="${x}" data-y="${y}">
-            ${powerUpsAtPosition.map(powerUp =>
-              `<div class="powerup powerup-${powerUp.type}" data-powerup-id="${powerUp.id}">
-                ${this.getPowerUpEmoji(powerUp.type)}
-              </div>`
-            ).join('')}
-            ${bombsAtPosition.map(() =>
-              `<div class="bomb">💣</div>`
-            ).join('')}
-            ${playersAtPosition.map((player) => {
-              const playerKeys = Object.keys(players);
-              const playerIndex = playerKeys.indexOf(player.id);
-              return this.generatePlayerHTML(player, playerIndex);
-            }).join('')}
-          </div>
-        `;
-      }).join('')
-    ).join('');
+        powerUpsAtPosition.forEach(powerUp => {
+          const powerUpElement = this.createPowerUpElement(powerUp);
+          cellElement.appendChild(powerUpElement);
+        });
+
+        bombsAtPosition.forEach(bomb => {
+          const bombElement = this.createBombElement(bomb);
+          cellElement.appendChild(bombElement);
+        });
+
+        playersAtPosition.forEach((player) => {
+          const playerKeys = Object.keys(players);
+          const playerIndex = playerKeys.indexOf(player.id);
+          const playerElement = this.createPlayerElement(player, playerIndex);
+          cellElement.appendChild(playerElement);
+        });
+
+        mapFragment.appendChild(cellElement);
+      });
+    });
+
+    return mapFragment;
   }
 
 
@@ -115,7 +124,8 @@ export class MapRenderer {
     this.framework.cacheElement('game-map', gameMapElement);
 
     console.log('MapRenderer: Rendering map with', gameState.map.length, 'rows');
-    gameMapElement.innerHTML = this.renderGameMap(gameState);
+    gameMapElement.innerHTML = ''; // Clear previous content
+    gameMapElement.appendChild(this.renderGameMap(gameState));
 
     // ✅ NEW: Setup sprite loading for HTML-generated players
     this.setupPlayerSprites(gameMapElement);
@@ -286,9 +296,10 @@ export class MapRenderer {
   ensureGameMapStructure(gameMapElement, map) {
     // Check if we need to create the initial structure
     if (gameMapElement.children.length === 0) {
-      const mapHTML = map.map((row, y) =>
-        row.map((cell, x) => {
-          const cellElement = this.framework.createElement('div', {
+      const mapFragment = document.createDocumentFragment();
+      map.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          const cellElement = this.framework.selectiveRenderer.createElement('div', {
             className: `cell ${cell}`,
             id: `cell-${x}-${y}`
           });
@@ -297,15 +308,10 @@ export class MapRenderer {
 
           // Cache the element in framework
           this.framework.cacheElement(`cell-${x}-${y}`, cellElement);
-
-          return cellElement;
-        })
-      );
-
-      // Flatten and append all cells
-      mapHTML.flat().forEach(cellElement => {
-        gameMapElement.appendChild(cellElement);
+          mapFragment.appendChild(cellElement);
+        });
       });
+      gameMapElement.appendChild(mapFragment);
     }
   }
 
@@ -342,7 +348,7 @@ export class MapRenderer {
 
   createPowerUpElement(powerUpData) {
     // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const powerUpElement = this.getPooledElement('powerUps') || this.framework.createElement('div');
+    const powerUpElement = this.getPooledElement('powerUps') || this.framework.selectiveRenderer.createElement('div');
 
     powerUpElement.className = `powerup powerup-${powerUpData.type}`;
     powerUpElement.setAttribute('data-powerup-id', powerUpData.id);
@@ -354,7 +360,7 @@ export class MapRenderer {
 
   createBombElement(_bombData) {
     // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const bombElement = this.getPooledElement('bombs') || this.framework.createElement('div');
+    const bombElement = this.getPooledElement('bombs') || this.framework.selectiveRenderer.createElement('div');
 
     bombElement.className = 'bomb';
     bombElement.textContent = '💣';
@@ -365,7 +371,7 @@ export class MapRenderer {
 
   createPlayerElement(playerData, index) {
     // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const playerElement = this.getPooledElement('players') || this.framework.createElement('div');
+    const playerElement = this.getPooledElement('players') || this.framework.selectiveRenderer.createElement('div');
 
     // ✅ GHOST MODE: Apply ghost styling for eliminated players
     const isGhost = !playerData.alive;
@@ -542,7 +548,7 @@ export class MapRenderer {
     console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} affected cells - Chain depth: ${chainDepth}`);
 
     // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
-    const gameMap = this.framework.getCachedElement('game-map');
+    const gameMap = this.framework.find('#game-map');
     if (!gameMap) {
       console.error('❌ Game map element not found for explosion animation');
       return;
@@ -576,7 +582,7 @@ export class MapRenderer {
   createExplosionAnimation(x, y, type = 'blast', chainDepth = 0) {
     console.log(`🎯 Creating ${type} explosion animation at (${x}, ${y}) - Chain depth: ${chainDepth}`);
 
-    const gameMap = document.getElementById('game-map');
+    const gameMap = this.framework.find('#game-map');
     if (!gameMap) {
       console.error('❌ Game map not found in createExplosionAnimation');
       return;
@@ -586,7 +592,7 @@ export class MapRenderer {
     const cellSelector = `[data-x="${x}"][data-y="${y}"]`;
     console.log(`🔍 Looking for cell with selector: ${cellSelector}`);
 
-    const cellElement = gameMap.querySelector(cellSelector);
+    const cellElement = this.framework.find(cellSelector);
     if (!cellElement) {
       console.error(`❌ Cell element not found for explosion at (${x}, ${y})`);
       console.log('Available cells:', gameMap.querySelectorAll('[data-x][data-y]').length);
@@ -603,16 +609,16 @@ export class MapRenderer {
 
     // Create explosion element with simplified approach
     // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const explosionElement = this.framework.createElement('div');
+    const explosionElement = this.framework.selectiveRenderer.createElement('div');
     explosionElement.setAttribute('data-explosion', 'true');
     explosionElement.setAttribute('data-chain-depth', chainDepth.toString());
 
     // Add explosion content and classes based on type and chain depth
     if (type === 'center') {
-      explosionElement.innerHTML = '💥';
+      explosionElement.textContent = '💥';
       explosionElement.className = `explosion-effect explosion-center ${chainDepth > 0 ? 'chain-reaction' : ''}`;
     } else {
-      explosionElement.innerHTML = '🔥';
+      explosionElement.textContent = '🔥';
       explosionElement.className = `explosion-effect explosion-blast ${chainDepth > 0 ? 'chain-reaction' : ''}`;
     }
 

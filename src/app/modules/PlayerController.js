@@ -39,7 +39,7 @@ export class PlayerController {
   setupEventHandlers() {
     console.log('PlayerController: Setting up event handlers');
     // Handle keyboard input for movement and actions
-    document.addEventListener('keydown', (e) => {
+    this.framework.eventManager.keydown('body', (e) => {
       console.log('PlayerController: Keydown event captured:', e.key);
       this.handleGameInput(e);
     });
