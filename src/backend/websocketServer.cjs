@@ -10,7 +10,7 @@ class WebSocketManager {
     this.connectionAttempts = new Map();
     this.pendingJoins = new Map();
     this.joinRateLimit = 500;
-    this.ipRateLimit = 2000;
+    this.ipRateLimit = 1000; 
     this.maxConnectionsPerIP = 5;
 
     console.log('WebSocketManager initialized with connection deduplication');
@@ -111,6 +111,21 @@ class WebSocketManager {
 
     const normalizedNickname = nickname.trim().toLowerCase();
     const now = Date.now();
+
+    // Check if nickname is already in use by an active player
+    const currentPlayers = this.gameServer.getGameState().players;
+    const isNicknameInUse = Object.values(currentPlayers).some(
+      player => player.nickname.toLowerCase() === normalizedNickname
+    );
+
+    if (isNicknameInUse) {
+      console.log(`Rejecting join: Nickname "${nickname}" is already in use`);
+      this.sendToClient(ws, {
+        type: 'join_error',
+        message: 'This nickname is already in use. Please choose a different one.'
+      });
+      return;
+    }
 
     // Check if there's already a pending join for this nickname
     if (this.pendingJoins.has(normalizedNickname)) {

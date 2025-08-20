@@ -34,21 +34,27 @@ export class AppEventHandlers {
 
     const playerNickname = data.player?.nickname || this.app.framework.get('nickname') || 'Player';
     console.log('Join success - showing welcome notification for:', playerNickname);
-    console.log('Available nicknames - data.player.nickname:', data.player?.nickname, 'framework.nickname:', this.app.framework.get('nickname'));
 
+    // ✅ FIXED: Clear any existing notifications first
     this.app.clearChatHistory();
+    
+    // ✅ FIXED: Show welcome notification after a small delay to ensure UI is ready
+    setTimeout(() => {
+        this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
+    }, 100);
 
     this.app.playerController.updateMovementSpeed();
     this.app.resetJoinButton();
     this.app.gameUIManager.showWaitingScreen();
+    
+    // ✅ FIXED: Setup chat and update UI with slight delay to ensure DOM is ready
     setTimeout(() => {
-      this.app.setupChatHandlers();
-      this.app.updateWaitingScreen();
-      this.app.updateChatDisplay();
+        this.app.setupChatHandlers();
+        this.app.updateWaitingScreen();
+        this.app.updateChatDisplay();
     }, 100);
+    
     this.app.startOptimizedGameLoop();
-
-    this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
   }
 
   handleGameStarted(eventData) {
