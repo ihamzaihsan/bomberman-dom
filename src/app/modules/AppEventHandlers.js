@@ -28,17 +28,14 @@ export class AppEventHandlers {
   handleJoinSuccess(data) {
     console.log('CLIENT: handleJoinSuccess called with data:', data);
 
-    // ✅ NEW: Use framework state management
     this.app.framework.set('playerId', data.playerId);
     this.app.framework.set('gameState', data.gameState);
 
     const playerNickname = data.player?.nickname || this.app.framework.get('nickname') || 'Player';
     console.log('Join success - showing welcome notification for:', playerNickname);
 
-    // ✅ FIXED: Clear any existing notifications first
     this.app.clearChatHistory();
     
-    // ✅ FIXED: Show welcome notification after a small delay to ensure UI is ready
     setTimeout(() => {
         this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
     }, 100);
@@ -47,7 +44,6 @@ export class AppEventHandlers {
     this.app.resetJoinButton();
     this.app.gameUIManager.showWaitingScreen();
     
-    // ✅ FIXED: Setup chat and update UI with slight delay to ensure DOM is ready
     setTimeout(() => {
         this.app.setupChatHandlers();
         this.app.updateWaitingScreen();
@@ -59,14 +55,12 @@ export class AppEventHandlers {
 
   handleGameStarted(eventData) {
     if (eventData.gameState) {
-      // ✅ NEW: Use framework state management
       this.app.framework.set('gameState', eventData.gameState);
       if (!this.app.framework.get('playerId') || !this.app.framework.get('gameState').players[this.app.framework.get('playerId')]) {
         const playerByNickname = Object.values(this.app.framework.get('gameState').players).find(
           (p) => p.nickname === this.app.framework.get('nickname')
         );
         if (playerByNickname) {
-          // ✅ NEW: Use framework state management
           this.app.framework.set('playerId', playerByNickname.id);
           this.app.playerController.updateMovementSpeed();
           this.app.gameUIManager.showGameScreen();
@@ -97,11 +91,9 @@ export class AppEventHandlers {
 
   handleGameEnded(eventData) {
     if (eventData.gameState) {
-      // ✅ NEW: Use framework state management
       this.app.framework.set('gameState', eventData.gameState);
       this.app.playerController.updateMovementSpeed();
     }
-    // ✅ NEW: Update game state through framework
     this.app.framework.merge('gameState', { gameEnded: true, winner: eventData.winner });
     setTimeout(() => {
       this.app.gameUIManager.showGameEndScreen();
@@ -110,11 +102,8 @@ export class AppEventHandlers {
 
   handleGameReset(eventData) {
     console.log('🔧 AppEventHandlers: Game reset event received');
-    // ✅ NEW: Use framework state management
     this.app.framework.set('gameState', eventData.gameState);
 
-    // Only return to lobby if we're not already there
-    // Check if we're currently in a game or waiting room
     const currentScreen = document.querySelector('.game-screen, .waiting-screen, .game-end-screen');
     if (currentScreen) {
       console.log('🔧 Currently in game/waiting/end screen, returning to lobby');
@@ -162,7 +151,7 @@ export class AppEventHandlers {
 
   handleBombExplosion(eventData) {
     // Additional bomb explosion handling if needed
-    // The main explosion effect is already handled in bombermanApp.js
+
     console.log('🎆 Bomb explosion event processed:', eventData.bombId);
   }
 
@@ -170,7 +159,6 @@ export class AppEventHandlers {
     const playerName = eventData.nickname || "Player";
     this.app.showNotification(`👋 ${playerName} left the game`, 'info');
 
-    // Update waiting screen if in lobby
     if (this.app.isInWaitingRoom()) {
       this.app.updateWaitingScreen();
     }

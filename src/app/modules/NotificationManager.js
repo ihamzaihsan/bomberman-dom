@@ -68,7 +68,6 @@ export class NotificationManager {
 
     console.log(`Notification queue length: ${this.notificationQueue.length}`);
 
-    // ✅ FIXED: Always process queue for welcome messages
     if (isWelcomeMessage || !this.isProcessingQueue) {
         this.processNotificationQueue();
     }

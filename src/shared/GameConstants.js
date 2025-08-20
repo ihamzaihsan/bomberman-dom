@@ -1,6 +1,3 @@
-// ✅ CONSOLIDATED: Shared game constants to eliminate duplication across client and server
-// This file contains all game configuration values, constants, and shared data structures
-
 // ===== MAP CONFIGURATION =====
 export const MAP_CONFIG = {
   WIDTH: 13,
@@ -11,7 +8,7 @@ export const MAP_CONFIG = {
 
 // ===== GAME TIMING CONFIGURATION =====
 export const GAME_TIMING = {
-  COUNTDOWN_DURATION: 10, // ✅ FIXED: 10-second countdown as per requirements
+  COUNTDOWN_DURATION: 10,
   GAME_DURATION: 180, // 3 minutes in seconds
   WAITING_DURATION: 20, // seconds to wait for players
   BOMB_TIMER: 3.0, // seconds before bomb explodes (decimal format)
@@ -36,7 +33,7 @@ export const PLAYER_CONFIG = {
 };
 
 // ===== STARTING POSITIONS =====
-// ✅ UPDATED: Starting positions for 13x13 map (corner spawning with proper spacing)
+// Player starting positions in 13x13 map corners
 export const STARTING_POSITIONS = [
   { x: 1, y: 1 },     // Top-left (center of 3x3 area)
   { x: 11, y: 1 },    // Top-right (center of 3x3 area)
@@ -53,7 +50,7 @@ export const CELL_TYPES = {
   SPAWN_SAFE: 'spawn-safe',
 };
 
-// ✅ CONSOLIDATED: Walkable cells array used in both client and server validation
+// List of cell types that players can walk on
 export const WALKABLE_CELLS = [
   CELL_TYPES.EMPTY,
   CELL_TYPES.SPAWN,

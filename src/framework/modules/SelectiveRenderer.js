@@ -133,7 +133,6 @@ export class SelectiveRenderer {
         this.lastRenderState.clear();
     }
 
-    // ✅ NEW: createElement method for framework element creation
     createElement(tagName, attributes = {}) {
         const element = document.createElement(tagName);
         
@@ -187,6 +186,33 @@ export class SelectiveRenderer {
     // Clear render cache
     clearRenderCache() {
         this.renderCache.clear();
+    }
+
+    // Framework DOM manipulation methods
+    appendChild(parent, child) {
+        if (parent && child) {
+            parent.appendChild(child);
+        }
+        return this;
+    }
+
+    removeChild(parent, child) {
+        if (parent && child) {
+            parent.removeChild(child);
+        }
+        return this;
+    }
+
+    setContent(element, content) {
+        if (element) {
+            if (typeof content === 'string') {
+                element.textContent = content;
+            } else {
+                element.innerHTML = '';
+                this.appendChild(element, content);
+            }
+        }
+        return this;
     }
 
     // Process selective rendering optimizations

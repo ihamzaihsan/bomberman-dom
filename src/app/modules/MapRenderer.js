@@ -61,13 +61,18 @@ export class MapRenderer {
     const bombs = gameState.bombs || [];
     const powerUps = gameState.powerUps || [];
 
+    // Use framework createElement for fragments too
     const mapFragment = document.createDocumentFragment();
 
     map.forEach((row, y) => {
       row.forEach((cell, x) => {
-        const cellElement = this.framework.selectiveRenderer.createElement('div', { className: `cell ${cell}`, id: `cell-${x}-${y}` });
-        cellElement.setAttribute('data-x', x);
-        cellElement.setAttribute('data-y', y);
+        // Use framework's createElement with all attributes in one go
+        const cellElement = this.framework.createElement('div', {
+          className: `cell ${cell}`,
+          id: `cell-${x}-${y}`,
+          'data-x': x.toString(),
+          'data-y': y.toString()
+        });
 
         const playersAtPosition = Object.values(players).filter(p => p.x === x && p.y === y);
         const bombsAtPosition = bombs.filter(b => b.x === x && b.y === y);
@@ -75,22 +80,22 @@ export class MapRenderer {
 
         powerUpsAtPosition.forEach(powerUp => {
           const powerUpElement = this.createPowerUpElement(powerUp);
-          cellElement.appendChild(powerUpElement);
+          this.framework.appendChild(cellElement, powerUpElement);
         });
 
         bombsAtPosition.forEach(bomb => {
           const bombElement = this.createBombElement(bomb);
-          cellElement.appendChild(bombElement);
+          this.framework.appendChild(cellElement, bombElement);
         });
 
         playersAtPosition.forEach((player) => {
           const playerKeys = Object.keys(players);
           const playerIndex = playerKeys.indexOf(player.id);
           const playerElement = this.createPlayerElement(player, playerIndex);
-          cellElement.appendChild(playerElement);
+          this.framework.appendChild(cellElement, playerElement);
         });
 
-        mapFragment.appendChild(cellElement);
+        this.framework.appendChild(mapFragment, cellElement);
       });
     });
 
@@ -316,8 +321,8 @@ export class MapRenderer {
   }
 
   renderCellContent(cellElement, _x, _y, cellData, _map, players, _bombs, _powerUps) {
-    // Clear existing content
-    cellElement.innerHTML = '';
+    // Clear existing content using framework method
+    this.framework.setContent(cellElement, '');
 
     // Update cell class
     cellElement.className = `cell ${cellData.cellType}`;
@@ -325,13 +330,13 @@ export class MapRenderer {
     // Add power-ups with hardware acceleration
     cellData.powerUps.forEach(powerUpData => {
       const powerUpElement = this.createPowerUpElement(powerUpData);
-      cellElement.appendChild(powerUpElement);
+      this.framework.appendChild(cellElement, powerUpElement);
     });
 
     // Add bombs with hardware acceleration
     cellData.bombs.forEach(bombData => {
       const bombElement = this.createBombElement(bombData);
-      cellElement.appendChild(bombElement);
+      this.framework.appendChild(cellElement, bombElement);
     });
 
     // Add players with hardware acceleration
@@ -340,62 +345,51 @@ export class MapRenderer {
       const playerKeys = Object.keys(players);
       const playerIndex = playerKeys.indexOf(playerData.id);
       const playerElement = this.createPlayerElement(playerData, playerIndex);
-      cellElement.appendChild(playerElement);
+      this.framework.appendChild(cellElement, playerElement);
     });
   }
 
   // ===== ELEMENT CREATION WITH OBJECT POOLING =====
 
   createPowerUpElement(powerUpData) {
-    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const powerUpElement = this.getPooledElement('powerUps') || this.framework.selectiveRenderer.createElement('div');
-
-    powerUpElement.className = `powerup powerup-${powerUpData.type}`;
-    powerUpElement.setAttribute('data-powerup-id', powerUpData.id);
-    powerUpElement.textContent = this.getPowerUpEmoji(powerUpData.type);
-    powerUpElement.style.transform = 'translateZ(0)'; // Hardware acceleration
+    // Create element using framework's createElement with all attributes
+    const powerUpElement = this.getPooledElement('powerUps') || this.framework.createElement('div', {
+      className: `powerup powerup-${powerUpData.type}`,
+      'data-powerup-id': powerUpData.id,
+      textContent: this.getPowerUpEmoji(powerUpData.type),
+      style: 'transform: translateZ(0)' // Hardware acceleration
+    });
 
     return powerUpElement;
   }
 
   createBombElement(_bombData) {
-    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const bombElement = this.getPooledElement('bombs') || this.framework.selectiveRenderer.createElement('div');
-
-    bombElement.className = 'bomb';
-    bombElement.textContent = '💣';
-    bombElement.style.transform = 'translateZ(0)'; // Hardware acceleration
+    // Create element using framework's createElement with all attributes
+    const bombElement = this.getPooledElement('bombs') || this.framework.createElement('div', {
+      className: 'bomb',
+      textContent: '💣',
+      style: 'transform: translateZ(0)' // Hardware acceleration
+    });
 
     return bombElement;
   }
 
   createPlayerElement(playerData, index) {
-    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const playerElement = this.getPooledElement('players') || this.framework.selectiveRenderer.createElement('div');
-
-    // ✅ GHOST MODE: Apply ghost styling for eliminated players
+    // Create element using framework's createElement with all attributes
     const isGhost = !playerData.alive;
     const ghostClass = isGhost ? ' player-ghost' : '';
-    playerElement.className = `player player-${index}${ghostClass}`;
 
-    // Set text content for fallback (hidden by CSS when images load)
-    playerElement.textContent = playerData.nickname.charAt(0).toUpperCase();
+    const playerElement = this.getPooledElement('players') || this.framework.createElement('div', {
+      className: `player player-${index}${ghostClass}`,
+      textContent: playerData.nickname.charAt(0).toUpperCase(),
+      style: `transform: translateZ(0);${
+        isGhost ? 'opacity: 0.4; filter: grayscale(100%) brightness(0.7); pointer-events: none;' : ''
+      }`,
+      'data-player-id': playerData.id,
+      'data-player-alive': playerData.alive
+    });
 
-    // Hardware acceleration
-    playerElement.style.transform = 'translateZ(0)';
-
-    // ✅ GHOST MODE: Apply ghost visual effects
-    if (isGhost) {
-      playerElement.style.opacity = '0.4';
-      playerElement.style.filter = 'grayscale(100%) brightness(0.7)';
-      playerElement.style.pointerEvents = 'none';
-    }
-
-    // Store player data for reference
-    playerElement.setAttribute('data-player-id', playerData.id);
-    playerElement.setAttribute('data-player-alive', playerData.alive);
-
-    // ✅ NEW: Handle character sprite loading with fallback
+    // Handle character sprite loading with fallback
     this.loadPlayerSprite(playerElement, index, playerData);
 
     return playerElement;
@@ -595,9 +589,9 @@ export class MapRenderer {
     const cellElement = this.framework.find(cellSelector);
     if (!cellElement) {
       console.error(`❌ Cell element not found for explosion at (${x}, ${y})`);
-      console.log('Available cells:', gameMap.querySelectorAll('[data-x][data-y]').length);
+      console.log('Available cells:', this.framework.findAll('[data-x][data-y]').length);
       // Debug: Log all available cells
-      const allCells = gameMap.querySelectorAll('[data-x][data-y]');
+      const allCells = this.framework.findAll('[data-x][data-y]');
       console.log('First 5 cells:', Array.from(allCells).slice(0, 5).map(cell => ({
         x: cell.getAttribute('data-x'),
         y: cell.getAttribute('data-y')
@@ -607,46 +601,39 @@ export class MapRenderer {
 
     console.log(`✅ Found cell element for (${x}, ${y}):`, cellElement);
 
-    // Create explosion element with simplified approach
-    // ✅ FRAMEWORK: Use framework's createElement instead of document.createElement
-    const explosionElement = this.framework.selectiveRenderer.createElement('div');
-    explosionElement.setAttribute('data-explosion', 'true');
-    explosionElement.setAttribute('data-chain-depth', chainDepth.toString());
+    // Create explosion element using framework's createElement with all attributes
+    const explosionElement = this.framework.createElement('div', {
+      'data-explosion': 'true',
+      'data-chain-depth': chainDepth.toString(),
+      className: type === 'center' 
+        ? `explosion-effect explosion-center ${chainDepth > 0 ? 'chain-reaction' : ''}`
+        : `explosion-effect explosion-blast ${chainDepth > 0 ? 'chain-reaction' : ''}`,
+      textContent: type === 'center' ? '💥' : '🔥',
+      style: `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 1000;
+        font-size: ${type === 'center' ? '3em' : '2.5em'};
+        opacity: 1;
+        transform: scale(1);
+        animation: bomberman-explosion-pop 0.8s ease-out;
+        text-shadow:
+          0 0 15px rgba(255, 107, 53, 1),
+          0 0 25px rgba(255, 69, 0, 0.8),
+          0 0 35px rgba(255, 140, 0, 0.6);
+      `
+    });
 
-    // Add explosion content and classes based on type and chain depth
-    if (type === 'center') {
-      explosionElement.textContent = '💥';
-      explosionElement.className = `explosion-effect explosion-center ${chainDepth > 0 ? 'chain-reaction' : ''}`;
-    } else {
-      explosionElement.textContent = '🔥';
-      explosionElement.className = `explosion-effect explosion-blast ${chainDepth > 0 ? 'chain-reaction' : ''}`;
-    }
-
-    // Direct inline styles for reliability - Adjusted for multiple explosion cells
-    explosionElement.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      z-index: 1000;
-      font-size: ${type === 'center' ? '3em' : '2.5em'};
-      opacity: 1;
-      transform: scale(1);
-      animation: bomberman-explosion-pop 0.8s ease-out;
-      text-shadow:
-        0 0 15px rgba(255, 107, 53, 1),
-        0 0 25px rgba(255, 69, 0, 0.8),
-        0 0 35px rgba(255, 140, 0, 0.6);
-    `;
-
-    // Add to cell with relative positioning
+    // Add to cell with relative positioning using framework methods
     cellElement.style.position = 'relative';
-    cellElement.appendChild(explosionElement);
+    this.framework.appendChild(cellElement, explosionElement);
 
     // IMMEDIATE: Trigger animation immediately for visibility
     console.log(`🎬 Explosion element added to DOM at (${x}, ${y})`);
@@ -668,13 +655,13 @@ export class MapRenderer {
   }
 
   cleanupExplosionAnimations() {
-    // ✅ FRAMEWORK: Use framework's findAll instead of document.querySelectorAll
+    // Use framework's findAll and removeChild
     const explosionElements = this.framework.findAll('[data-explosion="true"]');
     explosionElements.forEach(element => {
       element.classList.add('explosion-fade-out');
       setTimeout(() => {
         if (element.parentNode) {
-          element.parentNode.removeChild(element);
+          this.framework.removeChild(element.parentNode, element);
         }
       }, 300);
     });
@@ -682,7 +669,7 @@ export class MapRenderer {
   }
 
   animatePowerUpSpawn(powerUpId) {
-    // ✅ FRAMEWORK: Use framework's find instead of document.querySelector
+    // Use framework's find for element lookup
     const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('spawning');
@@ -691,12 +678,14 @@ export class MapRenderer {
   }
 
   animatePowerUpCollected(powerUpId) {
-    // ✅ FRAMEWORK: Use framework's find instead of document.querySelector
+    // Use framework's find and removeChild for cleanup
     const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('collected');
       setTimeout(() => {
-        if (el.parentNode) el.parentNode.removeChild(el);
+        if (el.parentNode) {
+          this.framework.removeChild(el.parentNode, el);
+        }
       }, 500);
     }
   }

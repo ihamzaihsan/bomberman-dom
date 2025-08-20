@@ -1,6 +1,5 @@
-// ✅ CONSOLIDATED: Import shared constants and validation
-import { MAP_CONFIG, WALKABLE_CELLS, VALIDATION } from '../../shared/GameConstants.js';
-import { MovementValidator } from '../../shared/MovementValidator.js';
+import { DIRECTIONS, VALIDATION } from "../../shared/GameConstants.js";
+import { MovementValidator } from "../../shared/MovementValidator.js";
 
 export class PlayerController {
   static BOMB_CAP = 8;
@@ -19,7 +18,6 @@ export class PlayerController {
     
     // Game state is sourced from framework; no local copies are kept
 
-    // ✅ NEW: Bomb placement rate limiting
     this.lastBombPlacementTime = 0;
     
     // Callbacks
@@ -107,7 +105,6 @@ export class PlayerController {
   }
 
   movePlayer(direction) {
-    // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
     if (gs && gs.players && pid) {
@@ -169,13 +166,11 @@ export class PlayerController {
     const player = gs.players[pid];
     if (!player) return;
 
-    // ✅ GHOST MODE: Check if current player is eliminated (ghost mode)
     if (!player.alive) {
       console.log('🚫 Cannot place bomb: Player is eliminated (ghost mode)');
       return;
     }
 
-    // ✅ NEW: Rate limiting to prevent rapid bomb placement attempts
     const now = Date.now();
     if (now - this.lastBombPlacementTime < 100) { // 100ms cooldown
       console.log('🚫 Bomb placement rate limited');
@@ -187,7 +182,6 @@ export class PlayerController {
 
     console.log(`🎯 CLIENT BOMB ATTEMPT: ${player.nickname} - currentBombs=${player.currentBombs}, maxBombs=${player.maxBombs}`);
 
-    // ✅ CRITICAL FIX: Use exact same logic as server
     if (player.currentBombs >= player.maxBombs) {
       console.log(`🚫 CLIENT VALIDATION FAILED: ${player.currentBombs} >= ${player.maxBombs}`);
       return;
@@ -227,7 +221,6 @@ export class PlayerController {
       return { isValid: false, reason: 'Player not found' };
     }
 
-    // ✅ CONSOLIDATED: Use shared movement validator
     const result = MovementValidator.validateMove(player, direction, gs);
 
     // Update framework counters based on result
@@ -250,7 +243,6 @@ export class PlayerController {
   }
 
   validateClientMove(direction) {
-    // ✅ CONSOLIDATED: Remove duplicate validation logic - use shared validator
     const result = this.validateClientMoveWithRenderCheck(direction);
     return result.isValid;
   }
@@ -280,7 +272,7 @@ export class PlayerController {
 
   // ===== SPEED POWER-UP IMPLEMENTATION =====
 
-  // ✅ SPEED POWER-UP: Calculate movement throttle based on speed level
+  // Calculate movement throttle based on speed power-up level
   updateMovementSpeed() {
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');

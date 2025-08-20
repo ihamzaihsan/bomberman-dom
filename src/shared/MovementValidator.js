@@ -1,4 +1,4 @@
-// ✅ CONSOLIDATED: Shared movement validation logic to eliminate duplication between client and server
+// Shared movement validation for client and server
 import { MAP_CONFIG, WALKABLE_CELLS, DIRECTIONS, VALIDATION } from './GameConstants.js';
 
 export class MovementValidator {

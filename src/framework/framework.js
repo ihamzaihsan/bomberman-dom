@@ -112,10 +112,13 @@ export class Framework {
   map(array, callback, keyExtractor) { return this.selectiveRenderer.map(array, callback, keyExtractor); }
   clearRenderCache() { return this.selectiveRenderer.clearRenderCache(); }
 
-  // ✅ NEW: DOM manipulation methods
+  // Framework DOM manipulation methods
   createElement(tagName, attributes) { return this.selectiveRenderer.createElement(tagName, attributes); }
-  find(selector) { return document.querySelector(selector); }
+  find(selector) { return this.selectiveRenderer.getCachedElement(selector) || document.querySelector(selector); }
   findAll(selector) { return document.querySelectorAll(selector); }
+  appendChild(parent, child) { return this.selectiveRenderer.appendChild(parent, child); }
+  removeChild(parent, child) { return this.selectiveRenderer.removeChild(parent, child); }
+  setContent(element, content) { return this.selectiveRenderer.setContent(element, content); }
 
   // ===== PERFORMANCE MONITOR DELEGATION =====
   getPerformanceMetrics() {
