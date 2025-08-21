@@ -1,4 +1,3 @@
-// Shared movement validation for client and server
 import { MAP_CONFIG, WALKABLE_CELLS, DIRECTIONS, VALIDATION } from './GameConstants.js';
 
 export class MovementValidator {
@@ -10,7 +9,6 @@ export class MovementValidator {
    * @returns {Object} - { isValid: boolean, reason: string, newX: number, newY: number }
    */
   static validateMove(player, direction, gameState) {
-    // Basic validation checks
     if (!player || !player.alive || !gameState.gameStarted || gameState.gameEnded) {
       return {
         isValid: false,
@@ -20,10 +18,8 @@ export class MovementValidator {
       };
     }
 
-    // Calculate new position
     const { newX, newY } = this.calculateNewPosition(player.x, player.y, direction);
 
-    // Check if position actually changed (hitting boundary)
     if (newX === player.x && newY === player.y) {
       return {
         isValid: false,
@@ -33,7 +29,6 @@ export class MovementValidator {
       };
     }
 
-    // Validate position is within map bounds
     if (!VALIDATION.isValidPosition(newX, newY)) {
       return {
         isValid: false,
@@ -43,7 +38,6 @@ export class MovementValidator {
       };
     }
 
-    // Check if new position is walkable
     const targetCell = gameState.map[newY]?.[newX];
     if (!VALIDATION.isWalkableCell(targetCell)) {
       return {
@@ -54,7 +48,6 @@ export class MovementValidator {
       };
     }
 
-    // Check for bomb collision
     const bombAtPosition = gameState.bombs?.find(bomb => bomb.x === newX && bomb.y === newY);
     if (bombAtPosition) {
       return {
@@ -65,7 +58,6 @@ export class MovementValidator {
       };
     }
 
-    // Check for other ALIVE players at the same position (ignore eliminated/ghost players)
     const playerAtPosition = Object.values(gameState.players || {}).find(
       p => p.id !== player.id && p.alive && p.x === newX && p.y === newY
     );
@@ -111,7 +103,6 @@ export class MovementValidator {
         newX = Math.min(MAP_CONFIG.WIDTH - 1, x + 1);
         break;
       default:
-        // Invalid direction, return current position
         break;
     }
 
@@ -184,9 +175,8 @@ export class MovementValidator {
         if (!blocked) return false;
       }
       
-      // Check vertical explosion range
+
       if (bomb.x === x && Math.abs(bomb.y - y) <= range) {
-        // Check if there are walls blocking the explosion
         const minY = Math.min(bomb.y, y);
         const maxY = Math.max(bomb.y, y);
         let blocked = false;

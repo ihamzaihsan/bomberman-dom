@@ -1,7 +1,3 @@
-/**
- * 404 Not Found Component - Bomberman Theme
- * A user-friendly error page for invalid routes that matches the Bomberman game design
- */
 export class NotFoundComponent {
     constructor(framework) {
         this.framework = framework;
@@ -37,14 +33,12 @@ export class NotFoundComponent {
         `;
     }
 
-    // Static method to create a simple 404 component function
     static create(framework) {
         const component = new NotFoundComponent(framework);
         return () => component.render();
     }
 }
 
-// Default 404 component function that can be used without instantiation
 export const createNotFoundComponent = (framework) => {
     return () => {
         const currentPath = framework ? framework.getCurrentRoute() : window.location.href;
@@ -76,7 +70,6 @@ export const createNotFoundComponent = (framework) => {
     };
 };
 
-// Simple function-based 404 component with Bomberman theme
 export const NotFound404 = () => {
     const currentPath = window.location.href;
 

@@ -1,6 +1,5 @@
 export class PerformanceMonitor {
    constructor() {
-    // Performance metrics
     this.performanceMetrics = {
         frameTime: 0,
         renderTime: 0,
@@ -13,19 +12,17 @@ export class PerformanceMonitor {
     };
 
     this.targetFPS = 60;
-    this.frameTimeThreshold = 1000 / this.targetFPS; // 16.67ms for 60fps
+    this.frameTimeThreshold = 1000 / this.targetFPS;
 
-    // Performance counters for optimization tracking
     this.performanceCounters = new Map();
 
-    // Performance monitoring
     this.performanceObserver = null;
     this.performanceCallbacks = [];
 
     this.initPerformanceMonitoring();
     }
 
-  // Performance monitoring initialization
+
     initPerformanceMonitoring() {
     if (typeof PerformanceObserver !== 'undefined') {
         try {
@@ -44,13 +41,12 @@ export class PerformanceMonitor {
         }
     }
 
-    // Monitor long tasks
     if (typeof PerformanceObserver !== 'undefined') {
         try {
         const longTaskObserver = new PerformanceObserver((list) => {
             const entries = list.getEntries();
             entries.forEach(entry => {
-            if (entry.duration > 50) { // Tasks longer than 50ms
+            if (entry.duration > 50) {
                 console.warn(`Long task detected: ${entry.duration.toFixed(2)}ms`);
                 this.performanceMetrics.droppedFrames++;
             }
@@ -63,28 +59,23 @@ export class PerformanceMonitor {
     }
     }
 
-  // Update performance metrics
     updateMetrics(frameTime) {
     this.performanceMetrics.frameTime = frameTime;
     this.performanceMetrics.totalFrames++;
 
-    // Track min/max frame times
     this.performanceMetrics.minFrameTime = Math.min(this.performanceMetrics.minFrameTime, frameTime);
     this.performanceMetrics.maxFrameTime = Math.max(this.performanceMetrics.maxFrameTime, frameTime);
 
-    // Calculate average frame time
     this.performanceMetrics.averageFrameTime =
       (this.performanceMetrics.averageFrameTime * (this.performanceMetrics.totalFrames - 1) + frameTime) /
         this.performanceMetrics.totalFrames;
 
-    // Check for frame drops
     if (frameTime > this.frameTimeThreshold * 1.5) {
         this.performanceMetrics.droppedFrames++;
         console.warn(`Frame drop detected: ${frameTime.toFixed(2)}ms`);
     }
     }
 
-  // Get performance metrics
     getPerformanceMetrics(fps = 0, dirtyElementsCount = 0, cachedElementsCount = 0) {
     return {
         ...this.performanceMetrics,
@@ -97,7 +88,6 @@ export class PerformanceMonitor {
     };
     }
 
-  // Add performance callback
     onPerformanceUpdate(callback) {
     this.performanceCallbacks.push(callback);
     return () => {
@@ -108,7 +98,6 @@ export class PerformanceMonitor {
     };
     }
 
-  // Notify performance callbacks
     notifyCallbacks(fps = 0, dirtyElementsCount = 0, cachedElementsCount = 0) {
     const metrics = this.getPerformanceMetrics(fps, dirtyElementsCount, cachedElementsCount);
     this.performanceCallbacks.forEach(callback => {
@@ -120,42 +109,25 @@ export class PerformanceMonitor {
     });
     }
 
-  // Performance counter methods for optimization tracking
-
-    /**
-   * Increment a performance counter
-   */
     incrementCounter(counterName) {
     const current = this.performanceCounters.get(counterName) || 0;
     this.performanceCounters.set(counterName, current + 1);
     return this;
     }
 
-    /**
-   * Get current value of a performance counter
-   */
     getCounter(counterName) {
     return this.performanceCounters.get(counterName) || 0;
     }
 
-    /**
-   * Reset a performance counter
-   */
     resetCounter(counterName) {
     this.performanceCounters.set(counterName, 0);
     return this;
     }
 
-    /**
-   * Get all performance counters
-   */
     getAllCounters() {
     return Object.fromEntries(this.performanceCounters);
     }
 
-    /**
-   * Set a counter to a specific value
-   */
     setCounter(counterName, value) {
     this.performanceCounters.set(counterName, value);
     return this;

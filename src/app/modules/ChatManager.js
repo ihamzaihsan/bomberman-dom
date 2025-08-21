@@ -1,14 +1,10 @@
-// ChatManager: Handles chat message logic and UI
 export class ChatManager {
   constructor(app) {
     this.app = app;
-    // ✅ NEW: Remove local chat storage - use framework state instead
     this.maxChatMessages = 50;
   }
 
-  // Clear chat history (called when starting new games)
   clearChatHistory() {
-    // ✅ NEW: Use framework state management for chat
     this.app.framework.set('chatHistory', []);
     this.updateChatDisplay();
   }
@@ -21,10 +17,8 @@ export class ChatManager {
       timestamp: data.timestamp,
     };
 
-    // ✅ NEW: Use framework state management to add chat message
     this.app.framework.push('chatHistory', chatMessage);
     
-    // Limit chat history size
     const chatHistory = this.app.framework.get('chatHistory') || [];
     if (chatHistory.length > this.maxChatMessages) {
       this.app.framework.set('chatHistory', chatHistory.slice(-this.maxChatMessages));
@@ -34,11 +28,10 @@ export class ChatManager {
   }
 
   updateChatDisplay() {
-    // ✅ NEW: Get chat messages from framework state
     const chatMessages = this.app.framework.get('chatHistory') || [];
     
     const renderMessages = (container) => {
-      container.innerHTML = ''; // Clear previous messages
+      container.innerHTML = '';
       chatMessages.forEach(msg => {
         const messageContainer = this.app.framework.selectiveRenderer.createElement('div', { className: 'chat-message' });
         const nickname = this.app.framework.selectiveRenderer.createElement('span', { className: 'chat-nickname', textContent: `${msg.nickname}:` });
@@ -74,16 +67,13 @@ export class ChatManager {
 
   setupChatHandlers() {
     console.log('🔧 ChatManager: Setting up chat handlers');
-    // Remove existing handlers first with extra safety
     this.removeChatHandlers();
 
-    // Add small delay to ensure cleanup is complete
     setTimeout(() => {
       const chatInput = this.app.framework.find('#chat-input');
       const chatSend = this.app.framework.find('#chat-send');
       if (chatInput && chatSend) {
         console.log('🔧 ChatManager: Adding chat event listeners');
-        // Store handlers for cleanup
         this.chatSendHandler = () => {
           const message = chatInput.value;
           if (message.trim()) {
@@ -122,16 +112,13 @@ export class ChatManager {
 
   setupGameChatHandlers() {
     console.log('🔧 ChatManager: Setting up game chat handlers');
-    // Remove existing handlers first with extra safety
     this.removeGameChatHandlers();
 
-    // Add small delay to ensure cleanup is complete
     setTimeout(() => {
       const gameChatInput = this.app.framework.find('#game-chat-input');
       const gameChatSend = this.app.framework.find('#game-chat-send');
       if (gameChatInput && gameChatSend) {
         console.log('🔧 ChatManager: Adding game chat event listeners');
-        // Store handlers for cleanup
         this.gameChatSendHandler = () => {
           const message = gameChatInput.value;
           if (message.trim()) {

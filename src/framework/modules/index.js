@@ -1,4 +1,3 @@
-// Framework modules exports
 export { StateManager } from './StateManager.js';
 export { EventManager } from './EventManager.js';
 export { PerformanceMonitor } from './PerformanceMonitor.js';

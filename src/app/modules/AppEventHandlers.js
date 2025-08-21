@@ -1,6 +1,3 @@
-/**
- * AppEventHandlers: Handles app-level events (join, start, end, reset, etc.)
- */
 export class AppEventHandlers {
   constructor(app) {
     this.app = app;
@@ -110,7 +107,6 @@ export class AppEventHandlers {
       this.app.returnToLobby();
     } else {
       console.log('🔧 Already in lobby, just updating game state');
-      // Just update the game state without changing screens
     }
   }
 
@@ -118,7 +114,6 @@ export class AppEventHandlers {
     const isCurrentPlayer = eventData.playerId === this.app.framework.get('playerId');
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
-    // Check if this elimination ends the game
     if (eventData.willGameEnd) {
       console.log('Game will end after this elimination, skipping ghost mode notifications');
 
@@ -136,7 +131,6 @@ export class AppEventHandlers {
       return;
     }
 
-    // Normal elimination handling when game continues
     if (isCurrentPlayer) {
       this.app.showNotification(`💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`, 'error');
       this.app.gameUIManager.updatePlayerStats(true);
@@ -150,8 +144,6 @@ export class AppEventHandlers {
   }
 
   handleBombExplosion(eventData) {
-    // Additional bomb explosion handling if needed
-
     console.log('🎆 Bomb explosion event processed:', eventData.bombId);
   }
 
@@ -166,7 +158,6 @@ export class AppEventHandlers {
 
   handlePlayerDamaged(eventData) {
     if (eventData.playerId === this.app.framework.get('playerId')) {
-      // Update nested player lives via framework state to ensure reactivity
       const gs = this.app.framework.get('gameState') || {};
       if (gs.players && gs.players[this.app.framework.get('playerId')]) {
         const newGs = JSON.parse(JSON.stringify(gs));

@@ -34,7 +34,6 @@ export class SelectiveRenderer {
     getCachedElement(elementId) {
         if (this.elementCache.has(elementId)) {
         const element = this.elementCache.get(elementId);
-        // Check if element is still connected to the document
         if (element && element.isConnected && document.contains(element)) {
             return element;
         } else {
@@ -136,7 +135,6 @@ export class SelectiveRenderer {
     createElement(tagName, attributes = {}) {
         const element = document.createElement(tagName);
         
-        // Set attributes
         Object.keys(attributes).forEach(key => {
             if (key === 'innerHTML') {
                 element.innerHTML = attributes[key];
@@ -154,19 +152,16 @@ export class SelectiveRenderer {
         return element;
     }
 
-    // Conditional rendering helper
     when(condition, element) {
         return condition ? element : null;
     }
 
-    // List rendering helper with caching
     map(array, callback, keyExtractor = null) {
         if (!Array.isArray(array)) return [];
 
         return array.map((item, index) => {
             const key = keyExtractor ? keyExtractor(item, index) : index;
 
-            // Use cache if available
             if (this.renderCache.has(key)) {
                 const cached = this.renderCache.get(key);
                 if (JSON.stringify(cached.item) === JSON.stringify(item)) {
@@ -176,19 +171,16 @@ export class SelectiveRenderer {
 
             const result = callback(item, index);
 
-            // Cache the result
             this.renderCache.set(key, { item: JSON.parse(JSON.stringify(item)), result });
 
             return result;
         }).filter(item => item !== null && item !== undefined);
     }
 
-    // Clear render cache
     clearRenderCache() {
         this.renderCache.clear();
     }
 
-    // Framework DOM manipulation methods
     appendChild(parent, child) {
         if (parent && child) {
             parent.appendChild(child);
@@ -215,16 +207,13 @@ export class SelectiveRenderer {
         return this;
     }
 
-    // Process selective rendering optimizations
     processSelectiveRendering() {
         if (typeof performance !== 'undefined' && performance.mark) {
             performance.mark('selective-render-start');
         }
 
-        // Process dirty elements
         this.processDirtyElements();
 
-        // Process render queue
         this.processRenderQueue();
 
         if (typeof performance !== 'undefined' && performance.mark) {

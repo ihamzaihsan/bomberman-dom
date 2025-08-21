@@ -72,12 +72,10 @@ export class GameLoop {
             this.frameCount = 0;
             this.fpsUpdateTime = currentTime;
 
-            // Emit FPS update event if eventManager is available
             if (this.eventManager) {
                 this.eventManager.emit('fps-update', this.fps);
             }
 
-            // Notify performance callbacks with current metrics
             this.performanceMonitor.notifyCallbacks(
                 this.fps,
                 this.selectiveRenderer.dirtyElements.size,

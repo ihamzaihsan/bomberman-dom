@@ -8,27 +8,22 @@ export class PlayerController {
     this.framework = framework;
     this.webSocketManager = webSocketManager;
     
-    // Movement state
     this.isMoving = false;
     this.lastMoveTime = 0;
-    this.baseMoveThrottle = 150; // Base movement delay in ms (slower default)
-    this.moveThrottle = this.baseMoveThrottle; // Current throttle (will be modified by speed)
+    this.baseMoveThrottle = 150;
+    this.moveThrottle = this.baseMoveThrottle;
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
     
-    // Game state is sourced from framework; no local copies are kept
 
     this.lastBombPlacementTime = 0;
     
-    // Callbacks
     this.onInvalidMove = null;
     this.onSuccessfulMove = null;
     
     this.setupEventHandlers();
   }
 
-
-  // Set callback functions
   setCallbacks(callbacks) {
     this.onInvalidMove = callbacks.onInvalidMove || null;
     this.onSuccessfulMove = callbacks.onSuccessfulMove || null;
@@ -36,7 +31,6 @@ export class PlayerController {
 
   setupEventHandlers() {
     console.log('PlayerController: Setting up event handlers');
-    // Handle keyboard input for movement and actions
     this.framework.eventManager.keydown('body', (e) => {
       console.log('PlayerController: Keydown event captured:', e.key);
       this.handleGameInput(e);
@@ -48,14 +42,12 @@ export class PlayerController {
     const pid = this.framework.get('playerId');
     console.log('Key pressed:', e.key, 'GameState exists:', !!gs, 'Game started:', gs?.gameStarted, 'Player ID:', pid);
 
-    // Don't handle input if a chat input has focus
     const activeElement = document.activeElement;
     if (activeElement && (activeElement.id === 'chat-input' || activeElement.id === 'game-chat-input')) {
       console.log('Input blocked - Chat input has focus');
       return;
     }
 
-    // Only handle input when game has started and we have a player
     if (!gs?.gameStarted || !pid) {
       console.log('Input blocked - Game not started or no player ID');
       return;
@@ -92,7 +84,6 @@ export class PlayerController {
         break;
     }
 
-    // Only prevent default for actual game keys
     if (direction || action) {
       e.preventDefault();
       
@@ -115,19 +106,16 @@ export class PlayerController {
       }
     }
 
-    // Throttle movement to prevent spamming
     const currentTime = Date.now();
     if (this.isMoving || (currentTime - this.lastMoveTime) < this.moveThrottle) {
       console.log('Movement throttled');
       return;
     }
 
-    // Validate move on client side first
     const validationResult = this.validateClientMoveWithRenderCheck(direction);
     if (!validationResult.isValid) {
       console.log('Invalid move:', validationResult.reason);
 
-      // Track invalid move for rendering optimization
       this.lastInvalidMoveTime = currentTime;
       this.lastInvalidMove = direction;
 
@@ -137,18 +125,15 @@ export class PlayerController {
       return;
     }
 
-    // Set moving state and send move to server
     this.isMoving = true;
     this.lastMoveTime = currentTime;
 
     console.log(`Moving player ${direction}`);
-    // FIX: Use 'move' as message type for server compatibility
     this.webSocketManager.sendWebSocketMessage({
       type: 'move',
       direction: direction
     });
 
-    // Reset moving state after a delay
     setTimeout(() => {
       this.isMoving = false;
       console.log('isMoving reset to false');
@@ -172,7 +157,7 @@ export class PlayerController {
     }
 
     const now = Date.now();
-    if (now - this.lastBombPlacementTime < 100) { // 100ms cooldown
+    if (now - this.lastBombPlacementTime < 100) {
       console.log('🚫 Bomb placement rate limited');
       return;
     }
@@ -187,7 +172,6 @@ export class PlayerController {
       return;
     }
 
-    // Check if there's already a bomb at player's position
     const existingBomb = gs.bombs?.find(bomb => bomb.x === player.x && bomb.y === player.y);
     if (existingBomb) {
       console.log('🚫 CLIENT VALIDATION FAILED: Bomb already exists at position');
@@ -198,7 +182,6 @@ export class PlayerController {
     this.lastBombPlacementTime = now;
 
 
-    // Send bomb placement to server
     this.webSocketManager.sendWebSocketMessage({
       type: 'bomb',
       x: player.x,
@@ -223,11 +206,9 @@ export class PlayerController {
 
     const result = MovementValidator.validateMove(player, direction, gs);
 
-    // Update framework counters based on result
     if (result.isValid) {
       this.framework.incrementCounter('valid-moves');
     } else {
-      // Categorize the type of invalid move for better tracking
       if (result.reason.includes('bounds')) {
         this.framework.incrementCounter('invalid-moves-boundary');
       } else if (result.reason.includes('blocked')) {
@@ -246,8 +227,6 @@ export class PlayerController {
     const result = this.validateClientMoveWithRenderCheck(direction);
     return result.isValid;
   }
-
-  // ===== MOVEMENT ANALYTICS =====
 
   getMovementStats() {
     return {
@@ -270,9 +249,6 @@ export class PlayerController {
     this.framework.resetCounter('invalid-moves-bomb');
   }
 
-  // ===== SPEED POWER-UP IMPLEMENTATION =====
-
-  // Calculate movement throttle based on speed power-up level
   updateMovementSpeed() {
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
@@ -289,11 +265,10 @@ export class PlayerController {
 
     const speedLevel = player.powerUps.speed || 1;
 
-    // Speed level 1: 150ms (slow), level 2: 100ms (medium), level 3: 50ms (fast)
     const speedMultipliers = {
-      1: 1.0,    // 150ms - base speed
-      2: 0.67,   // 100ms - 33% faster
-      3: 0.33    // 50ms - 67% faster
+      1: 1.0,    
+      2: 0.67,   
+      3: 0.33    
     };
 
     const multiplier = speedMultipliers[speedLevel] || 1.0;
@@ -302,7 +277,6 @@ export class PlayerController {
     console.log(`PlayerController: Speed level ${speedLevel}, movement throttle: ${this.moveThrottle}ms`);
   }
 
-  // ===== GETTERS FOR OPTIMIZATION =====
 
   getLastInvalidMoveTime() {
     return this.lastInvalidMoveTime;

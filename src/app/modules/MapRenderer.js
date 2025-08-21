@@ -1,42 +1,35 @@
-// ✅ CONSOLIDATED: Import shared constants to eliminate duplication
 import { SPRITE_CONFIG, POWER_UP_CONFIG } from '../../shared/GameConstants.js';
 
 export class MapRenderer {
   constructor(framework) {
     this.framework = framework;
     
-    // Map rendering state
     this.lastGameMapState = null;
     this.dirtyMapCells = new Set();
     this.hasRenderedMapOnce = false;
     this.gameMapCache = new Map();
     
-    // Entity pooling for performance
     this.entityPool = {
       bombs: [],
       explosions: [],
       powerUps: []
     };
     
-    // Track entity states for selective updates
     this.lastRenderedEntities = {
       players: new Map(),
       bombs: new Map(),
       powerUps: new Map()
     };
     
-    // Rendering optimization settings
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
     this.lastRenderStateSignature = '';
 
-    // ✅ CONSOLIDATED: Use shared constants instead of duplicating
     this.SPRITE_MAP = SPRITE_CONFIG.PLAYER_SPRITES;
     this.POWER_UP_EMOJIS = POWER_UP_CONFIG.EMOJIS;
     this.FALLBACK_COLORS = SPRITE_CONFIG.FALLBACK_COLORS;
   }
 
-  // Reset renderer state for new games
   resetRenderer() {
     this.lastGameMapState = null;
     this.dirtyMapCells = new Set();
@@ -53,7 +46,6 @@ export class MapRenderer {
     console.log('MapRenderer: State reset for new game');
   }
 
-  // ===== MAIN RENDERING FUNCTIONS =====
 
   renderGameMap(gameState) {
     const map = gameState.map;
@@ -61,12 +53,10 @@ export class MapRenderer {
     const bombs = gameState.bombs || [];
     const powerUps = gameState.powerUps || [];
 
-    // Use framework createElement for fragments too
     const mapFragment = document.createDocumentFragment();
 
     map.forEach((row, y) => {
       row.forEach((cell, x) => {
-        // Use framework's createElement with all attributes in one go
         const cellElement = this.framework.createElement('div', {
           className: `cell ${cell}`,
           id: `cell-${x}-${y}`,
@@ -107,13 +97,11 @@ export class MapRenderer {
   renderFullGameMap(gameState) {
     console.log('MapRenderer: Starting full map render');
 
-    // Clear cache and get fresh reference to game map element
     this.framework.clearAllCaches();
     let gameMapElement = this.framework.getCachedElement('game-map') || this.framework.find('#game-map');
 
     if (!gameMapElement) {
       console.log('MapRenderer: Game map element not found, retrying...');
-      // Try again after a short delay
       setTimeout(() => {
         this.renderFullGameMap(gameState);
       }, 100);
@@ -125,17 +113,14 @@ export class MapRenderer {
       return;
     }
 
-    // Cache the element after we confirm it exists
     this.framework.cacheElement('game-map', gameMapElement);
 
     console.log('MapRenderer: Rendering map with', gameState.map.length, 'rows');
-    gameMapElement.innerHTML = ''; // Clear previous content
+    gameMapElement.innerHTML = ''; 
     gameMapElement.appendChild(this.renderGameMap(gameState));
 
-    // ✅ NEW: Setup sprite loading for HTML-generated players
     this.setupPlayerSprites(gameMapElement);
 
-    // Initialize the last state for selective updates
     this.lastGameMapState = this.createMapStateSnapshot(
       gameState.map,
       gameState.players,
@@ -162,20 +147,17 @@ export class MapRenderer {
 
     console.log('MapRenderer: Rendering map...');
     
-    // Force initial render, then use optimization for subsequent renders
     if (!this.hasRenderedMapOnce) {
       console.log('First time rendering map - forcing full render');
       this.renderFullGameMap(gameState);
       return;
     }
 
-    // Skip rendering if no meaningful changes occurred
     if (this.shouldSkipRendering(currentTime)) {
       console.log('Skipping rendering - no significant changes detected');
       return;
     }
 
-    // Use selective rendering for optimal performance
     this.updateGameMapSelective(gameState);
   }
 
@@ -185,29 +167,23 @@ export class MapRenderer {
     const bombs = gameState.bombs || [];
     const powerUps = gameState.powerUps || [];
 
-    // Check which cells need updates
     this.identifyDirtyCells(map, players, bombs, powerUps);
 
-    // Process dirty cells using framework's batch update system
     this.processDirtyCells(map, players, bombs, powerUps);
   }
 
-  // ===== RENDERING OPTIMIZATION =====
 
   shouldSkipRendering(currentTime) {
-    // Skip if there's been a recent invalid movement attempt
     if (this.lastInvalidMoveTime && (currentTime - this.lastInvalidMoveTime) < 50) {
       this.framework.incrementCounter('skipped-renders-invalid-move');
       return true;
     }
 
-    // Skip if the same invalid move was just attempted
     if (this.lastInvalidMove && (currentTime - this.lastInvalidMoveTime) < 100) {
       this.framework.incrementCounter('skipped-renders-repeated-invalid');
       return true;
     }
 
-    // Skip if no significant state changes occurred
     const currentStateSignature = this.generateRenderStateSignature();
     if (currentStateSignature === this.lastRenderStateSignature) {
       this.framework.incrementCounter('skipped-renders-no-changes');
@@ -219,17 +195,13 @@ export class MapRenderer {
   }
 
   generateRenderStateSignature() {
-    // Create a simple signature of the current render state
     return `${Date.now()}-${Math.random()}`;
   }
 
-  // ===== DIRTY CELL TRACKING =====
 
   identifyDirtyCells(map, players, bombs, powerUps) {
-    // Create current state snapshot
     const currentState = this.createMapStateSnapshot(map, players, bombs, powerUps);
 
-    // Compare with last state to find changes
     if (this.lastGameMapState) {
       for (let y = 0; y < map.length; y++) {
         for (let x = 0; x < map[y].length; x++) {
@@ -244,7 +216,6 @@ export class MapRenderer {
         }
       }
     } else {
-      // First render - mark all cells as dirty
       for (let y = 0; y < map.length; y++) {
         for (let x = 0; x < map[y].length; x++) {
           const cellKey = `${x}-${y}`;
@@ -254,7 +225,6 @@ export class MapRenderer {
       }
     }
 
-    // Store current state for next comparison
     this.lastGameMapState = currentState;
   }
 
@@ -281,10 +251,8 @@ export class MapRenderer {
     const gameMapElement = this.framework.getCachedElement('game-map');
     if (!gameMapElement) return;
 
-    // Ensure game map has proper structure for selective updates
     this.ensureGameMapStructure(gameMapElement, map);
 
-    // Update only dirty cells
     this.dirtyMapCells.forEach(cellKey => {
       const [x, y] = cellKey.split('-').map(Number);
       const cellData = this.lastGameMapState.get(cellKey);
@@ -294,12 +262,10 @@ export class MapRenderer {
       });
     });
 
-    // Clear dirty cells after processing
     this.dirtyMapCells.clear();
   }
 
   ensureGameMapStructure(gameMapElement, map) {
-    // Check if we need to create the initial structure
     if (gameMapElement.children.length === 0) {
       const mapFragment = document.createDocumentFragment();
       map.forEach((row, y) => {
@@ -311,7 +277,6 @@ export class MapRenderer {
           cellElement.setAttribute('data-x', x);
           cellElement.setAttribute('data-y', y);
 
-          // Cache the element in framework
           this.framework.cacheElement(`cell-${x}-${y}`, cellElement);
           mapFragment.appendChild(cellElement);
         });
@@ -321,27 +286,21 @@ export class MapRenderer {
   }
 
   renderCellContent(cellElement, _x, _y, cellData, _map, players, _bombs, _powerUps) {
-    // Clear existing content using framework method
     this.framework.setContent(cellElement, '');
 
-    // Update cell class
     cellElement.className = `cell ${cellData.cellType}`;
 
-    // Add power-ups with hardware acceleration
     cellData.powerUps.forEach(powerUpData => {
       const powerUpElement = this.createPowerUpElement(powerUpData);
       this.framework.appendChild(cellElement, powerUpElement);
     });
 
-    // Add bombs with hardware acceleration
     cellData.bombs.forEach(bombData => {
       const bombElement = this.createBombElement(bombData);
       this.framework.appendChild(cellElement, bombElement);
     });
 
-    // Add players with hardware acceleration
     cellData.players.forEach((playerData) => {
-      // Calculate correct player index based on player ID
       const playerKeys = Object.keys(players);
       const playerIndex = playerKeys.indexOf(playerData.id);
       const playerElement = this.createPlayerElement(playerData, playerIndex);
@@ -349,33 +308,29 @@ export class MapRenderer {
     });
   }
 
-  // ===== ELEMENT CREATION WITH OBJECT POOLING =====
-
   createPowerUpElement(powerUpData) {
-    // Create element using framework's createElement with all attributes
     const powerUpElement = this.getPooledElement('powerUps') || this.framework.createElement('div', {
       className: `powerup powerup-${powerUpData.type}`,
       'data-powerup-id': powerUpData.id,
       textContent: this.getPowerUpEmoji(powerUpData.type),
-      style: 'transform: translateZ(0)' // Hardware acceleration
+      style: 'transform: translateZ(0)' 
     });
 
     return powerUpElement;
   }
 
   createBombElement(_bombData) {
-    // Create element using framework's createElement with all attributes
+
     const bombElement = this.getPooledElement('bombs') || this.framework.createElement('div', {
       className: 'bomb',
       textContent: '💣',
-      style: 'transform: translateZ(0)' // Hardware acceleration
+      style: 'transform: translateZ(0)' 
     });
 
     return bombElement;
   }
 
   createPlayerElement(playerData, index) {
-    // Create element using framework's createElement with all attributes
     const isGhost = !playerData.alive;
     const ghostClass = isGhost ? ' player-ghost' : '';
 
@@ -389,53 +344,44 @@ export class MapRenderer {
       'data-player-alive': playerData.alive
     });
 
-    // Handle character sprite loading with fallback
     this.loadPlayerSprite(playerElement, index, playerData);
 
     return playerElement;
   }
 
-  // ✅ NEW: Load player sprite images with fallback handling
+
   loadPlayerSprite(playerElement, playerIndex, playerData) {
     const spritePath = this.SPRITE_MAP[playerIndex];
     if (!spritePath) return;
 
-    // Use shared sprite loading utility
     this.loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerData);
   }
 
-  // ✅ CONSOLIDATED: Shared sprite loading utility to avoid duplication
   loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerData) {
     const img = new Image();
 
     img.onload = () => {
-      // Image loaded successfully - apply sprite background
       console.log(`✅ Player sprite loaded successfully: ${spritePath}`);
       playerElement.style.backgroundImage = `url('${spritePath}')`;
       playerElement.style.backgroundSize = 'cover';
       playerElement.style.backgroundPosition = 'center';
       playerElement.style.backgroundRepeat = 'no-repeat';
 
-      // Hide text content when image is loaded
       playerElement.style.fontSize = '0';
       playerElement.style.color = 'transparent';
     };
 
     img.onerror = () => {
-      // Image failed to load - use fallback styling
       console.warn(`❌ Failed to load player sprite: ${spritePath}`);
       this.applyFallbackPlayerStyling(playerElement, playerIndex, playerData);
     };
 
-    // Start loading the image
     img.src = spritePath;
   }
 
-  // ✅ NEW: Apply fallback styling when images fail to load
   applyFallbackPlayerStyling(playerElement, playerIndex, playerData) {
     const color = this.FALLBACK_COLORS[playerIndex] || '#95a5a6';
 
-    // Apply circular fallback styling
     playerElement.style.backgroundColor = color;
     playerElement.style.backgroundImage = 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 20%, transparent 20%)';
     playerElement.style.borderRadius = '50%';
@@ -443,23 +389,19 @@ export class MapRenderer {
     playerElement.style.color = 'white';
     playerElement.style.fontWeight = 'bold';
 
-    // Handle both playerData object and string initial
     const playerInitial = typeof playerData === 'string' ? playerData : playerData.nickname.charAt(0).toUpperCase();
     playerElement.textContent = playerInitial;
   }
 
-  // ✅ NEW: Generate player HTML for string-based rendering
   generatePlayerHTML(playerData, playerIndex) {
     const spritePath = this.SPRITE_MAP[playerIndex];
     const playerInitial = playerData.nickname.charAt(0).toUpperCase();
 
-    // ✅ GHOST MODE: Apply ghost styling for eliminated players
     const isGhost = !playerData.alive;
     const ghostClass = isGhost ? ' player-ghost' : '';
     const ghostStyle = isGhost ?
       'opacity: 0.4; filter: grayscale(100%) brightness(0.7); pointer-events: none;' : '';
 
-    // Generate HTML with both sprite and fallback styling
     return `<div class="player player-${playerIndex}${ghostClass}"
                  style="background-image: url('${spritePath}');
                         background-size: cover;
@@ -471,7 +413,6 @@ export class MapRenderer {
                  data-player-alive="${playerData.alive}">${playerInitial}</div>`;
   }
 
-  // ✅ NEW: Setup sprite loading for HTML-generated players
   setupPlayerSprites(gameMapElement) {
     const playerElements = gameMapElement.querySelectorAll('.player');
 
@@ -485,15 +426,12 @@ export class MapRenderer {
       const spritePath = this.SPRITE_MAP[playerIndex];
 
       if (spritePath) {
-        // Use shared sprite loading utility
         this.loadSpriteWithFallback(playerElement, spritePath, playerIndex, playerInitial);
       }
     });
   }
 
 
-
-  // ===== OBJECT POOLING SYSTEM =====
 
   getPooledElement(type) {
     const pool = this.entityPool[type];
@@ -502,7 +440,6 @@ export class MapRenderer {
 
   returnToPool(element, type) {
     if (element && this.entityPool[type]) {
-      // Clean the element before returning to pool
       element.className = '';
       element.textContent = '';
       element.removeAttribute('data-powerup-id');
@@ -513,22 +450,19 @@ export class MapRenderer {
   }
 
   cleanupRemovedElements() {
-    // Return removed elements to their respective pools
     ['powerUps', 'bombs', 'players'].forEach(type => {
       const pool = this.entityPool[type];
-      if (pool.length > 20) { // Limit pool size
+      if (pool.length > 20) { 
         this.entityPool[type] = pool.slice(0, 20);
       }
     });
   }
 
-  // ===== HELPER FUNCTIONS =====
 
   getPowerUpEmoji(powerUpType) {
-    return this.POWER_UP_EMOJIS[powerUpType] || '💎'; // Default to gem if unknown type
+    return this.POWER_UP_EMOJIS[powerUpType] || '💎';
   }
 
-  // ===== INVALID MOVE TRACKING =====
 
   setInvalidMoveTime(time) {
     this.lastInvalidMoveTime = time;
@@ -541,7 +475,6 @@ export class MapRenderer {
   showExplosionEffect(position, explosions, _range = 1, chainDepth = 0) {
     console.log(`💥 SHOWING EXPLOSION at (${position.x}, ${position.y}) with ${explosions.length} affected cells - Chain depth: ${chainDepth}`);
 
-    // ✅ FRAMEWORK: Use framework's getCachedElement instead of document.getElementById
     const gameMap = this.framework.find('#game-map');
     if (!gameMap) {
       console.error('❌ Game map element not found for explosion animation');
@@ -551,22 +484,19 @@ export class MapRenderer {
     console.log('✅ Game map found:', gameMap);
     console.log('📍 Explosion cells:', explosions);
 
-    // Create explosion animations on all affected cells
     explosions.forEach((cell) => {
-      // First cell is bomb center, others are blast areas
       const type = (cell.x === position.x && cell.y === position.y) ? 'center' : 'blast';
       console.log(`🎆 Creating ${type} explosion at (${cell.x}, ${cell.y}) - Chain depth: ${chainDepth}`);
 
-      // Add slight delay for chain reactions to create visual sequence
-      const delay = chainDepth > 0 ? chainDepth * 50 : 0; // 50ms delay per chain level
+
+      const delay = chainDepth > 0 ? chainDepth * 50 : 0;
 
       setTimeout(() => {
         this.createExplosionAnimation(cell.x, cell.y, type, chainDepth);
       }, delay);
     });
 
-    // Cleanup after animation completes
-    const cleanupDelay = 900 + (chainDepth * 50); // Wait for shorter animation to complete
+    const cleanupDelay = 900 + (chainDepth * 50);
     setTimeout(() => {
       console.log(`🧹 Cleaning up explosion animations for chain depth ${chainDepth}`);
       this.cleanupExplosionAnimations();
@@ -582,7 +512,6 @@ export class MapRenderer {
       return;
     }
 
-    // Find the cell element
     const cellSelector = `[data-x="${x}"][data-y="${y}"]`;
     console.log(`🔍 Looking for cell with selector: ${cellSelector}`);
 
@@ -590,7 +519,7 @@ export class MapRenderer {
     if (!cellElement) {
       console.error(`❌ Cell element not found for explosion at (${x}, ${y})`);
       console.log('Available cells:', this.framework.findAll('[data-x][data-y]').length);
-      // Debug: Log all available cells
+ 
       const allCells = this.framework.findAll('[data-x][data-y]');
       console.log('First 5 cells:', Array.from(allCells).slice(0, 5).map(cell => ({
         x: cell.getAttribute('data-x'),
@@ -601,7 +530,6 @@ export class MapRenderer {
 
     console.log(`✅ Found cell element for (${x}, ${y}):`, cellElement);
 
-    // Create explosion element using framework's createElement with all attributes
     const explosionElement = this.framework.createElement('div', {
       'data-explosion': 'true',
       'data-chain-depth': chainDepth.toString(),
@@ -631,11 +559,9 @@ export class MapRenderer {
       `
     });
 
-    // Add to cell with relative positioning using framework methods
     cellElement.style.position = 'relative';
     this.framework.appendChild(cellElement, explosionElement);
 
-    // IMMEDIATE: Trigger animation immediately for visibility
     console.log(`🎬 Explosion element added to DOM at (${x}, ${y})`);
     console.log(`📏 Element dimensions:`, {
       width: explosionElement.offsetWidth,
@@ -655,7 +581,6 @@ export class MapRenderer {
   }
 
   cleanupExplosionAnimations() {
-    // Use framework's findAll and removeChild
     const explosionElements = this.framework.findAll('[data-explosion="true"]');
     explosionElements.forEach(element => {
       element.classList.add('explosion-fade-out');
@@ -669,7 +594,6 @@ export class MapRenderer {
   }
 
   animatePowerUpSpawn(powerUpId) {
-    // Use framework's find for element lookup
     const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('spawning');
@@ -678,7 +602,6 @@ export class MapRenderer {
   }
 
   animatePowerUpCollected(powerUpId) {
-    // Use framework's find and removeChild for cleanup
     const el = this.framework.find(`[data-powerup-id="${powerUpId}"]`);
     if (el) {
       el.classList.add('collected');

@@ -1,26 +1,20 @@
-// ✅ CONSOLIDATED: Import framework PerformanceMonitor and extend it
 import { PerformanceMonitor as FrameworkPerformanceMonitor } from '../../framework/modules/PerformanceMonitor.js';
 
 export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   constructor(framework) {
-    // ✅ CONSOLIDATED: Call parent constructor for core performance monitoring
     super();
 
     this.framework = framework;
 
-    // App-specific performance state
     this.performanceDisplay = null;
     this.domObserver = null;
     this.isMonitoringEnabled = false;
 
-    // App-specific metrics (extending parent metrics)
     this.domMutationCount = 0;
     this.lastLayoutThrashingWarning = 0;
 
-    // Display state
     this.showPerformanceStats = localStorage.getItem('showPerformanceStats') === 'true';
 
-    // Movement tracking
     this.lastInvalidMoveTime = 0;
     this.lastInvalidMove = null;
 
@@ -28,26 +22,20 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   init() {
-    // ✅ CONSOLIDATED: Initialize app-specific monitoring (parent already initialized)
     this.initAppPerformanceMonitoring();
     this.setupKeyboardShortcuts();
   }
 
-  // ===== APP-SPECIFIC PERFORMANCE MONITORING =====
-
   initAppPerformanceMonitoring() {
     console.log('🔍 Initializing app-specific performance monitoring...');
 
-    // Create performance display overlay
     this.createPerformanceDisplay();
 
-    // Setup framework performance callbacks
     this.framework.onPerformanceUpdate((metrics) => {
       this.updatePerformanceDisplay(metrics);
       this.triggerPerformanceWarnings(metrics);
     });
 
-    // Monitor DOM performance (app-specific)
     this.monitorDOMPerformance();
 
     this.isMonitoringEnabled = true;
@@ -55,7 +43,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   createPerformanceDisplay() {
-    // Create performance overlay container
     this.performanceDisplay = this.framework.selectiveRenderer.createElement('div', {
         id: 'performance-monitor',
         style: `
@@ -76,7 +63,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     
     document.body.appendChild(this.performanceDisplay);
     
-    // Create movement checker stats overlay
     this.createMovementStatsDisplay();
   }
 
@@ -115,12 +101,11 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
       totalFrames
     } = metrics;
     
-    // Calculate percentages and color coding
     const dropPercentage = totalFrames > 0 ? (droppedFrames / totalFrames * 100).toFixed(1) : '0.0';
     const fpsColor = fps >= 55 ? '#4CAF50' : fps >= 30 ? '#FF9800' : '#F44336';
     const frameTimeColor = frameTime <= 16.7 ? '#4CAF50' : frameTime <= 33.3 ? '#FF9800' : '#F44336';
     
-    this.performanceDisplay.innerHTML = ''; // Clear previous content
+    this.performanceDisplay.innerHTML = '';
 
     const title = this.framework.selectiveRenderer.createElement('div', { style: 'border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;' });
     const titleStrong = this.framework.selectiveRenderer.createElement('strong', { textContent: '🔍 Performance Monitor' });
@@ -146,7 +131,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     this.performanceDisplay.appendChild(domMutationsDiv);
     this.performanceDisplay.appendChild(footer);
     
-    // Update movement stats
     this.updateMovementStatsDisplay();
   }
 
@@ -162,7 +146,7 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     const totalSkipped = skippedInvalidMove + skippedNoChanges + skippedRepeated;
     const timeSinceInvalidMove = this.lastInvalidMoveTime ? Date.now() - this.lastInvalidMoveTime : 0;
     
-    this.movementStatsDisplay.innerHTML = ''; // Clear previous content
+    this.movementStatsDisplay.innerHTML = '';
 
     const title = this.framework.selectiveRenderer.createElement('div', { style: 'border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px;' });
     const titleStrong = this.framework.selectiveRenderer.createElement('strong', { textContent: '🎮 Movement Performance' });
@@ -201,12 +185,10 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   triggerPerformanceWarnings(metrics) {
     const { fps, droppedFrames, totalFrames } = metrics;
     
-    // Warn about low FPS
     if (fps < 30) {
       console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} FPS`);
     }
     
-    // Warn about high frame drop percentage
     const dropPercentage = totalFrames > 0 ? (droppedFrames / totalFrames * 100) : 0;
     if (dropPercentage > 10) {
       console.warn(`⚠️ High frame drop rate: ${dropPercentage.toFixed(1)}%`);
@@ -214,11 +196,9 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   monitorDOMPerformance() {
-    // Monitor DOM mutations to detect potential performance issues
     this.domObserver = new MutationObserver((mutations) => {
       this.domMutationCount += mutations.length;
       
-      // Check for rapid DOM changes that could indicate layout thrashing
       const now = Date.now();
       if (mutations.length > 10 && (now - this.lastLayoutThrashingWarning) > 5000) {
         console.warn('Potential layout thrashing detected:', mutations.length, 'DOM changes');
@@ -243,7 +223,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     });
   }
 
-  // ===== PUBLIC INTERFACE =====
 
   togglePerformanceStats() {
     this.showPerformanceStats = !this.showPerformanceStats;
@@ -261,13 +240,11 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
   }
 
   resetPerformanceCounters() {
-    // Reset framework counters individually
     const counters = this.framework.getAllCounters();
     Object.keys(counters).forEach(counterName => {
       this.framework.resetCounter(counterName);
     });
-    
-    // Reset local counters
+
     this.domMutationCount = 0;
     this.frameCounter = 0;
     this.lastInvalidMoveTime = 0;
@@ -288,8 +265,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
       timeSinceLastInvalidMove: this.lastInvalidMoveTime ? Date.now() - this.lastInvalidMoveTime : 0
     };
   }
-
-  // ===== MOVEMENT TRACKING =====
 
   trackInvalidMove(move, time) {
     this.lastInvalidMove = move;
@@ -315,7 +290,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     }
   }
 
-  // ===== DEBUG INTERFACE =====
 
   getDebugInterface() {
     return {
@@ -340,7 +314,6 @@ export class PerformanceMonitor extends FrameworkPerformanceMonitor {
     };
   }
 
-  // ===== CLEANUP =====
 
   destroy() {
     if (this.domObserver) {

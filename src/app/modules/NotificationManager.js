@@ -1,7 +1,3 @@
-/**
- * NotificationManager: Handles notifications and error messages for the app
- * Implements a priority-based queue system to prevent race conditions
- */
 export class NotificationManager {
   constructor(framework) {
     this.framework = framework;
@@ -13,20 +9,17 @@ export class NotificationManager {
   showNotification(message, type = "success") {
     console.log(`Queuing notification: "${message}" (type: ${type})`);
 
-    // Detect different types of messages
     const isWelcomeMessage = message.toLowerCase().includes('welcome') || 
                            message.includes('🎉') ||
                            message.includes('joined successfully');
     const isNameLimitMessage = message.toLowerCase().includes('character limit') || 
                              message.toLowerCase().includes('name too long');
 
-    // Skip name limit message if it comes right after welcome
     if (isNameLimitMessage && this.lastMessageWasWelcome) {
         console.log('Skipping name limit message after welcome');
         return;
     }
 
-    // Clear existing notifications for welcome messages
     if (isWelcomeMessage) {
         this.notificationQueue = [];
         if (this.currentNotificationTimeout) {
@@ -40,12 +33,11 @@ export class NotificationManager {
         type,
         priority: isWelcomeMessage ? 2 : 0,
         timestamp: Date.now(),
-        isWelcomeMessage // Track if this is a welcome message
+        isWelcomeMessage
     };
 
     this.notificationQueue.push(notification);
 
-    // Mirror into framework state
     try {
         if (isWelcomeMessage) {
             this.framework.set('notifications', []);
@@ -60,10 +52,8 @@ export class NotificationManager {
         console.warn('Failed to mirror notification to framework state:', e);
     }
 
-    // Track last message type
     this.lastMessageWasWelcome = isWelcomeMessage;
 
-    // Sort queue by priority (higher priority first)
     this.notificationQueue.sort((a, b) => b.priority - a.priority);
 
     console.log(`Notification queue length: ${this.notificationQueue.length}`);
@@ -76,7 +66,7 @@ export class NotificationManager {
   processNotificationQueue() {
     if (this.notificationQueue.length === 0) {
       this.isProcessingQueue = false;
-      this.lastMessageWasWelcome = false; // Reset welcome message tracking
+      this.lastMessageWasWelcome = false;
       return;
     }
 
@@ -87,10 +77,8 @@ export class NotificationManager {
 
     this.displayNotification(notification.message, notification.type);
 
-    // Set longer delay after welcome message
     const delay = notification.isWelcomeMessage ? 4000 : 3000;
 
-    // Process next notification after current one finishes
     this.currentNotificationTimeout = setTimeout(() => {
       this.processNotificationQueue();
     }, delay);

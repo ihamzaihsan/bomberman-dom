@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const WebSocketManager = require('./src/backend/websocketServer.cjs');
 let MAP_CONFIG, GAME_TIMING, PLAYER_CONFIG, STARTING_POSITIONS, CELL_TYPES, POWER_UP_CONFIG, EXPLOSION_CONFIG, SERVER_CONFIG, MIME_TYPES;
-// Dynamically import ESM shared modules before bootstrapping server
 (async () => {
   try {
     const constants = await import('./src/shared/GameConstants.js');
@@ -20,7 +19,6 @@ let MAP_CONFIG, GAME_TIMING, PLAYER_CONFIG, STARTING_POSITIONS, CELL_TYPES, POWE
     const movement = await import('./src/shared/MovementValidator.js');
     MovementValidator = movement.MovementValidator;
 
-    // Start the server after ESM modules are available
     PORT = SERVER_CONFIG.PORT;
 
     bootstrap();
@@ -56,11 +54,8 @@ class GameServer {
 
     this.wsManager = null;
 
-    // Real-time game loop for processing bombs, explosions, etc.
     this.gameLoopInterval = null;
     this.gameLoopRunning = false;
-
-    // Chain reaction tracking to prevent infinite loops and duplicate explosions
     this.explodingBombs = new Set();
     this.explodedBombs = new Set();
 
@@ -98,7 +93,6 @@ class GameServer {
         console.log('Waiting timer cancelled - insufficient players');
       }
 
-      // FIX: End the game if only one player remains and the game has started
       if (remainingPlayers === 1 && this.gameState.gameStarted) {
         const alivePlayers = Object.values(this.gameState.players).filter(p => p.alive);
         if (alivePlayers.length === 1) {
@@ -127,7 +121,6 @@ class GameServer {
         if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
           map[y][x] = CELL_TYPES.BLOCK;
         }
-        // Interior walls on odd coordinates (classic Bomberman pattern)
         else if (x % 2 === 1 && y % 2 === 1) {
           map[y][x] = CELL_TYPES.WALL;
         }
@@ -140,7 +133,6 @@ class GameServer {
       }
     }
 
-    // Create proper 3x3 spawn-safe areas for all starting positions
     STARTING_POSITIONS.forEach((pos, index) => {
       console.log(`Creating 3x3 spawn area for player ${index + 1} at (${pos.x}, ${pos.y})`);
 
@@ -174,10 +166,6 @@ class GameServer {
     return this.gameState;
   }
 
-  /**
-   * Get a clean version of game state for JSON serialization
-   * Removes circular references from timers
-   */
   getCleanGameState() {
     const cleanState = {
       map: this.gameState.map,
@@ -212,7 +200,6 @@ class GameServer {
       return { success: false, error: 'Game is resetting, please wait for next round' };
     }
 
-    // Check for duplicate nicknames
     const normalizedNickname = nickname.trim().toLowerCase();
     console.log(`Checking for duplicate nickname: "${normalizedNickname}"`);
 
@@ -268,13 +255,10 @@ class GameServer {
 
     const newPlayerCount = playerCount + 1;
 
-    // Reset countdown if a new player joins during countdown (except final countdown threshold)
     if (this.gameState.countdown > EXPLOSION_CONFIG.FINAL_COUNTDOWN_THRESHOLD) {
       console.log('New player joined during countdown - resetting to waiting timer');
       this.resetToWaitingTimer();
     }
-
-    // Start waiting timer when minimum players join
     if (newPlayerCount === PLAYER_CONFIG.MIN_PLAYERS && !this.gameState.waitingTimer && !this.gameState.gameStarted && this.gameState.countdown === 0) {
       console.log(`Starting ${GAME_TIMING.WAITING_DURATION}-second waiting timer...`);
       this.startWaitingTimer();
@@ -369,10 +353,6 @@ class GameServer {
     }, GAME_TIMING.TIMER_INTERVAL);
   }
 
-  /**
-   * Start real-time game loop for processing bombs, explosions, etc.
-   * Runs at 10 FPS (every 100ms) for smooth real-time updates
-   */
   startRealTimeGameLoop() {
     if (this.gameLoopRunning) return;
 
@@ -393,9 +373,6 @@ class GameServer {
     }
   }
 
-  /**
-   * Process real-time game logic including bomb timers and explosions
-   */
   processGameLogic() {
     if (!this.gameState.gameStarted) return;
 
@@ -593,7 +570,6 @@ class GameServer {
 
     this.explodingBombs.add(bomb.id);
 
-    // Prevent infinite chain reactions by limiting depth
     const MAX_CHAIN_DEPTH = EXPLOSION_CONFIG.MAX_CHAIN_DEPTH;
     if (chainReactionDepth > MAX_CHAIN_DEPTH) {
       console.warn(`Chain reaction depth limit reached (${MAX_CHAIN_DEPTH}), stopping chain`);
@@ -605,7 +581,6 @@ class GameServer {
     const explosions = [{ x: bomb.x, y: bomb.y }];
     const triggeredBombs = [];
 
-    // Damage bomb owner if still standing on their own bomb
     if (bombOwner && bombOwner.alive && bombOwner.x === bomb.x && bombOwner.y === bomb.y) {
       bombOwner.lives--;
       console.log(`Player ${bombOwner.nickname} damaged by their own bomb! Lives: ${bombOwner.lives}`);
@@ -649,10 +624,10 @@ class GameServer {
     }
 
     const directions = [
-      { dx: 0, dy: -1 }, // up
-      { dx: 0, dy: 1 },  // down
-      { dx: -1, dy: 0 }, // left
-      { dx: 1, dy: 0 }   // right
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: 0 }
     ];
 
     directions.forEach(dir => {
@@ -665,7 +640,6 @@ class GameServer {
 
         explosions.push({ x, y });
 
-        // Check for bombs in explosion range for chain reactions
         const bombsAtPosition = this.gameState.bombs.filter(otherBomb =>
           otherBomb.x === x && otherBomb.y === y && otherBomb.id !== bomb.id
         );
@@ -677,13 +651,11 @@ class GameServer {
           });
         }
 
-        // Check for player hits
         Object.values(this.gameState.players).forEach(player => {
           if (player.alive && player.x === x && player.y === y) {
             player.lives--;
             console.log(`Player ${player.nickname} hit by explosion! Lives: ${player.lives}`);
 
-            // Reset bomb system on damage
             player.maxBombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS;
             player.currentBombs = 0;
             player.powerUps.bombs = PLAYER_CONFIG.DEFAULT_MAX_BOMBS;
@@ -758,7 +730,6 @@ class GameServer {
 
     console.log(`Bomb exploded at: (${bomb.x}, ${bomb.y}) with explosions at:`, explosions);
 
-    // Process chain reactions - trigger bombs that were hit by this explosion
     if (triggeredBombs.length > 0) {
       console.log(`Processing ${triggeredBombs.length} chain reaction bombs at depth ${chainReactionDepth + 1}`);
 
@@ -779,7 +750,6 @@ class GameServer {
     this.explodedBombs.add(bomb.id);
     console.log(`Bomb ${bomb.id} explosion complete, marked as exploded`);
 
-    // Broadcast game state after bomb explosion to update currentBombs count
     if (this.wsManager && chainReactionDepth === 0) {
       setTimeout(() => {
         this.wsManager.broadcastGameState();
@@ -817,7 +787,6 @@ class GameServer {
       const powerUp = this.gameState.powerUps[powerUpIndex];
       const player = this.gameState.players[playerId];
 
-      // Only alive players can collect power-ups
       if (!player || !player.alive) {
         console.log(`Ghost player ${player?.nickname || playerId} cannot collect power-ups`);
         return;
@@ -891,7 +860,6 @@ class GameServer {
   }
 }
 
-// Delay reading PORT until after dynamic import has populated SERVER_CONFIG
 let PORT;
 
 
@@ -910,43 +878,42 @@ function bootstrap() {
     }
 
     let filePath = req.url === '/' ? './index.html' : '.' + req.url;
-  const ext = path.extname(filePath);
-  const contentType = MIME_TYPES[ext] || 'text/plain';
+    const ext = path.extname(filePath);
+    const contentType = MIME_TYPES[ext] || 'text/plain';
 
-  // Check if this is a request for a static file (has extension)
-  if (ext) {
-    // Handle static files
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        if (err.code === 'ENOENT') {
-          console.log(`Static file not found: ${filePath}`);
-          res.writeHead(404);
-          res.end('Static file not found');
+    if (ext) {
+      // Serve static files with extensions
+      fs.readFile(filePath, (err, content) => {
+        if (err) {
+          if (err.code === 'ENOENT') {
+            console.log(`Static file not found: ${filePath}`);
+            res.writeHead(404);
+            res.end('Static file not found');
+          } else {
+            console.log(`Server error: ${err.code}`);
+            res.writeHead(500);
+            res.end('Server error: ' + err.code);
+          }
         } else {
-          console.log(`Server error: ${err.code}`);
-          res.writeHead(500);
-          res.end('Server error: ' + err.code);
+          res.writeHead(200, { 'Content-Type': contentType });
+          res.end(content);
         }
-      } else {
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content);
-      }
-    });
-  } else {
-    // For routes without extensions, serve index.html to enable client-side routing
-    console.log(`Serving index.html for route: ${req.url}`);
-    fs.readFile('./index.html', (err, content) => {
-      if (err) {
-        console.log(`Index file not found: ./index.html`);
-        res.writeHead(500);
-        res.end('Server configuration error: Index file not found');
-      } else {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(content);
-      }
-    });
-  }
-});
+      });
+    } else {
+      // Serve index.html for routes without extensions (SPA fallback)
+      console.log(`Serving index.html for route: ${req.url}`);
+      fs.readFile('./index.html', (err, content) => {
+        if (err) {
+          console.log(`Index file not found: ./index.html`);
+          res.writeHead(500);
+          res.end('Server configuration error: Index file not found');
+        } else {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(content);
+        }
+      });
+    }
+  });
 
 function handleApiRequest(req, res) {
   console.log(`API Request: ${req.method} ${req.url}`);

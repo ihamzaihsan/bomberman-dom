@@ -1,26 +1,23 @@
-// ===== MAP CONFIGURATION =====
 export const MAP_CONFIG = {
   WIDTH: 13,
   HEIGHT: 13, 
-  CELL_SIZE: 45, // CSS pixel size
-  BLOCK_DENSITY: 0.6, // Probability of block generation
+  CELL_SIZE: 45,
+  BLOCK_DENSITY: 0.6,
 };
 
-// ===== GAME TIMING CONFIGURATION =====
 export const GAME_TIMING = {
   COUNTDOWN_DURATION: 10,
-  GAME_DURATION: 180, // 3 minutes in seconds
-  WAITING_DURATION: 20, // seconds to wait for players
-  BOMB_TIMER: 3.0, // seconds before bomb explodes (decimal format)
-  GAME_LOOP_INTERVAL: 100, // milliseconds between game loop ticks
-  TIMER_INTERVAL: 1000, // milliseconds between timer updates
-  CHAIN_EXPLOSION_DELAY: 100, // milliseconds delay between chain explosions
-  GAME_STATE_BROADCAST_DELAY: 150, // milliseconds delay for game state broadcast
-  GAME_END_RESET_DELAY: 10000, // milliseconds before game resets after ending
-  STATE_SYNC_DELAY: 100, // milliseconds delay for state synchronization
+  GAME_DURATION: 180, 
+  WAITING_DURATION: 20, 
+  BOMB_TIMER: 3.0, 
+  GAME_LOOP_INTERVAL: 100, 
+  TIMER_INTERVAL: 1000, 
+  CHAIN_EXPLOSION_DELAY: 100, 
+  GAME_STATE_BROADCAST_DELAY: 150,
+  GAME_END_RESET_DELAY: 10000,
+  STATE_SYNC_DELAY: 100,
 };
 
-// ===== PLAYER CONFIGURATION =====
 export const PLAYER_CONFIG = {
   MAX_PLAYERS: 4,
   MIN_PLAYERS: 2,
@@ -32,16 +29,13 @@ export const PLAYER_CONFIG = {
   NICKNAME_MAX_LENGTH: 20,
 };
 
-// ===== STARTING POSITIONS =====
-// Player starting positions in 13x13 map corners
 export const STARTING_POSITIONS = [
-  { x: 1, y: 1 },     // Top-left (center of 3x3 area)
-  { x: 11, y: 1 },    // Top-right (center of 3x3 area)
-  { x: 1, y: 11 },    // Bottom-left (center of 3x3 area)
-  { x: 11, y: 11 }    // Bottom-right (center of 3x3 area)
+  { x: 1, y: 1 },  
+  { x: 11, y: 1 },    
+  { x: 1, y: 11 },   
+  { x: 11, y: 11 }    
 ];
 
-// ===== CELL TYPES =====
 export const CELL_TYPES = {
   EMPTY: 'empty',
   WALL: 'wall',
@@ -50,46 +44,43 @@ export const CELL_TYPES = {
   SPAWN_SAFE: 'spawn-safe',
 };
 
-// List of cell types that players can walk on
 export const WALKABLE_CELLS = [
   CELL_TYPES.EMPTY,
   CELL_TYPES.SPAWN,
   CELL_TYPES.SPAWN_SAFE
 ];
 
-// ===== POWER-UP CONFIGURATION =====
 export const POWER_UP_CONFIG = {
-  SPAWN_CHANCE: 0.35, // 35% chance to spawn power-up when block is destroyed
+  SPAWN_CHANCE: 0.35,
   TYPES: ['bombs', 'flames', 'speed'],
   MAX_LIMITS: {
-    bombs: 5,   // Maximum bombs a player can place simultaneously
-    flames: 5,  // Maximum bomb explosion range
-    speed: 3    // Maximum movement speed multiplier
+    bombs: 5,   
+    flames: 5,  
+    speed: 3   
   },
   EMOJIS: {
-    bombs: '💣',   // Bombs power-up
-    flames: '🔥',  // Flames power-up
-    speed: '⚡'    // Speed power-up
+    bombs: '💣',
+    flames: '🔥',
+    speed: '⚡'
   }
 };
 
 // ===== SPRITE CONFIGURATION =====
 export const SPRITE_CONFIG = {
   PLAYER_SPRITES: {
-    0: 'assets/chara_aka.png',     // Red player
-    1: 'assets/chara_shiro.png',   // White/Blue player
-    2: 'assets/chara_pink.png',    // Pink player
-    3: 'assets/chara_kuro.png'     // Black player
+    0: 'assets/chara_aka.png',
+    1: 'assets/chara_shiro.png',
+    2: 'assets/chara_pink.png',
+    3: 'assets/chara_kuro.png'
   },
   FALLBACK_COLORS: {
-    0: '#e74c3c', // Red
-    1: '#3498db', // Blue
-    2: '#f39c12', // Orange
-    3: '#9b59b6'  // Purple
+    0: '#e74c3c',
+    1: '#3498db',
+    2: '#f39c12',
+    3: '#9b59b6'
   }
 };
 
-// ===== MOVEMENT DIRECTIONS =====
 export const DIRECTIONS = {
   UP: 'up',
   DOWN: 'down',
@@ -97,7 +88,6 @@ export const DIRECTIONS = {
   RIGHT: 'right'
 };
 
-// ===== GAME EVENTS =====
 export const GAME_EVENTS = {
   PLAYER_JOINED: 'player_joined',
   PLAYER_LEFT: 'player_left',
@@ -116,7 +106,6 @@ export const GAME_EVENTS = {
   WAITING_TIMER_UPDATE: 'waiting_timer_update'
 };
 
-// ===== VALIDATION HELPERS =====
 export const VALIDATION = {
   isValidPosition: (x, y) => {
     return x >= 0 && x < MAP_CONFIG.WIDTH && y >= 0 && y < MAP_CONFIG.HEIGHT;
@@ -137,14 +126,12 @@ export const VALIDATION = {
   }
 };
 
-// ===== EXPLOSION CONFIGURATION =====
 export const EXPLOSION_CONFIG = {
-  MAX_CHAIN_DEPTH: 10, // Maximum chain reaction depth to prevent infinite loops
-  SAFE_ZONE_SIZE: 3, // Size of safe zone around spawn points (3x3 area)
-  FINAL_COUNTDOWN_THRESHOLD: 3, // Seconds - block new players during final countdown
+  MAX_CHAIN_DEPTH: 10,
+  SAFE_ZONE_SIZE: 3,
+  FINAL_COUNTDOWN_THRESHOLD: 3,
 };
 
-// ===== SERVER CONFIGURATION =====
 export const SERVER_CONFIG = {
   PORT: 9090,
   HTTP_STATUS: {
@@ -155,7 +142,6 @@ export const SERVER_CONFIG = {
   }
 };
 
-// ===== MIME TYPES FOR SERVER =====
 export const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',

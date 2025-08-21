@@ -1,26 +1,21 @@
 export class WebSocketManager {
   constructor(framework) {
     this.framework = framework;
-    // WebSocket connection
     this.ws = null;
     this.wsConnected = false;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
 
-    // Message handlers
     this.messageHandlers = new Map();
 
-    // Event callbacks
     this.onConnectionSuccess = null;
     this.onConnectionError = null;
     this.onDisconnect = null;
 
-    // ✅ DEBUG: Message sequence tracking
     this.messageSequence = 0;
   }
 
-  // Initialize WebSocket connection
   initWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
@@ -80,7 +75,6 @@ export class WebSocketManager {
     }
   }
 
-  // Handle WebSocket disconnection and reconnection
   handleWebSocketDisconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
@@ -96,7 +90,6 @@ export class WebSocketManager {
     }
   }
 
-  // Send message via WebSocket
   sendWebSocketMessage(message) {
     console.log('=== SENDING WEBSOCKET MESSAGE ===');
     console.log('Message:', message);
@@ -128,14 +121,12 @@ export class WebSocketManager {
     }
   }
 
-  // Handle incoming WebSocket messages
   handleWebSocketMessage(data) {
     const timestamp = new Date().toISOString();
     console.log(`=== CLIENT WEBSOCKET MESSAGE RECEIVED [${timestamp}] ===`);
     console.log('Message type:', data.type);
     console.log('Message sequence number:', this.messageSequence++);
 
-    // Special logging for join-related messages
     if (data.type === 'join_success' || data.type === 'join_error') {
       console.log(`🔥 CRITICAL MESSAGE: ${data.type}`);
       if (data.type === 'join_success') {
@@ -147,7 +138,6 @@ export class WebSocketManager {
 
     console.log('Full message data:', data);
 
-    // Look for registered message handler
     const handler = this.messageHandlers.get(data.type);
     if (handler) {
       console.log(`📞 Calling handler for ${data.type}...`);
@@ -158,17 +148,14 @@ export class WebSocketManager {
     }
   }
 
-  // Register message handler for specific message type
   registerMessageHandler(messageType, handler) {
     this.messageHandlers.set(messageType, handler);
   }
 
-  // Unregister message handler
   unregisterMessageHandler(messageType) {
     this.messageHandlers.delete(messageType);
   }
 
-  // Show/hide connection error
   showConnectionError(message) {
     let errorDiv = this.framework.find('#connection-error');
     if (!errorDiv) {
@@ -200,19 +187,16 @@ export class WebSocketManager {
     }
   }
 
-  // Set connection event callbacks
   setConnectionCallbacks(callbacks) {
     this.onConnectionSuccess = callbacks.onSuccess || null;
     this.onConnectionError = callbacks.onError || null;
     this.onDisconnect = callbacks.onDisconnect || null;
   }
 
-  // Get connection status
   isConnected() {
     return this.wsConnected && this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 
-  // Close WebSocket connection
   close() {
     if (this.ws) {
       this.ws.close();
@@ -221,7 +205,6 @@ export class WebSocketManager {
     }
   }
 
-  // Reset connection
   reset() {
     this.close();
     this.reconnectAttempts = 0;

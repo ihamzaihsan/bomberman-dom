@@ -4,7 +4,6 @@ export class EventManager {
         this.eventEmitter = new Map();
     }
 
-    // used to Calls all listeners registered for the given custom event, passing any arguments.
     emit(eventName, ...args) {
         const listeners = this.eventEmitter.get(eventName) || [];
         listeners.forEach(listener => {
@@ -40,7 +39,6 @@ export class EventManager {
         console.error('Framework error:', error);
         this.emit('error', error);
 
-        // Show error component if available
         if (this.errorComponent) {
             try {
                 this.errorComponent(error);
@@ -55,11 +53,9 @@ export class EventManager {
         return this;
     }
 
-    // Enhanced event handling with more options
     on(eventType, selector, handler, options = {}) {
         if (!this.eventHandlers.has(eventType)) {
             this.eventHandlers.set(eventType, []);
-            // Set up delegation for this event type
             document.addEventListener(eventType, (e) => {
                 const handlers = this.eventHandlers.get(eventType) || [];
                 handlers.forEach(({ selector, handler, options }) => {
@@ -86,10 +82,9 @@ export class EventManager {
         }
 
         this.eventHandlers.get(eventType).push({ selector, handler, options });
-        return this; // Allow chaining
+        return this;
     }
 
-    // Remove event handler
     off(eventType, selector, handler) {
         if (this.eventHandlers.has(eventType)) {
             const handlers = this.eventHandlers.get(eventType);
@@ -103,12 +98,10 @@ export class EventManager {
         return this;
     }
 
-    // One-time event handler
     once(eventType, selector, handler) {
         return this.on(eventType, selector, handler, { once: true });
     }
 
-    // Shorthand event methods
     click(selector, handler) {
         return this.on('click', selector, handler);
     }
@@ -145,12 +138,10 @@ export class EventManager {
         return this.on('blur', selector, handler);
     }
 
-    // Handle hash changes
     onHashChange(handler) {
         window.addEventListener('hashchange', handler);
     }
 
-    // Handle DOM ready
     onReady(handler) {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', handler);

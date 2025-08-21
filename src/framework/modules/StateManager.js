@@ -11,7 +11,6 @@ export class StateManager {
         const oldState = { ...this.state };
         this.state = { ...this.state, ...newState };
 
-        // Mark components as dirty for selective re-rendering
         this.markDirty();
 
         if (callback) {
@@ -77,31 +76,26 @@ export class StateManager {
         }
     }
 
-    // Mark components as dirty for selective rendering
     markDirty(componentId = 'root') {
         this.dirtyComponents.add(componentId);
     }
 
-    // Enhanced batch update with performance optimization
     batchUpdate() {
         if (this.isUpdating) return;
 
         this.isUpdating = true;
 
-        // Use requestAnimationFrame for smooth updates
         requestAnimationFrame(() => {
             if (typeof performance !== 'undefined' && performance.mark) {
                 performance.mark('batch-update-start');
             }
 
             try {
-                // Only notify if there are actual changes
                 if (this.dirtyComponents.size > 0) {
                     this.notify();
                     this.dirtyComponents.clear();
                 }
 
-                // Execute queued callbacks
                 this.executeUpdateQueue();
             } catch (error) {
                 console.error('Batch update error:', error);

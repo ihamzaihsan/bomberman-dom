@@ -6,7 +6,6 @@ class WebSocketManager {
     this.clients = new Map();
     this.wss = null;
 
-    // Connection tracking to prevent duplicate connections
     this.connectionAttempts = new Map();
     this.pendingJoins = new Map();
     this.joinRateLimit = 500;
@@ -61,7 +60,6 @@ class WebSocketManager {
 
     console.log('WebSocket server initialized');
 
-    // Start periodic cleanup of stale pending joins
     setInterval(() => {
       this.cleanupPendingJoins();
     }, 30000);
@@ -112,7 +110,6 @@ class WebSocketManager {
     const normalizedNickname = nickname.trim().toLowerCase();
     const now = Date.now();
 
-    // Check if nickname is already in use by an active player
     const currentPlayers = this.gameServer.getGameState().players;
     const isNicknameInUse = Object.values(currentPlayers).some(
       player => player.nickname.toLowerCase() === normalizedNickname
@@ -127,7 +124,6 @@ class WebSocketManager {
       return;
     }
 
-    // Check if there's already a pending join for this nickname
     if (this.pendingJoins.has(normalizedNickname)) {
       const pending = this.pendingJoins.get(normalizedNickname);
       if (now - pending.timestamp < this.joinRateLimit) {
@@ -152,7 +148,6 @@ class WebSocketManager {
     const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     console.log('Generated player ID:', playerId);
 
-    // Mark this nickname as pending to prevent race conditions
     this.pendingJoins.set(normalizedNickname, { timestamp: now, playerId: playerId });
     console.log(`Marked "${nickname}" as pending join (Player ID: ${playerId})`);
 
@@ -184,7 +179,6 @@ class WebSocketManager {
       this.sendToClient(ws, joinSuccessMessage);
       console.log(`join_success message sent successfully to ${nickname}`);
 
-      // Store the current join context to prevent stale closures
       const joinContext = {
         playerId: playerId,
         nickname: nickname,
@@ -193,14 +187,12 @@ class WebSocketManager {
       };
 
       setTimeout(() => {
-        // Verify this player still exists before broadcasting
         const currentPlayers = this.gameServer.getGameState().players;
         if (!currentPlayers[joinContext.playerId]) {
           console.log(`Skipping broadcast for ${joinContext.nickname} - player no longer exists`);
           return;
         }
 
-        // Verify WebSocket is still connected
         if (joinContext.ws.readyState !== joinContext.ws.OPEN) {
           console.log(`Skipping broadcast for ${joinContext.nickname} - WebSocket closed`);
           return;
@@ -214,7 +206,6 @@ class WebSocketManager {
         });
 
         setTimeout(() => {
-          // Verify player still exists before final broadcast
           const latestPlayers = this.gameServer.getGameState().players;
           if (!latestPlayers[joinContext.playerId]) {
             console.log(`Skipping game state broadcast for ${joinContext.nickname} - player no longer exists`);
