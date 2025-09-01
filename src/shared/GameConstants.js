@@ -68,17 +68,17 @@ export const POWER_UP_CONFIG = {
 // ===== SPRITE CONFIGURATION =====
 export const SPRITE_CONFIG = {
   PLAYER_SPRITES: {
-    0: 'assets/chara_aka.png',
-    1: 'assets/chara_shiro.png',
-    2: 'assets/chara_pink.png',
-    3: 'assets/chara_kuro.png'
+    0: '/assets/player-red.svg',
+    1: '/assets/player-blue.svg',
+    2: '/assets/player-pink.svg',
+    3: '/assets/player-black.svg',
   },
   FALLBACK_COLORS: {
     0: '#e74c3c',
     1: '#3498db',
     2: '#f39c12',
-    3: '#9b59b6'
-  }
+    3: '#9b59b6',
+  },
 };
 
 export const DIRECTIONS = {
@@ -146,5 +146,7 @@ export const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
   '.js': 'text/javascript',
-  '.json': 'application/json'
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
 };
