@@ -1,4 +1,4 @@
-import { MAP_CONFIG, WALKABLE_CELLS, DIRECTIONS, VALIDATION } from './GameConstants.js';
+import { MAP_CONFIG, DIRECTIONS, VALIDATION } from "./GameConstants.js";
 
 export class MovementValidator {
   /**
@@ -9,32 +9,41 @@ export class MovementValidator {
    * @returns {Object} - { isValid: boolean, reason: string, newX: number, newY: number }
    */
   static validateMove(player, direction, gameState) {
-    if (!player || !player.alive || !gameState.gameStarted || gameState.gameEnded) {
+    if (
+      !player ||
+      !player.alive ||
+      !gameState.gameStarted ||
+      gameState.gameEnded
+    ) {
       return {
         isValid: false,
-        reason: 'Game not active or player not alive',
+        reason: "Game not active or player not alive",
         newX: player?.x || 0,
-        newY: player?.y || 0
+        newY: player?.y || 0,
       };
     }
 
-    const { newX, newY } = this.calculateNewPosition(player.x, player.y, direction);
+    const { newX, newY } = this.calculateNewPosition(
+      player.x,
+      player.y,
+      direction,
+    );
 
     if (newX === player.x && newY === player.y) {
       return {
         isValid: false,
-        reason: 'Move would go out of bounds',
+        reason: "Move would go out of bounds",
         newX,
-        newY
+        newY,
       };
     }
 
     if (!VALIDATION.isValidPosition(newX, newY)) {
       return {
         isValid: false,
-        reason: 'Move would go out of bounds',
+        reason: "Move would go out of bounds",
         newX,
-        newY
+        newY,
       };
     }
 
@@ -44,37 +53,39 @@ export class MovementValidator {
         isValid: false,
         reason: `Target cell is blocked (${targetCell})`,
         newX,
-        newY
+        newY,
       };
     }
 
-    const bombAtPosition = gameState.bombs?.find(bomb => bomb.x === newX && bomb.y === newY);
+    const bombAtPosition = gameState.bombs?.find(
+      (bomb) => bomb.x === newX && bomb.y === newY,
+    );
     if (bombAtPosition) {
       return {
         isValid: false,
-        reason: 'Bomb is at target position',
+        reason: "Bomb is at target position",
         newX,
-        newY
+        newY,
       };
     }
 
     const playerAtPosition = Object.values(gameState.players || {}).find(
-      p => p.id !== player.id && p.alive && p.x === newX && p.y === newY
+      (p) => p.id !== player.id && p.alive && p.x === newX && p.y === newY,
     );
     if (playerAtPosition) {
       return {
         isValid: false,
-        reason: 'Another alive player is at target position',
+        reason: "Another alive player is at target position",
         newX,
-        newY
+        newY,
       };
     }
 
     return {
       isValid: true,
-      reason: 'Move is valid',
+      reason: "Move is valid",
       newX,
-      newY
+      newY,
     };
   }
 
@@ -107,92 +118,5 @@ export class MovementValidator {
     }
 
     return { newX, newY };
-  }
-
-  /**
-   * Pre-validate player movement without actually moving (performance optimization)
-   * @param {string} playerId - Player ID
-   * @param {string} direction - Direction to move
-   * @param {Object} gameState - Current game state
-   * @returns {boolean} - true if move is valid, false otherwise
-   */
-  static preValidateMove(playerId, direction, gameState) {
-    const player = gameState.players?.[playerId];
-    if (!player) return false;
-
-    const result = this.validateMove(player, direction, gameState);
-    return result.isValid;
-  }
-
-  /**
-   * Get all valid moves for a player
-   * @param {Object} player - Player object
-   * @param {Object} gameState - Current game state
-   * @returns {Array} - Array of valid directions
-   */
-  static getValidMoves(player, gameState) {
-    const validMoves = [];
-    const directions = [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT];
-
-    directions.forEach(direction => {
-      const result = this.validateMove(player, direction, gameState);
-      if (result.isValid) {
-        validMoves.push(direction);
-      }
-    });
-
-    return validMoves;
-  }
-
-  /**
-   * Check if a position is safe (not in explosion range)
-   * @param {number} x - X position
-   * @param {number} y - Y position
-   * @param {Array} bombs - Array of active bombs
-   * @param {Object} gameState - Current game state
-   * @returns {boolean} - true if position is safe
-   */
-  static isPositionSafe(x, y, bombs, gameState) {
-    // Check if position is in any bomb's explosion range
-    for (const bomb of bombs) {
-      const range = bomb.range || 1;
-      
-      // Check horizontal explosion range
-      if (bomb.y === y && Math.abs(bomb.x - x) <= range) {
-        // Check if there are walls blocking the explosion
-        const minX = Math.min(bomb.x, x);
-        const maxX = Math.max(bomb.x, x);
-        let blocked = false;
-        
-        for (let checkX = minX + 1; checkX < maxX; checkX++) {
-          const cell = gameState.map[y]?.[checkX];
-          if (cell === 'wall' || cell === 'block') {
-            blocked = true;
-            break;
-          }
-        }
-        
-        if (!blocked) return false;
-      }
-      
-
-      if (bomb.x === x && Math.abs(bomb.y - y) <= range) {
-        const minY = Math.min(bomb.y, y);
-        const maxY = Math.max(bomb.y, y);
-        let blocked = false;
-        
-        for (let checkY = minY + 1; checkY < maxY; checkY++) {
-          const cell = gameState.map[checkY]?.[x];
-          if (cell === 'wall' || cell === 'block') {
-            blocked = true;
-            break;
-          }
-        }
-        
-        if (!blocked) return false;
-      }
-    }
-    
-    return true;
   }
 }
