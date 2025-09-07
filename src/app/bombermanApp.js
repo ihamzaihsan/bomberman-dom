@@ -115,8 +115,6 @@ class BombermanApp {
     this.playerController.setCallbacks({
       onInvalidMove: (direction, reason) => {
         this.performanceMonitor.trackInvalidMove(direction, Date.now());
-        this.mapRenderer.setInvalidMoveTime(Date.now());
-        this.mapRenderer.setInvalidMove(direction);
       },
       onSuccessfulMove: (direction) => {
         this.performanceMonitor.trackValidMove();
@@ -409,7 +407,6 @@ class BombermanApp {
 
     this.clearChatHistory();
 
-    this.mapRenderer.resetRenderer();
 
     this.removeEventHandlers();
     this.removeChatHandlers();

@@ -1,26 +1,21 @@
-import { DIRECTIONS, VALIDATION } from "../../shared/GameConstants.js";
-import { MovementValidator } from "../../shared/MovementValidator.js";
+import { PLAYER_CONFIG } from '../../shared/GameConstants.js';
+import { MovementValidator } from '../../shared/MovementValidator.js';
 
 export class PlayerController {
-  static BOMB_CAP = 8;
-
   constructor(framework, webSocketManager) {
     this.framework = framework;
     this.webSocketManager = webSocketManager;
-    
+
     this.isMoving = false;
     this.lastMoveTime = 0;
-    this.baseMoveThrottle = 150;
+    this.baseMoveThrottle = PLAYER_CONFIG.MOVE_INTERVALS[1];
     this.moveThrottle = this.baseMoveThrottle;
-    this.lastInvalidMoveTime = 0;
-    this.lastInvalidMove = null;
-    
 
     this.lastBombPlacementTime = 0;
-    
+
     this.onInvalidMove = null;
     this.onSuccessfulMove = null;
-    
+
     this.setupEventHandlers();
   }
 
@@ -30,26 +25,27 @@ export class PlayerController {
   }
 
   setupEventHandlers() {
-    console.log('PlayerController: Setting up event handlers');
-    this.framework.eventManager.keydown('body', (e) => {
-      console.log('PlayerController: Keydown event captured:', e.key);
+    if (this.inputHandler) return;
+
+    this.inputHandler = (e) => {
       this.handleGameInput(e);
-    });
+    };
+    this.framework.eventManager.keydown('body', this.inputHandler);
   }
 
   handleGameInput(e) {
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
-    console.log('Key pressed:', e.key, 'GameState exists:', !!gs, 'Game started:', gs?.gameStarted, 'Player ID:', pid);
 
     const activeElement = document.activeElement;
-    if (activeElement && (activeElement.id === 'chat-input' || activeElement.id === 'game-chat-input')) {
-      console.log('Input blocked - Chat input has focus');
+    if (
+      activeElement &&
+      (activeElement.id === 'chat-input' || activeElement.id === 'game-chat-input')
+    ) {
       return;
     }
 
     if (!gs?.gameStarted || !pid) {
-      console.log('Input blocked - Game not started or no player ID');
       return;
     }
 
@@ -57,7 +53,7 @@ export class PlayerController {
     let action = null;
 
     // Movement keys
-    switch(e.key) {
+    switch (e.key) {
       case 'ArrowUp':
       case 'w':
       case 'W':
@@ -86,7 +82,7 @@ export class PlayerController {
 
     if (direction || action) {
       e.preventDefault();
-      
+
       if (direction) {
         this.movePlayer(direction);
       } else if (action === 'placeBomb') {
@@ -101,24 +97,17 @@ export class PlayerController {
     if (gs && gs.players && pid) {
       const currentPlayer = gs.players[pid];
       if (currentPlayer && !currentPlayer.alive) {
-        console.log('Movement blocked: Player is eliminated (ghost mode)');
         return;
       }
     }
 
     const currentTime = Date.now();
-    if (this.isMoving || (currentTime - this.lastMoveTime) < this.moveThrottle) {
-      console.log('Movement throttled');
+    if (this.isMoving || currentTime - this.lastMoveTime < this.moveThrottle) {
       return;
     }
 
     const validationResult = this.validateClientMoveWithRenderCheck(direction);
     if (!validationResult.isValid) {
-      console.log('Invalid move:', validationResult.reason);
-
-      this.lastInvalidMoveTime = currentTime;
-      this.lastInvalidMove = direction;
-
       if (this.onInvalidMove) {
         this.onInvalidMove(direction, validationResult.reason);
       }
@@ -128,15 +117,13 @@ export class PlayerController {
     this.isMoving = true;
     this.lastMoveTime = currentTime;
 
-    console.log(`Moving player ${direction}`);
     this.webSocketManager.sendWebSocketMessage({
       type: 'move',
-      direction: direction
+      direction: direction,
     });
 
     setTimeout(() => {
       this.isMoving = false;
-      console.log('isMoving reset to false');
     }, this.moveThrottle);
 
     if (this.onSuccessfulMove) {
@@ -152,45 +139,34 @@ export class PlayerController {
     if (!player) return;
 
     if (!player.alive) {
-      console.log('🚫 Cannot place bomb: Player is eliminated (ghost mode)');
       return;
     }
 
     const now = Date.now();
     if (now - this.lastBombPlacementTime < 100) {
-      console.log('🚫 Bomb placement rate limited');
       return;
     }
 
     if (typeof player.maxBombs !== 'number') player.maxBombs = 1;
     if (typeof player.currentBombs !== 'number') player.currentBombs = 0;
 
-    console.log(`🎯 CLIENT BOMB ATTEMPT: ${player.nickname} - currentBombs=${player.currentBombs}, maxBombs=${player.maxBombs}`);
-
     if (player.currentBombs >= player.maxBombs) {
-      console.log(`🚫 CLIENT VALIDATION FAILED: ${player.currentBombs} >= ${player.maxBombs}`);
       return;
     }
 
-    const existingBomb = gs.bombs?.find(bomb => bomb.x === player.x && bomb.y === player.y);
+    const existingBomb = gs.bombs?.find((bomb) => bomb.x === player.x && bomb.y === player.y);
     if (existingBomb) {
-      console.log('🚫 CLIENT VALIDATION FAILED: Bomb already exists at position');
       return;
     }
 
-    console.log('✅ CLIENT VALIDATION PASSED: Sending bomb placement request');
     this.lastBombPlacementTime = now;
-
 
     this.webSocketManager.sendWebSocketMessage({
       type: 'bomb',
       x: player.x,
-      y: player.y
+      y: player.y,
     });
-
   }
-
-
 
   validateClientMoveWithRenderCheck(direction) {
     const gs = this.framework.get('gameState');
@@ -223,32 +199,6 @@ export class PlayerController {
     return result;
   }
 
-  validateClientMove(direction) {
-    const result = this.validateClientMoveWithRenderCheck(direction);
-    return result.isValid;
-  }
-
-  getMovementStats() {
-    return {
-      validMoves: this.framework.getCounter('valid-moves') || 0,
-      invalidMovesBoundary: this.framework.getCounter('invalid-moves-boundary') || 0,
-      invalidMovesWall: this.framework.getCounter('invalid-moves-wall') || 0,
-      invalidMovesPlayer: this.framework.getCounter('invalid-moves-player') || 0,
-      invalidMovesBomb: this.framework.getCounter('invalid-moves-bomb') || 0,
-      lastMoveTime: this.lastMoveTime,
-      isMoving: this.isMoving,
-      moveThrottle: this.moveThrottle
-    };
-  }
-
-  resetMovementStats() {
-    this.framework.resetCounter('valid-moves');
-    this.framework.resetCounter('invalid-moves-boundary');
-    this.framework.resetCounter('invalid-moves-wall');
-    this.framework.resetCounter('invalid-moves-player');
-    this.framework.resetCounter('invalid-moves-bomb');
-  }
-
   updateMovementSpeed() {
     const gs = this.framework.get('gameState');
     const pid = this.framework.get('playerId');
@@ -265,24 +215,6 @@ export class PlayerController {
 
     const speedLevel = player.powerUps.speed || 1;
 
-    const speedMultipliers = {
-      1: 1.0,    
-      2: 0.67,   
-      3: 0.33    
-    };
-
-    const multiplier = speedMultipliers[speedLevel] || 1.0;
-    this.moveThrottle = Math.round(this.baseMoveThrottle * multiplier);
-
-    console.log(`PlayerController: Speed level ${speedLevel}, movement throttle: ${this.moveThrottle}ms`);
-  }
-
-
-  getLastInvalidMoveTime() {
-    return this.lastInvalidMoveTime;
-  }
-
-  getLastInvalidMove() {
-    return this.lastInvalidMove;
+    this.moveThrottle = PLAYER_CONFIG.MOVE_INTERVALS[speedLevel] || this.baseMoveThrottle;
   }
 }
