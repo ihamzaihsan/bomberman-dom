@@ -7,58 +7,90 @@ export class AppEventHandlers {
   registerEventHandlers() {
     const eventManager = this.app.framework.eventManager;
 
-    eventManager.addEventListener("countdown_update", (eventData) => this.app.gameUIManager.updateCountdown(eventData.countdown));
-    eventManager.addEventListener("waiting_timer_update", (eventData) => this.app.gameUIManager.updateWaitingTimer(eventData.waitingTimeLeft));
-    eventManager.addEventListener("player_joined", (eventData) => this.app.handlePlayerJoined(eventData));
-    eventManager.addEventListener("player_left", (eventData) => this.app.handlePlayerLeft(eventData));
-    eventManager.addEventListener("bomb_exploded", (eventData) => this.app.handleBombExplosion(eventData));
-    eventManager.addEventListener("powerup_spawned", (eventData) => this.app.handlePowerUpSpawned(eventData));
-    eventManager.addEventListener("powerup_collected", (eventData) => this.app.handlePowerUpCollected(eventData));
-    eventManager.addEventListener("game_started", (eventData) => this.app.handleGameStarted(eventData));
-    eventManager.addEventListener("timer_update", (eventData) => this.app.gameUIManager.updateGameTimer(eventData.timeLeft));
-    eventManager.addEventListener("player_damaged", this.handlePlayerDamaged.bind(this));
-    eventManager.addEventListener("player_eliminated", (eventData) => this.app.handlePlayerEliminated(eventData));
-    eventManager.addEventListener("game_ended", (eventData) => this.app.handleGameEnded(eventData));
-    eventManager.addEventListener("game_reset", (eventData) => this.app.handleGameReset(eventData));
+    eventManager.addEventListener("countdown_update", (eventData) =>
+      this.app.gameUIManager.updateCountdown(eventData.countdown),
+    );
+    eventManager.addEventListener("waiting_timer_update", (eventData) =>
+      this.app.gameUIManager.updateWaitingTimer(eventData.waitingTimeLeft),
+    );
+    eventManager.addEventListener("player_joined", (eventData) =>
+      this.app.handlePlayerJoined(eventData),
+    );
+    eventManager.addEventListener("player_left", (eventData) =>
+      this.app.handlePlayerLeft(eventData),
+    );
+    eventManager.addEventListener("bomb_exploded", (eventData) =>
+      this.app.handleBombExplosion(eventData),
+    );
+    eventManager.addEventListener("powerup_spawned", (eventData) =>
+      this.app.handlePowerUpSpawned(eventData),
+    );
+    eventManager.addEventListener("powerup_collected", (eventData) =>
+      this.app.handlePowerUpCollected(eventData),
+    );
+    eventManager.addEventListener("game_started", (eventData) =>
+      this.app.handleGameStarted(eventData),
+    );
+    eventManager.addEventListener("timer_update", (eventData) =>
+      this.app.gameUIManager.updateGameTimer(eventData.timeLeft),
+    );
+    eventManager.addEventListener(
+      "player_damaged",
+      this.handlePlayerDamaged.bind(this),
+    );
+    eventManager.addEventListener("player_eliminated", (eventData) =>
+      this.app.handlePlayerEliminated(eventData),
+    );
+    eventManager.addEventListener("game_ended", (eventData) =>
+      this.app.handleGameEnded(eventData),
+    );
+    eventManager.addEventListener("game_reset", (eventData) =>
+      this.app.handleGameReset(eventData),
+    );
   }
 
   handleJoinSuccess(data) {
-    console.log('CLIENT: handleJoinSuccess called with data:', data);
+    this.app.framework.set("playerId", data.playerId);
+    this.app.framework.set("gameState", data.gameState);
 
-    this.app.framework.set('playerId', data.playerId);
-    this.app.framework.set('gameState', data.gameState);
-
-    const playerNickname = data.player?.nickname || this.app.framework.get('nickname') || 'Player';
-    console.log('Join success - showing welcome notification for:', playerNickname);
+    const playerNickname =
+      data.player?.nickname || this.app.framework.get("nickname") || "Player";
 
     this.app.clearChatHistory();
-    
+
     setTimeout(() => {
-        this.app.showNotification(`🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`);
+      this.app.showNotification(
+        `🎉 WELCOME ${playerNickname}! You joined successfully! 🎉`,
+      );
     }, 100);
 
     this.app.playerController.updateMovementSpeed();
     this.app.resetJoinButton();
     this.app.gameUIManager.showWaitingScreen();
-    
+
     setTimeout(() => {
-        this.app.setupChatHandlers();
-        this.app.updateWaitingScreen();
-        this.app.updateChatDisplay();
+      this.app.setupChatHandlers();
+      this.app.updateWaitingScreen();
+      this.app.updateChatDisplay();
     }, 100);
-    
+
     this.app.startOptimizedGameLoop();
   }
 
   handleGameStarted(eventData) {
     if (eventData.gameState) {
-      this.app.framework.set('gameState', eventData.gameState);
-      if (!this.app.framework.get('playerId') || !this.app.framework.get('gameState').players[this.app.framework.get('playerId')]) {
-        const playerByNickname = Object.values(this.app.framework.get('gameState').players).find(
-          (p) => p.nickname === this.app.framework.get('nickname')
-        );
+      this.app.framework.set("gameState", eventData.gameState);
+      if (
+        !this.app.framework.get("playerId") ||
+        !this.app.framework.get("gameState").players[
+          this.app.framework.get("playerId")
+        ]
+      ) {
+        const playerByNickname = Object.values(
+          this.app.framework.get("gameState").players,
+        ).find((p) => p.nickname === this.app.framework.get("nickname"));
         if (playerByNickname) {
-          this.app.framework.set('playerId', playerByNickname.id);
+          this.app.framework.set("playerId", playerByNickname.id);
           this.app.playerController.updateMovementSpeed();
           this.app.gameUIManager.showGameScreen();
           this.app.setupGameControls();
@@ -66,7 +98,6 @@ export class AppEventHandlers {
             this.app.setupGameChatHandlers();
             this.app.updateChatDisplay();
             this.app.gameUIManager.updateTimer();
-            this.app.applyAnimationSettings();
           }, 100);
         } else {
           this.app.showError("Failed to join game - please try again");
@@ -80,7 +111,6 @@ export class AppEventHandlers {
           this.app.setupGameChatHandlers();
           this.app.updateChatDisplay();
           this.app.gameUIManager.updateTimer();
-          this.app.applyAnimationSettings();
         }, 100);
       }
     }
@@ -88,68 +118,82 @@ export class AppEventHandlers {
 
   handleGameEnded(eventData) {
     if (eventData.gameState) {
-      this.app.framework.set('gameState', eventData.gameState);
+      this.app.framework.set("gameState", eventData.gameState);
       this.app.playerController.updateMovementSpeed();
     }
-    this.app.framework.merge('gameState', { gameEnded: true, winner: eventData.winner });
+    this.app.framework.merge("gameState", {
+      gameEnded: true,
+      winner: eventData.winner,
+    });
     setTimeout(() => {
       this.app.gameUIManager.showGameEndScreen();
     }, 50);
   }
 
   handleGameReset(eventData) {
-    console.log('🔧 AppEventHandlers: Game reset event received');
-    this.app.framework.set('gameState', eventData.gameState);
+    this.app.framework.set("gameState", eventData.gameState);
 
-    const currentScreen = document.querySelector('.game-screen, .waiting-screen, .game-end-screen');
+    const currentScreen = document.querySelector(
+      ".game-screen, .waiting-screen, .game-end-screen",
+    );
     if (currentScreen) {
-      console.log('🔧 Currently in game/waiting/end screen, returning to lobby');
       this.app.returnToLobby();
-    } else {
-      console.log('🔧 Already in lobby, just updating game state');
     }
   }
 
   handlePlayerEliminated(eventData) {
-    const isCurrentPlayer = eventData.playerId === this.app.framework.get('playerId');
+    const isCurrentPlayer =
+      eventData.playerId === this.app.framework.get("playerId");
     const playerName = isCurrentPlayer ? "You" : eventData.nickname || "Player";
 
     if (eventData.willGameEnd) {
-      console.log('Game will end after this elimination, skipping ghost mode notifications');
-
       if (isCurrentPlayer) {
         if (eventData.winner) {
-          this.app.showNotification(`💀 ${playerName} were eliminated! ${eventData.winner.nickname} wins the game!`, 'error');
+          this.app.showNotification(
+            `💀 ${playerName} were eliminated! ${eventData.winner.nickname} wins the game!`,
+            "error",
+          );
         } else {
-          this.app.showNotification(`💀 ${playerName} were eliminated! Game Over!`, 'error');
+          this.app.showNotification(
+            `💀 ${playerName} were eliminated! Game Over!`,
+            "error",
+          );
         }
       } else {
-        this.app.showNotification(`💀 ${playerName} was eliminated! Game ending...`, 'info');
+        this.app.showNotification(
+          `💀 ${playerName} was eliminated! Game ending...`,
+          "info",
+        );
       }
 
-      this.app.gameUIManager.updatePlayerStats(true);
+      this.app.gameUIManager.updatePlayerStats();
       return;
     }
 
     if (isCurrentPlayer) {
-      this.app.showNotification(`💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`, 'error');
-      this.app.gameUIManager.updatePlayerStats(true);
+      this.app.showNotification(
+        `💀 ${playerName} were eliminated! You are now in ghost mode - you can watch the game continue.`,
+        "error",
+      );
+      this.app.gameUIManager.updatePlayerStats();
 
       setTimeout(() => {
-        this.app.showNotification(`👻 Ghost Mode: You can still watch the game and chat, but cannot move or place bombs.`, 'info');
+        this.app.showNotification(
+          `👻 Ghost Mode: You can still watch the game and chat, but cannot move or place bombs.`,
+          "info",
+        );
       }, 3000);
     } else {
-      this.app.showNotification(`💀 ${playerName} was eliminated and is now a ghost!`, 'info');
+      this.app.showNotification(
+        `💀 ${playerName} was eliminated and is now a ghost!`,
+        "info",
+      );
     }
-  }
-
-  handleBombExplosion(eventData) {
-    console.log('🎆 Bomb explosion event processed:', eventData.bombId);
   }
 
   handlePlayerLeft(eventData) {
     const playerName = eventData.nickname || "Player";
-    this.app.showNotification(`👋 ${playerName} left the game`, 'info');
+    this.app.showNotification(`👋 ${playerName} left the game`, "info");
 
     if (this.app.isInWaitingRoom()) {
       this.app.updateWaitingScreen();
@@ -157,19 +201,17 @@ export class AppEventHandlers {
   }
 
   handlePlayerDamaged(eventData) {
-    if (eventData.playerId === this.app.framework.get('playerId')) {
-      const gs = this.app.framework.get('gameState') || {};
-      if (gs.players && gs.players[this.app.framework.get('playerId')]) {
+    if (eventData.playerId === this.app.framework.get("playerId")) {
+      const gs = this.app.framework.get("gameState") || {};
+      if (gs.players && gs.players[this.app.framework.get("playerId")]) {
         const newGs = JSON.parse(JSON.stringify(gs));
-        newGs.players[this.app.framework.get('playerId')].lives = eventData.livesRemaining;
-        this.app.framework.set('gameState', newGs);
+        newGs.players[this.app.framework.get("playerId")].lives =
+          eventData.livesRemaining;
+        this.app.framework.set("gameState", newGs);
         this.app.playerController.updateMovementSpeed();
       }
-      this.app.gameUIManager.updatePlayerStats(true);
+      this.app.gameUIManager.updatePlayerStats();
       this.app.gameUIManager.handlePlayerDamage();
-      this.app.playDamageSound();
     }
   }
-
-  
 }

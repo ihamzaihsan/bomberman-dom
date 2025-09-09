@@ -1,44 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Bomberman Game</title>
-    <link rel="stylesheet" href="src/styles/bomberman.css">
-</head>
-<body>
-    <div id="app">
-        <div class="nickname-screen">
-            <h1>Bomberman</h1>
-            <div class="nickname-form-container">
-                <form id="nickname-form" action="javascript:void(0);">
-                    <label for="nickname-input">Enter your nickname:</label>
-                    <input
-                        id="nickname-input"
-                        type="text"
-                        placeholder="Your nickname"
-                        required
-                        maxlength="20"
-                        minlength="2"
-                    >
-                    <button type="submit">Join Game</button>
-                </form>
-                <div id="error-message" class="error" style="display: none;"></div>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="src/framework/framework.js"></script>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A real-time multiplayer Bomberman web game. Battle with 2?4 players, collect power-ups, and chat in a shared arena."
+    />
+    <meta name="theme-color" content="#2c3e50" />
+    <title>Bomberman: Real-Time Multiplayer Web Game</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/styles/bomberman.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>This game requires JavaScript and a keyboard to play.</noscript>
     <script type="module">
-        import BombermanApp from './src/app/bombermanApp.js';
-
-        // Initialize BombermanApp; Framework router will handle invalid routes and show 404
-        const start = () => new BombermanApp();
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", start);
-        } else {
-            start();
-        }
-
-        console.log('🎮 Bomberman app initialized. Framework Router manages 404 error pages.');
+      import BombermanApp from '/src/app/bombermanApp.js';
+      new BombermanApp();
     </script>
-</body>
+  </body>
 </html>

@@ -6,60 +6,57 @@ export class NotificationManager {
     this.currentNotificationTimeout = null;
   }
 
-  showNotification(message, type = "success") {
-    console.log(`Queuing notification: "${message}" (type: ${type})`);
-
-    const isWelcomeMessage = message.toLowerCase().includes('welcome') || 
-                           message.includes('🎉') ||
-                           message.includes('joined successfully');
-    const isNameLimitMessage = message.toLowerCase().includes('character limit') || 
-                             message.toLowerCase().includes('name too long');
+  showNotification(message, type = 'success') {
+    const isWelcomeMessage =
+      message.toLowerCase().includes('welcome') ||
+      message.includes('🎉') ||
+      message.includes('joined successfully');
+    const isNameLimitMessage =
+      message.toLowerCase().includes('character limit') ||
+      message.toLowerCase().includes('name too long');
 
     if (isNameLimitMessage && this.lastMessageWasWelcome) {
-        console.log('Skipping name limit message after welcome');
-        return;
+      return;
     }
 
     if (isWelcomeMessage) {
-        this.notificationQueue = [];
-        if (this.currentNotificationTimeout) {
-            clearTimeout(this.currentNotificationTimeout);
-            this.currentNotificationTimeout = null;
-        }
+      this.notificationQueue = [];
+      if (this.currentNotificationTimeout) {
+        clearTimeout(this.currentNotificationTimeout);
+        this.currentNotificationTimeout = null;
+      }
     }
 
     const notification = {
-        message,
-        type,
-        priority: isWelcomeMessage ? 2 : 0,
-        timestamp: Date.now(),
-        isWelcomeMessage
+      message,
+      type,
+      priority: isWelcomeMessage ? 2 : 0,
+      timestamp: Date.now(),
+      isWelcomeMessage,
     };
 
     this.notificationQueue.push(notification);
 
     try {
-        if (isWelcomeMessage) {
-            this.framework.set('notifications', []);
-        }
-        this.framework.push('notifications', { 
-            message, 
-            type, 
-            timestamp: notification.timestamp,
-            priority: notification.priority 
-        });
+      if (isWelcomeMessage) {
+        this.framework.set('notifications', []);
+      }
+      this.framework.push('notifications', {
+        message,
+        type,
+        timestamp: notification.timestamp,
+        priority: notification.priority,
+      });
     } catch (e) {
-        console.warn('Failed to mirror notification to framework state:', e);
+      console.warn('Failed to mirror notification to framework state:', e);
     }
 
     this.lastMessageWasWelcome = isWelcomeMessage;
 
     this.notificationQueue.sort((a, b) => b.priority - a.priority);
 
-    console.log(`Notification queue length: ${this.notificationQueue.length}`);
-
     if (isWelcomeMessage || !this.isProcessingQueue) {
-        this.processNotificationQueue();
+      this.processNotificationQueue();
     }
   }
 
@@ -72,8 +69,6 @@ export class NotificationManager {
 
     this.isProcessingQueue = true;
     const notification = this.notificationQueue.shift();
-
-    console.log(`Displaying notification: "${notification.message}" (type: ${notification.type})`);
 
     this.displayNotification(notification.message, notification.type);
 
@@ -97,26 +92,26 @@ export class NotificationManager {
           position: fixed; top: 20px; right: 20px; z-index: 9999;
           min-width: 200px; padding: 12px 20px; border-radius: 6px;
           font-size: 15px; font-family: inherit; color: #fff;
-          background: ${type === "error" ? "#e74c3c" : "#27ae60"};
+          background: ${type === 'error' ? '#e74c3c' : '#27ae60'};
           box-shadow: 0 2px 8px rgba(0,0,0,0.15); opacity: 0.95;
           transition: opacity 0.3s;
-        `
+        `,
       });
       document.body.appendChild(notificationArea);
     }
 
-    notificationArea.style.background = type === "error" ? "#e74c3c" : "#27ae60";
+    notificationArea.style.background = type === 'error' ? '#e74c3c' : '#27ae60';
     notificationArea.textContent = message;
-    notificationArea.style.display = "block";
+    notificationArea.style.display = 'block';
 
     setTimeout(() => {
       if (notificationArea.textContent === message) {
-        notificationArea.style.display = "none";
+        notificationArea.style.display = 'none';
       }
     }, 2500);
   }
 
   showError(message) {
-    this.showNotification(message, "error");
+    this.showNotification(message, 'error');
   }
 }

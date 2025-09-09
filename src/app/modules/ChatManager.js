@@ -18,24 +18,32 @@ export class ChatManager {
     };
 
     this.app.framework.push('chatHistory', chatMessage);
-    
+
     const chatHistory = this.app.framework.get('chatHistory') || [];
     if (chatHistory.length > this.maxChatMessages) {
       this.app.framework.set('chatHistory', chatHistory.slice(-this.maxChatMessages));
     }
-    
+
     this.updateChatDisplay();
   }
 
   updateChatDisplay() {
     const chatMessages = this.app.framework.get('chatHistory') || [];
-    
+
     const renderMessages = (container) => {
       container.innerHTML = '';
-      chatMessages.forEach(msg => {
-        const messageContainer = this.app.framework.selectiveRenderer.createElement('div', { className: 'chat-message' });
-        const nickname = this.app.framework.selectiveRenderer.createElement('span', { className: 'chat-nickname', textContent: `${msg.nickname}:` });
-        const message = this.app.framework.selectiveRenderer.createElement('span', { className: 'chat-text', textContent: msg.message });
+      chatMessages.forEach((msg) => {
+        const messageContainer = this.app.framework.selectiveRenderer.createElement('div', {
+          className: 'chat-message',
+        });
+        const nickname = this.app.framework.selectiveRenderer.createElement('span', {
+          className: 'chat-nickname',
+          textContent: `${msg.nickname}:`,
+        });
+        const message = this.app.framework.selectiveRenderer.createElement('span', {
+          className: 'chat-text',
+          textContent: msg.message,
+        });
         messageContainer.appendChild(nickname);
         messageContainer.appendChild(message);
         container.appendChild(messageContainer);
@@ -47,7 +55,7 @@ export class ChatManager {
     if (chatContainer) {
       renderMessages(chatContainer);
     }
-    
+
     const gameChatContainer = this.app.framework.find('#game-chat-messages');
     if (gameChatContainer) {
       renderMessages(gameChatContainer);
@@ -57,37 +65,35 @@ export class ChatManager {
   sendChatMessage(message) {
     if (!message.trim()) return;
     const success = this.app.sendWebSocketMessage({
-      type: "chat",
+      type: 'chat',
       message: message.trim(),
     });
     if (!success) {
-      this.app.notificationManager?.showError("Failed to send chat message");
+      this.app.notificationManager?.showError('Failed to send chat message');
     }
   }
 
   setupChatHandlers() {
-    console.log('🔧 ChatManager: Setting up chat handlers');
     this.removeChatHandlers();
 
     setTimeout(() => {
       const chatInput = this.app.framework.find('#chat-input');
       const chatSend = this.app.framework.find('#chat-send');
       if (chatInput && chatSend) {
-        console.log('🔧 ChatManager: Adding chat event listeners');
         this.chatSendHandler = () => {
           const message = chatInput.value;
           if (message.trim()) {
             this.sendChatMessage(message);
-            chatInput.value = "";
+            chatInput.value = '';
           }
         };
 
         this.chatKeyHandler = (e) => {
-          if (e.key === "Enter") {
+          if (e.key === 'Enter') {
             const message = chatInput.value;
             if (message.trim()) {
               this.sendChatMessage(message);
-              chatInput.value = "";
+              chatInput.value = '';
             }
           }
         };
@@ -99,7 +105,6 @@ export class ChatManager {
   }
 
   removeChatHandlers() {
-    console.log('🔧 ChatManager: Removing chat handlers');
     if (this.chatSendHandler) {
       this.app.framework.eventManager.off('click', '#chat-send', this.chatSendHandler);
       this.chatSendHandler = null;
@@ -111,28 +116,26 @@ export class ChatManager {
   }
 
   setupGameChatHandlers() {
-    console.log('🔧 ChatManager: Setting up game chat handlers');
     this.removeGameChatHandlers();
 
     setTimeout(() => {
       const gameChatInput = this.app.framework.find('#game-chat-input');
       const gameChatSend = this.app.framework.find('#game-chat-send');
       if (gameChatInput && gameChatSend) {
-        console.log('🔧 ChatManager: Adding game chat event listeners');
         this.gameChatSendHandler = () => {
           const message = gameChatInput.value;
           if (message.trim()) {
             this.sendChatMessage(message);
-            gameChatInput.value = "";
+            gameChatInput.value = '';
           }
         };
 
         this.gameChatKeyHandler = (e) => {
-          if (e.key === "Enter") {
+          if (e.key === 'Enter') {
             const message = gameChatInput.value;
             if (message.trim()) {
               this.sendChatMessage(message);
-              gameChatInput.value = "";
+              gameChatInput.value = '';
             }
           }
         };
@@ -144,7 +147,6 @@ export class ChatManager {
   }
 
   removeGameChatHandlers() {
-    console.log('🔧 ChatManager: Removing game chat handlers');
     if (this.gameChatSendHandler) {
       this.app.framework.eventManager.off('click', '#game-chat-send', this.gameChatSendHandler);
       this.gameChatSendHandler = null;
