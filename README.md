@@ -1,553 +1,65 @@
-# Mini Framework - A Lightweight JavaScript Framework
+# Bomberman: Real-Time Multiplayer Web Game
 
-A modern, lightweight JavaScript framework designed for building interactive web applications with a focus on simplicity, performance, and developer experience.
+A Bomberman-inspired browser game for **2–4 players**, built with vanilla JavaScript, a custom DOM framework, and a Node.js WebSocket server. Players share one arena, destroy blocks, collect power-ups, and compete to be the last survivor. Lobby and in-game chat keep everyone connected.
 
-## 🚀 Features
+![Four-player arena with live chat](docs/gameplay.png)
 
-- **Virtual DOM** with efficient diffing algorithm
-- **Reactive State Management** with batched updates
-- **Client-side Routing** with hash-based navigation
-- **Event Delegation System** with intuitive API
-- **Component-based Architecture** with functional components
-- **Performance Optimized** with requestAnimationFrame batching
-- **Developer Friendly** with chainable API and helpful utilities
-- **Error Handling** with custom error pages
-- **TypeScript Ready** (types can be added)
+## Features
 
-## 📦 Installation
+- A randomized 13 × 13 arena with indestructible walls, destructible blocks, and protected corner spawns.
+- A lobby with unique nicknames, live player counts, and chat.
+- A 20-second waiting period after the second player joins, followed by a 10-second countdown. Four players skip directly to the countdown; dropping below two cancels it.
+- Three lives per player, three-second bomb fuses, chain reactions, and server-validated collision detection.
+- Bomb-capacity, explosion-range, and movement-speed power-ups, with a 35% drop chance from destroyed blocks.
+- Three-minute rounds. The last survivor wins; at the time limit, remaining lives decide the winner, with ties recorded as draws.
+- Spectating and chat after elimination, results, and a fresh lobby after each round.
+- Selective DOM updates, a `requestAnimationFrame` loop, and an optional performance panel.
+- Original SVG player sprites, keyboard focus indicators, reduced-motion support, and responsive layouts.
 
-Simply include the framework in your project:
+## Run locally
 
-```html
-<script type="module" src="src/framework/framework.js"></script>
+Use **Node.js 22 or later** and npm. There is no build step or database.
+
+```sh
+npm ci
+npm start
 ```
 
-## 🏁 Quick Start
+Open **http://localhost:9090** in two to four browser tabs or separate browsers. Give each player a different nickname. To play across devices on the same network, open the host computer's network address with port 9090 and allow the connection through its firewall.
 
-```javascript
-import { Framework } from './framework/framework.js';
-
-// Create a new framework instance
-const app = Framework.create({
-  initialState: {
-    count: 0
-  },
-  routes: {
-    '/': () => app.div({},
-      app.h1({}, 'Hello World!'),
-      app.p({}, `Count: ${app.get('count')}`),
-      app.button({ class: 'increment' }, 'Increment')
-    )
-  }
-});
-
-// Add event handlers
-app.click('.increment', () => {
-  app.set('count', app.get('count') + 1, () => app.render());
-});
+```sh
+npm run dev     # Restart the Node server when source files change
 ```
 
-## 📚 API Reference
+On Windows, use `npm.cmd` if PowerShell blocks the `npm.ps1` launcher.
 
-### Framework Creation
+| Action            | Control                               |
+| ----------------- | ------------------------------------- |
+| Move              | Arrow keys or WASD                    |
+| Place a bomb      | Space or Enter                        |
+| Send chat         | Enter while the chat input is focused |
+| Performance panel | F2                                    |
 
-#### `Framework.create(options)`
-Creates a new framework instance with optional configuration.
+The game is designed for a keyboard. Smaller screens can display the lobby and arena; touch controls are not implemented.
 
-```javascript
-const app = Framework.create({
-  initialState: {},      // Initial application state
-  routes: {},           // Route definitions
-  errorPage: null,      // Error page component
-  autoStart: true       // Auto-start the application
-});
+## Architecture
+
+```text
+server.cjs                    HTTP serving, configuration, and shutdown
+src/backend/GameServer.js     Authoritative game rules and round lifecycle
+src/backend/websocketServer.cjs  WebSocket sessions, validation, and broadcasting
+src/shared/                   Game constants and shared collision validation
+src/app/                      Game UI, controls, chat, and selective map rendering
+src/framework/                Custom state, event, routing, and rendering modules
+assets/                       Original SVG player sprites
 ```
 
-#### `new Framework()`
-Creates a new framework instance (manual setup required).
+The server owns positions, lives, bomb capacity, power-ups, movement timing, and match outcomes. Clients send actions rather than trusted coordinates. Shared collision validation gives immediate client feedback while the server independently validates every move.
 
-```javascript
-const app = new Framework();
-app.init(options);
-```
+The server processes game logic every 100 ms, using wall-clock deadlines for bomb fuses and the round timer. Browser rendering runs separately through `requestAnimationFrame`; the server tick rate is not a claim about display FPS. State snapshots contain game data, while timer handles remain private.
 
-### Element Creation
+The client framework uses real DOM elements, batched state notifications, delegated events, and cached map cells. It does **not** implement Virtual DOM diffing. See [framework.md](framework.md) for the implemented API.
 
-The framework provides shorthand methods for creating common HTML elements:
+## License
 
-#### Basic Elements
-```javascript
-app.div(props, ...children)     // <div>
-app.span(props, ...children)    // <span>
-app.p(props, ...children)       // <p>
-app.h1(props, ...children)      // <h1>
-app.h2(props, ...children)      // <h2>
-app.h3(props, ...children)      // <h3>
-app.button(props, ...children)  // <button>
-app.input(props)                // <input>
-app.label(props, ...children)   // <label>
-app.ul(props, ...children)      // <ul>
-app.li(props, ...children)      // <li>
-app.a(props, ...children)       // <a>
-app.section(props, ...children) // <section>
-app.header(props, ...children)  // <header>
-app.footer(props, ...children)  // <footer>
-```
-
-#### Generic Element Creation
-```javascript
-app.createElement(tag, props, ...children)
-```
-
-**Example:**
-```javascript
-const todoItem = app.li(
-  { class: 'todo-item', 'data-id': todo.id },
-  app.input({ type: 'checkbox', checked: todo.completed }),
-  app.label({}, todo.text),
-  app.button({ class: 'delete' }, '×')
-);
-```
-
-### State Management
-
-#### Basic State Operations
-```javascript
-// Get entire state
-const state = app.getState();
-
-// Get specific property
-const todos = app.get('todos');
-
-// Set entire state
-app.setState({ todos: [], filter: 'all' });
-
-// Set specific property
-app.set('filter', 'completed', callback);
-
-// Merge object into state
-app.merge('user', { name: 'John', age: 30 }, callback);
-```
-
-#### Array Operations
-```javascript
-// Add item to array
-app.push('todos', newTodo, callback);
-
-// Remove items from array
-app.remove('todos', todo => todo.id !== deletedId, callback);
-
-// Update item in array
-app.updateItem('todos',
-  todo => todo.id === targetId,
-  todo => ({ ...todo, completed: !todo.completed }),
-  callback
-);
-```
-
-#### State Subscription
-```javascript
-// Subscribe to state changes
-const unsubscribe = app.subscribe((newState) => {
-  console.log('State changed:', newState);
-});
-
-// Unsubscribe
-unsubscribe();
-```
-
-### Routing
-
-#### Route Definition
-```javascript
-// Single route
-app.route('/about', AboutComponent);
-
-// Multiple routes
-app.routes({
-  '/': HomeComponent,
-  '/about': AboutComponent,
-  '/contact': ContactComponent
-});
-```
-
-#### Navigation
-```javascript
-// Navigate to route
-app.navigate('/about');
-
-// Navigate with state
-app.navigate('/user/123', { userId: 123 });
-
-// Go back/forward
-app.back();
-app.forward();
-
-// Get current route
-const currentRoute = app.getCurrentRoute();
-
-// Check current route
-if (app.isRoute('/about')) {
-  // Do something
-}
-```
-
-#### Error Handling
-```javascript
-// Set error page component
-app.setErrorPage((errorMessage) =>
-  app.div({ class: 'error' },
-    app.h1({}, 'Error'),
-    app.p({}, errorMessage)
-  )
-);
-```
-
-### Event Handling
-
-#### Event Delegation
-```javascript
-// Basic event handling
-app.on('click', '.button', (event, target) => {
-  console.log('Button clicked:', target);
-});
-
-// Remove event handler
-app.off('click', '.button', handler);
-
-// One-time event handler
-app.once('click', '.button', handler);
-```
-
-#### Shorthand Event Methods
-```javascript
-app.click('.button', handler);
-app.change('.input', handler);
-app.input('.search', handler);
-app.keydown('.input', handler);
-app.keyup('.input', handler);
-app.keypress('.input', handler);
-app.submit('.form', handler);
-app.focus('.input', handler);
-app.blur('.input', handler);
-```
-
-#### Event Options
-```javascript
-// Event with options
-app.on('click', '.button', handler, { once: true });
-```
-
-### Utility Methods
-
-#### DOM Manipulation
-```javascript
-// Find elements
-const element = app.find('.selector');
-const elements = app.findAll('.selector');
-
-// CSS classes
-app.addClass('.element', 'active');
-app.removeClass('.element', 'active');
-app.toggleClass('.element', 'active');
-
-// CSS styles
-app.css('.element', 'color', 'red');
-app.css('.element', { color: 'red', fontSize: '16px' });
-
-// Show/hide elements
-app.show('.element');
-app.hide('.element');
-
-// Focus and scroll
-app.focusElement('.input');
-app.scrollTo('.section');
-```
-
-#### Rendering
-```javascript
-// Render current route
-app.render();
-
-// Render to specific container
-app.renderTo(container, component);
-
-// Re-render current route
-app.rerender();
-
-// Render with Virtual DOM diffing (performance optimized)
-app.renderWithDiff();
-```
-
-### Helper Methods
-
-#### Conditional Rendering
-```javascript
-// Render element only if condition is true
-app.when(condition, element);
-
-// Example
-app.when(user.isLoggedIn,
-  app.div({}, 'Welcome back!')
-);
-```
-
-#### List Rendering
-```javascript
-// Map array to elements
-app.map(array, callback);
-
-// Example
-app.ul({},
-  ...app.map(todos, todo =>
-    app.li({ key: todo.id }, todo.text)
-  )
-);
-```
-
-## 🏗️ Architecture & Design Decisions
-
-### Virtual DOM Implementation
-The framework implements a lightweight Virtual DOM with efficient diffing:
-
-- **Minimal overhead**: Only diffs when necessary
-- **Smart updates**: Only updates changed properties and children
-- **Performance batching**: Uses requestAnimationFrame for smooth updates
-
-### State Management Philosophy
-- **Immutable updates**: State changes create new state objects
-- **Batched rendering**: Multiple state changes trigger single re-render
-- **Predictable updates**: State changes are synchronous, rendering is async
-
-### Event System Design
-- **Event delegation**: Single event listener per event type
-- **Memory efficient**: Automatic cleanup and management
-- **Flexible targeting**: Supports both direct matches and closest ancestor matching
-
-### Component Architecture
-- **Functional components**: Simple functions that return virtual DOM
-- **No lifecycle methods**: Simplified mental model
-- **Props via closure**: Components access state through framework instance
-
-## 💡 Examples
-
-### Counter App
-```javascript
-const app = Framework.create({
-  initialState: { count: 0 }
-});
-
-const CounterApp = () =>
-  app.div({ class: 'counter' },
-    app.h1({}, `Count: ${app.get('count')}`),
-    app.button({ class: 'decrement' }, '-'),
-    app.button({ class: 'increment' }, '+')
-  );
-
-app.routes({ '/': CounterApp })
-   .click('.increment', () =>
-     app.set('count', app.get('count') + 1, () => app.render())
-   )
-   .click('.decrement', () =>
-     app.set('count', app.get('count') - 1, () => app.render())
-   );
-```
-
-### Todo List
-```javascript
-const app = Framework.create({
-  initialState: {
-    todos: [],
-    filter: 'all'
-  }
-});
-
-const TodoApp = () => {
-  const todos = app.get('todos');
-  const filter = app.get('filter');
-
-  const filteredTodos = todos.filter(todo => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
-    return true;
-  });
-
-  return app.div({ class: 'todo-app' },
-    app.input({
-      class: 'new-todo',
-      placeholder: 'What needs to be done?'
-    }),
-    app.ul({ class: 'todo-list' },
-      ...app.map(filteredTodos, todo =>
-        app.li({
-          class: todo.completed ? 'completed' : '',
-          'data-id': todo.id
-        },
-          app.input({
-            type: 'checkbox',
-            checked: todo.completed,
-            class: 'toggle'
-          }),
-          app.label({}, todo.text),
-          app.button({ class: 'destroy' }, '×')
-        )
-      )
-    ),
-    app.div({ class: 'filters' },
-      app.button({
-        class: filter === 'all' ? 'selected' : '',
-        'data-filter': 'all'
-      }, 'All'),
-      app.button({
-        class: filter === 'active' ? 'selected' : '',
-        'data-filter': 'active'
-      }, 'Active'),
-      app.button({
-        class: filter === 'completed' ? 'selected' : '',
-        'data-filter': 'completed'
-      }, 'Completed')
-    )
-  );
-};
-
-// Event handlers
-app.routes({ '/': TodoApp })
-   .keypress('.new-todo', (e) => {
-     if (e.key === 'Enter' && e.target.value.trim()) {
-       app.push('todos', {
-         id: Date.now(),
-         text: e.target.value.trim(),
-         completed: false
-       }, () => {
-         e.target.value = '';
-         app.render();
-       });
-     }
-   })
-   .click('.toggle', (e) => {
-     const id = parseInt(e.target.closest('li').dataset.id);
-     app.updateItem('todos',
-       todo => todo.id === id,
-       todo => ({ ...todo, completed: !todo.completed }),
-       () => app.render()
-     );
-   })
-   .click('.destroy', (e) => {
-     const id = parseInt(e.target.closest('li').dataset.id);
-     app.remove('todos',
-       todo => todo.id !== id,
-       () => app.render()
-     );
-   })
-   .click('[data-filter]', (e) => {
-     app.set('filter', e.target.dataset.filter, () => app.render());
-   });
-```
-
-## 🎯 Best Practices
-
-### Component Organization
-```javascript
-// Keep components pure and focused
-const TodoItem = (todo) =>
-  app.li({ class: todo.completed ? 'completed' : '' },
-    app.input({ type: 'checkbox', checked: todo.completed }),
-    app.label({}, todo.text)
-  );
-
-// Compose larger components from smaller ones
-const TodoList = (todos) =>
-  app.ul({ class: 'todo-list' },
-    ...app.map(todos, TodoItem)
-  );
-```
-
-### State Management
-```javascript
-// Use specific state operations for better performance
-// ✅ Good
-app.push('todos', newTodo, callback);
-
-// ❌ Avoid
-app.setState({ todos: [...app.get('todos'), newTodo] }, callback);
-
-// Use callbacks for actions after state updates
-app.set('loading', true, () => {
-  fetchData().then(data => {
-    app.set('data', data, () => {
-      app.set('loading', false, () => app.render());
-    });
-  });
-});
-```
-
-### Event Handling
-```javascript
-// Use event delegation for dynamic content
-app.click('.todo-item .toggle', handler); // ✅ Good
-
-// Avoid direct element binding
-document.querySelector('.toggle').onclick = handler; // ❌ Avoid
-```
-
-### Performance Tips
-```javascript
-// Use renderWithDiff for better performance with large lists
-app.renderWithDiff();
-
-// Batch state updates when possible
-app.setState({
-  todos: newTodos,
-  filter: newFilter,
-  loading: false
-}, () => app.render());
-
-// Use keys for list items to help with diffing
-app.map(items, item =>
-  app.li({ key: item.id }, item.name)
-);
-```
-
-## 🔧 Development
-
-### Running the TodoMVC Example
-```bash
-npm install
-npm run dev
-```
-
-Open http://localhost:3000 to see the TodoMVC implementation.
-
-### Project Structure
-```
-mini-framework/
-├── src/
-│   ├── framework/
-│   │   └── framework.js     # Core framework
-│   ├── app/
-│   │   └── todoApp.js       # TodoMVC implementation
-│   └── styles/
-│       └── todo.css         # Styles
-├── index.html               # Entry point
-├── package.json
-└── README.md
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - feel free to use this framework in your projects!
-
-## 🙏 Acknowledgments
-
-- Inspired by modern frameworks like React and Vue
-- TodoMVC specification for the example implementation
-- The JavaScript community for best practices and patterns
-```
+[ISC](LICENSE). This is an independent educational project. Player artwork in `assets/` is original SVG artwork included with the project.
