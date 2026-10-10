@@ -9,13 +9,15 @@ export class WebSocketManager {
     this.reconnectTimer = null;
     this.closed = false;
     this.messageHandlers = new Map();
+    try { this.sessionToken = sessionStorage.getItem('bomberman-session'); }
+    catch { this.sessionToken = null; }
   }
 
   initWebSocket() {
     this.closed = false;
     clearTimeout(this.reconnectTimer);
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}`);
+    const socket = new WebSocket(`${protocol}//${window.location.host}/api/server`);
     this.ws = socket;
     socket.onopen = (event) => {
       if (socket !== this.ws) return;
@@ -27,7 +29,16 @@ export class WebSocketManager {
     socket.onmessage = (event) => {
       if (socket !== this.ws) return;
       try {
-        this.handleWebSocketMessage(JSON.parse(event.data));
+        const data = JSON.parse(event.data);
+        if (data.sessionToken) this.saveSession(data.sessionToken);
+        if (data.type === 'connected' && data.resumeSupported && this.sessionToken)
+          socket.send(JSON.stringify({ type: 'resume', sessionToken: this.sessionToken }));
+        if (data.type === 'resume_error') {
+          this.saveSession(null);
+          this.onDisconnect?.({ sessionExpired: true });
+        }
+        if (data.type === 'game_event' && data.eventType === 'game_reset') this.saveSession(null);
+        this.handleWebSocketMessage(data);
       } catch (error) {
         console.error('Unable to process server message:', error);
       }
@@ -35,8 +46,9 @@ export class WebSocketManager {
     socket.onclose = (event) => {
       if (socket !== this.ws) return;
       this.wsConnected = false;
+      if (event.code === 4001) this.saveSession(null);
       this.onDisconnect?.(event);
-      if (!this.closed) this.handleWebSocketDisconnect();
+      if (!this.closed && event.code !== 4001) this.handleWebSocketDisconnect();
     };
     socket.onerror = (error) => {
       if (socket !== this.ws) return;
@@ -75,6 +87,14 @@ export class WebSocketManager {
   }
   registerMessageHandler(type, handler) {
     this.messageHandlers.set(type, handler);
+  }
+
+  saveSession(token) {
+    this.sessionToken = token;
+    try {
+      if (token) sessionStorage.setItem('bomberman-session', token);
+      else sessionStorage.removeItem('bomberman-session');
+    } catch { /* Session recovery still works in memory when browser storage is disabled. */ }
   }
 
   showConnectionError(message) {

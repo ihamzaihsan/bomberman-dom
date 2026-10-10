@@ -4,6 +4,7 @@
   "description": "Real-time multiplayer Bomberman web game with a custom DOM framework and authoritative WebSocket server",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build.mjs",
     "start": "node server.cjs",
     "dev": "node --watch server.cjs"
   },
@@ -16,6 +17,7 @@
   ],
   "license": "ISC",
   "dependencies": {
+    "@upstash/redis": "^1.39.0",
     "ws": "^8.22.0"
   },
   "engines": {

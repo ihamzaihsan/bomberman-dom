@@ -18,6 +18,10 @@ export class GameServer {
     this.gameState = this.createState();
   }
 
+  now() {
+    return Date.now();
+  }
+
   createState() {
     return {
       map: this.generateMap(),
@@ -186,15 +190,19 @@ export class GameServer {
     this.waitingTimer = this.countdownTimer = null;
     this.gameState.countdown = 0;
     this.gameState.gameStarted = true;
-    this.gameEndsAt = Date.now() + GAME_TIMING.GAME_DURATION * 1000;
+    this.gameEndsAt = this.now() + GAME_TIMING.GAME_DURATION * 1000;
     this.broadcastEvent('game_started', { gameState: this.gameState });
     this.broadcastGameState();
+    this.scheduleGameLoop();
+  }
+
+  scheduleGameLoop() {
     this.loopTimer = setInterval(() => this.processGameLogic(), GAME_TIMING.GAME_LOOP_INTERVAL);
   }
 
   processGameLogic() {
     if (!this.gameState.gameStarted) return;
-    const now = Date.now();
+    const now = this.now();
     const remaining = Math.max(0, Math.ceil((this.gameEndsAt - now) / 1000));
     if (remaining !== this.gameState.gameTimeLeft) {
       this.gameState.gameTimeLeft = remaining;
@@ -215,7 +223,7 @@ export class GameServer {
     const player = this.gameState.players[playerId];
     const result = MovementValidator.validateMove(player, direction, this.gameState);
     if (!result.isValid) return false;
-    const now = Date.now();
+    const now = this.now();
     const throttle = PLAYER_CONFIG.MOVE_INTERVALS[player.powerUps.speed];
     if (now - (this.moveTimes.get(playerId) ?? -Infinity) < throttle) return false;
     this.moveTimes.set(playerId, now);
@@ -238,7 +246,7 @@ export class GameServer {
       y: player.y,
       timer: GAME_TIMING.BOMB_TIMER,
       range: player.powerUps.flames,
-      explodesAt: Date.now() + GAME_TIMING.BOMB_TIMER * 1000,
+      explodesAt: this.now() + GAME_TIMING.BOMB_TIMER * 1000,
     });
     player.currentBombs++;
     return true;
@@ -364,6 +372,10 @@ export class GameServer {
       gameState: this.gameState,
     });
     this.broadcastGameState();
+    this.scheduleReset();
+  }
+
+  scheduleReset() {
     this.resetTimer = setTimeout(() => this.resetGame(), GAME_TIMING.GAME_END_RESET_DELAY);
   }
 

@@ -110,6 +110,7 @@ class BombermanApp {
       onDisconnect: () => {
         this.updateConnectionStatus();
         this.framework.stopGameLoop();
+        if (this.webSocketManager.sessionToken) return;
         this.framework.setState({
           playerId: null,
           gameState: null,
@@ -121,6 +122,18 @@ class BombermanApp {
     });
     this.webSocketManager.registerMessageHandler("join_success", (data) => {
       this.handleJoinSuccess(data);
+    });
+    this.webSocketManager.registerMessageHandler("resume_success", (data) => {
+      this.framework.setState({ playerId: data.playerId, gameState: data.gameState });
+      this.framework.set("nickname", data.player.nickname);
+      if (data.gameState.gameEnded) this.gameUIManager.showGameEndScreen();
+      else if (data.gameState.gameStarted) this.showGameScreen();
+      else {
+        this.gameUIManager.showWaitingScreen();
+        this.setupChatHandlers();
+        this.updateWaitingScreen();
+      }
+      this.startOptimizedGameLoop();
     });
     this.webSocketManager.registerMessageHandler("join_error", (data) => {
       this.showError(data.message);

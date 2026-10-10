@@ -69,4 +69,4 @@ app.stopGameLoop();
 const metrics = app.getPerformanceMetrics();
 ```
 
-The loop processes queued rendering work and samples frame timing. Named performance measures are cleared after use to prevent the browser's performance timeline growing without bound. The game's optional F2 panel shows local rendering measurements. The network server advances authoritative rules independently at 10 ticks per second.
+The loop processes queued rendering work and samples frame timing. Named performance measures are cleared after use to prevent the browser's performance timeline growing without bound. The game's optional F2 panel shows local rendering measurements. The local network server advances authoritative rules independently at 10 ticks per second.
